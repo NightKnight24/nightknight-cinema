@@ -3,3 +3,4 @@ node_modules/
 addon.log
 *.log
 .env
+backup_addon_collection.json

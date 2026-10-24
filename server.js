@@ -103,9 +103,9 @@ const TV_GENRES = {
 function getManifest(baseUrl) {
   return {
     id: 'org.stremio.nightknight.cinema',
-    version: '1.2.0',
+    version: '1.3.0',
     name: 'NightKnight Cinema',
-    description: 'Created by NightKnight. Complete actor & director filmographies, curated deep genres, 16:9 widescreen upcoming releases, calendar sync & intelligent stream speed ranking that eliminates buffering.',
+    description: 'Created by NightKnight. The ultimate cinema engine: Streaming Network hubs (Netflix, Apple TV+, Max, Disney+), Curated Franchises (MCU, Star Wars, Harry Potter), Critic Badges, Home Theater Audio/Video tags (Dolby Vision, Atmos, IMAX), actor filmographies, 16:9 previews & intelligent zero-buffer stream speed ranking.',
     logo: `${baseUrl}/icon.png`,
     background: `${baseUrl}/background.png`,
     resources: ['catalog', 'meta', 'stream'],
@@ -127,12 +127,37 @@ function getManifest(baseUrl) {
               'Top Rated',
               'Trending Today',
               'Trending This Week',
+              // Streaming Hubs
+              'Netflix',
+              'Apple TV+',
+              'Max (HBO)',
+              'Disney+',
+              'Amazon Prime',
+              'Paramount+',
+              // Franchises & Universes
+              'Marvel (MCU)',
+              'Star Wars Saga',
+              'Harry Potter',
+              'Lord of the Rings',
+              'James Bond (007)',
+              'Studio Ghibli',
+              'Christopher Nolan Universe',
+              'Quentin Tarantino Universe',
+              // Decade Time-Machine
+              '2020s Cinema',
+              '2010s Hits',
+              '2000s Nostalgia',
+              '90s Golden Age',
+              '80s Retro Classics',
+              '70s Vintage Cinema',
+              // Curated Deep Genres
               'Action',
               'Adventure',
               'Animation',
               'Anime',
               'Comedy',
               'Crime',
+              'Cyberpunk',
               'Documentary',
               'Drama',
               'Family',
@@ -147,7 +172,6 @@ function getManifest(baseUrl) {
               'Romance',
               'Science Fiction',
               'Superhero',
-              'Cyberpunk',
               'Stand-Up Comedy',
               'Thriller',
               'War',
@@ -174,6 +198,22 @@ function getManifest(baseUrl) {
               'Top Rated',
               'Trending Today',
               'Trending This Week',
+              // Streaming Hubs
+              'Netflix',
+              'Apple TV+',
+              'Max (HBO)',
+              'Disney+',
+              'Amazon Prime',
+              'Paramount+',
+              // TV Universes
+              'Marvel (MCU)',
+              'Star Wars Saga',
+              // Decade Time-Machine
+              '2020s TV',
+              '2010s TV Hits',
+              '2000s TV Classics',
+              '90s Nostalgia TV',
+              // Curated Deep Genres
               'Action & Adventure',
               'Animation',
               'Anime',
@@ -194,6 +234,34 @@ function getManifest(baseUrl) {
             isRequired: false
           },
           { name: 'search', isRequired: false },
+          { name: 'skip', isRequired: false }
+        ]
+      },
+      {
+        type: 'movie',
+        id: 'streaming_hub_movies',
+        name: 'Streaming Networks (Movies)',
+        pageSize: 20,
+        extra: [
+          {
+            name: 'genre',
+            options: ['Netflix', 'Apple TV+', 'Max (HBO)', 'Disney+', 'Amazon Prime', 'Paramount+'],
+            isRequired: false
+          },
+          { name: 'skip', isRequired: false }
+        ]
+      },
+      {
+        type: 'series',
+        id: 'streaming_hub_series',
+        name: 'Streaming Networks (Series)',
+        pageSize: 20,
+        extra: [
+          {
+            name: 'genre',
+            options: ['Netflix', 'Apple TV+', 'Max (HBO)', 'Disney+', 'Amazon Prime', 'Paramount+'],
+            isRequired: false
+          },
           { name: 'skip', isRequired: false }
         ]
       },
@@ -455,6 +523,135 @@ async function handleGenreCatalog(type, genre, skip = 0) {
     return (res.results || []).map(item => formatMetaPreview(item, type));
   }
 
+  // 1. Streaming Service Hubs
+  const providerMap = {
+    'Netflix': '8',
+    'Apple TV+': '350',
+    'Max (HBO)': '1899|384',
+    'Disney+': '337',
+    'Amazon Prime': '9|119',
+    'Paramount+': '531'
+  };
+  if (providerMap[genre]) {
+    const res = await fetchTmdb(`/discover/${isMovie ? 'movie' : 'tv'}`, {
+      with_watch_providers: providerMap[genre],
+      watch_region: 'US',
+      sort_by: 'popularity.desc',
+      page: tmdbPage
+    });
+    return (res.results || []).map(item => formatMetaPreview(item, type));
+  }
+
+  // 2. Curated Franchises & Universes
+  if (genre === 'Marvel (MCU)') {
+    if (isMovie) {
+      const res = await fetchTmdb('/discover/movie', {
+        with_keywords: '180547',
+        sort_by: 'primary_release_date.desc',
+        page: tmdbPage
+      });
+      return (res.results || []).map(item => formatMetaPreview(item, 'movie'));
+    } else {
+      const res = await fetchTmdb('/discover/tv', {
+        with_keywords: '180547',
+        sort_by: 'popularity.desc',
+        page: tmdbPage
+      });
+      return (res.results || []).map(item => formatMetaPreview(item, 'series'));
+    }
+  }
+
+  if (genre === 'Star Wars Saga') {
+    const res = await fetchTmdb(`/discover/${isMovie ? 'movie' : 'tv'}`, {
+      with_companies: '1',
+      sort_by: 'popularity.desc',
+      page: tmdbPage
+    });
+    return (res.results || []).map(item => formatMetaPreview(item, type));
+  }
+
+  if (genre === 'Harry Potter' && isMovie) {
+    const col = await fetchTmdb('/collection/1241');
+    const fbCol = await fetchTmdb('/collection/435634').catch(() => null);
+    const parts = [...(col.parts || []), ...(fbCol?.parts || [])];
+    parts.sort((a, b) => (a.release_date || '').localeCompare(b.release_date || ''));
+    const slice = parts.slice(skip, skip + 20);
+    return slice.map(item => formatMetaPreview(item, 'movie'));
+  }
+
+  if (genre === 'Lord of the Rings' && isMovie) {
+    const lotr = await fetchTmdb('/collection/119');
+    const hobbit = await fetchTmdb('/collection/121938');
+    const parts = [...(lotr.parts || []), ...(hobbit.parts || [])];
+    parts.sort((a, b) => (a.release_date || '').localeCompare(b.release_date || ''));
+    const slice = parts.slice(skip, skip + 20);
+    return slice.map(item => formatMetaPreview(item, 'movie'));
+  }
+
+  if (genre === 'James Bond (007)' && isMovie) {
+    const col = await fetchTmdb('/collection/645');
+    const parts = (col.parts || []).sort((a, b) => (b.release_date || '').localeCompare(a.release_date || ''));
+    const slice = parts.slice(skip, skip + 20);
+    return slice.map(item => formatMetaPreview(item, 'movie'));
+  }
+
+  if (genre === 'Studio Ghibli' && isMovie) {
+    const res = await fetchTmdb('/discover/movie', {
+      with_companies: '10342',
+      sort_by: 'popularity.desc',
+      page: tmdbPage
+    });
+    return (res.results || []).map(item => formatMetaPreview(item, 'movie'));
+  }
+
+  if (genre === 'Christopher Nolan Universe' && isMovie) {
+    const res = await fetchTmdb('/discover/movie', {
+      with_crew: '525',
+      sort_by: 'popularity.desc',
+      page: tmdbPage
+    });
+    return (res.results || []).map(item => formatMetaPreview(item, 'movie'));
+  }
+
+  if (genre === 'Quentin Tarantino Universe' && isMovie) {
+    const res = await fetchTmdb('/discover/movie', {
+      with_crew: '138',
+      sort_by: 'popularity.desc',
+      page: tmdbPage
+    });
+    return (res.results || []).map(item => formatMetaPreview(item, 'movie'));
+  }
+
+  // 3. Decade Time-Machine Filters
+  const decadeMap = {
+    '2020s Cinema': { gte: '2020-01-01', lte: '2029-12-31' },
+    '2010s Hits': { gte: '2010-01-01', lte: '2019-12-31' },
+    '2000s Nostalgia': { gte: '2000-01-01', lte: '2009-12-31' },
+    '90s Golden Age': { gte: '1990-01-01', lte: '1999-12-31' },
+    '80s Retro Classics': { gte: '1980-01-01', lte: '1989-12-31' },
+    '70s Vintage Cinema': { gte: '1970-01-01', lte: '1979-12-31' },
+    '2020s TV': { gte: '2020-01-01', lte: '2029-12-31' },
+    '2010s TV Hits': { gte: '2010-01-01', lte: '2019-12-31' },
+    '2000s TV Classics': { gte: '2000-01-01', lte: '2009-12-31' },
+    '90s Nostalgia TV': { gte: '1990-01-01', lte: '1999-12-31' }
+  };
+  if (decadeMap[genre]) {
+    const { gte, lte } = decadeMap[genre];
+    const params = {
+      sort_by: 'vote_count.desc',
+      page: tmdbPage
+    };
+    if (isMovie) {
+      params['primary_release_date.gte'] = gte;
+      params['primary_release_date.lte'] = lte;
+    } else {
+      params['first_air_date.gte'] = gte;
+      params['first_air_date.lte'] = lte;
+    }
+    const res = await fetchTmdb(`/discover/${isMovie ? 'movie' : 'tv'}`, params);
+    return (res.results || []).map(item => formatMetaPreview(item, type));
+  }
+
   const genreMap = isMovie ? MOVIE_GENRES : TV_GENRES;
   const genreId = genreMap[genre];
 
@@ -534,6 +731,27 @@ async function handleMeta(type, id) {
     });
     const imdbId = data.external_ids?.imdb_id || (isImdb ? id : data.imdb_id);
 
+    // Fetch Cinemeta for IMDb rating & awards
+    let cinData = null;
+    if (imdbId) {
+      try {
+        const cinRes = await fetch(`https://v3-cinemeta.strem.io/meta/movie/${imdbId}.json`);
+        if (cinRes.ok) cinData = await cinRes.json();
+      } catch (e) {}
+    }
+
+    const imdbScore = cinData?.meta?.imdbRating || (data.vote_average ? data.vote_average.toFixed(1) : null);
+    const tmdbPercent = data.vote_average ? Math.round(data.vote_average * 10) : null;
+    const awardsText = cinData?.meta?.awards;
+
+    const badges = [];
+    if (imdbScore) badges.push(`⭐ IMDb: ${imdbScore}/10`);
+    if (tmdbPercent) badges.push(`🍅 TMDb: ${tmdbPercent}% (${(data.vote_count || 0).toLocaleString()} votes)`);
+    if (awardsText) badges.push(`🏆 ${awardsText}`);
+
+    const badgeHeader = badges.length > 0 ? `${badges.join('   •   ')}\n\n` : '';
+    const description = `${badgeHeader}${data.overview || ''}`;
+
     const meta = {
       id: isImdb ? id : `tmdb:${tmdbId}`,
       imdb_id: imdbId || undefined,
@@ -543,11 +761,11 @@ async function handleMeta(type, id) {
       genres: (data.genres || []).map(g => g.name),
       poster: data.poster_path ? `https://image.tmdb.org/t/p/w500${data.poster_path}` : null,
       background: data.backdrop_path ? `https://image.tmdb.org/t/p/original${data.backdrop_path}` : null,
-      description: data.overview || '',
+      description: description,
       releaseInfo: (data.release_date || '').slice(0, 4),
       released: data.release_date ? new Date(data.release_date).toISOString() : undefined,
       runtime: data.runtime ? `${data.runtime} min` : undefined,
-      imdbRating: data.vote_average ? data.vote_average.toFixed(1) : undefined,
+      imdbRating: imdbScore || (data.vote_average ? data.vote_average.toFixed(1) : undefined),
       director: (data.credits?.crew || []).filter(c => c.job === 'Director').map(c => c.name),
       cast: (data.credits?.cast || []).slice(0, 10).map(c => c.name),
       trailers: (data.videos?.results || [])
@@ -569,11 +787,12 @@ async function handleMeta(type, id) {
     const imdbId = data.external_ids?.imdb_id;
 
     let videos = [];
+    let cinData = null;
     if (imdbId) {
       try {
         const cinRes = await fetch(`https://v3-cinemeta.strem.io/meta/series/${imdbId}.json`);
         if (cinRes.ok) {
-          const cinData = await cinRes.json();
+          cinData = await cinRes.json();
           if (cinData.meta && cinData.meta.videos && cinData.meta.videos.length > 0) {
             videos = cinData.meta.videos;
           }
@@ -598,6 +817,18 @@ async function handleMeta(type, id) {
       }
     }
 
+    const imdbScore = cinData?.meta?.imdbRating || (data.vote_average ? data.vote_average.toFixed(1) : null);
+    const tmdbPercent = data.vote_average ? Math.round(data.vote_average * 10) : null;
+    const awardsText = cinData?.meta?.awards;
+
+    const badges = [];
+    if (imdbScore) badges.push(`⭐ IMDb: ${imdbScore}/10`);
+    if (tmdbPercent) badges.push(`🍅 TMDb: ${tmdbPercent}% (${(data.vote_count || 0).toLocaleString()} votes)`);
+    if (awardsText) badges.push(`🏆 ${awardsText}`);
+
+    const badgeHeader = badges.length > 0 ? `${badges.join('   •   ')}\n\n` : '';
+    const description = `${badgeHeader}${data.overview || ''}`;
+
     const meta = {
       id: isImdb ? id : `tmdb:${tmdbId}`,
       imdb_id: imdbId || (isImdb ? id : undefined),
@@ -607,9 +838,9 @@ async function handleMeta(type, id) {
       genres: (data.genres || []).map(g => g.name),
       poster: data.poster_path ? `https://image.tmdb.org/t/p/w500${data.poster_path}` : null,
       background: data.backdrop_path ? `https://image.tmdb.org/t/p/original${data.backdrop_path}` : null,
-      description: data.overview || '',
+      description: description,
       releaseInfo: (data.first_air_date || '').slice(0, 4),
-      imdbRating: data.vote_average ? data.vote_average.toFixed(1) : undefined,
+      imdbRating: imdbScore || (data.vote_average ? data.vote_average.toFixed(1) : undefined),
       cast: (data.credits?.cast || []).slice(0, 10).map(c => c.name),
       videos: videos,
       trailers: (data.videos?.results || [])
@@ -627,8 +858,37 @@ async function handleMeta(type, id) {
 }
 
 // -------------------------------------------------------------
-// INTELLIGENT STREAM SPEED RANKING & BUFFER OPTIMIZER
+// INTELLIGENT STREAM SPEED RANKING & CINEMA AUDIO/VIDEO BADGES
 // -------------------------------------------------------------
+function extractCinemaBadges(text = '') {
+  const audio = [];
+  const video = [];
+  const edition = [];
+
+  // Audio Codecs & Channels
+  if (/atmos/i.test(text)) audio.push('🔊 Atmos');
+  else if (/truehd/i.test(text)) audio.push('🔊 TrueHD');
+  else if (/dts[\s\.\-_]?hd/i.test(text)) audio.push('🔊 DTS-HD');
+  else if (/dts[\s\.\-_]?x/i.test(text)) audio.push('🔊 DTS:X');
+  else if (/\bdts\b/i.test(text)) audio.push('🔊 DTS');
+  else if (/(?:eac3|ddp|dd\+|aac5\.1|ac3|5\.1)/i.test(text)) audio.push('🔊 5.1');
+  else if (/7\.1/i.test(text)) audio.push('🔊 7.1');
+
+  // Video & Dynamic Range
+  if (/dolby\s*vision|\bdv\b/i.test(text)) video.push('✨ DV');
+  if (/hdr10\+/i.test(text)) video.push('🌈 HDR10+');
+  else if (/hdr10|\bhdr\b/i.test(text)) video.push('🌈 HDR');
+  if (/10bit|10-bit/i.test(text)) video.push('10-bit');
+  if (/remux/i.test(text)) video.push('💎 Remux');
+
+  // Editions
+  if (/imax/i.test(text)) edition.push('🎞️ IMAX');
+  if (/director'?s\s*cut/i.test(text)) edition.push('🎬 Director\'s Cut');
+  else if (/extended/i.test(text)) edition.push('🎬 Extended');
+
+  return { audio, video, edition };
+}
+
 function optimizeAndRankStreams(rawStreams) {
   if (!Array.isArray(rawStreams) || rawStreams.length === 0) return [];
 
@@ -636,6 +896,7 @@ function optimizeAndRankStreams(rawStreams) {
   for (const s of rawStreams) {
     const title = s.title || '';
     const name = s.name || '';
+    const filename = s.behaviorHints?.filename || '';
 
     // Check for Debrid Cached Streams (Real-Debrid, AllDebrid, TorBox, Premiumize)
     const isDebrid = /\[(RD|AD|TB|PM)\+?\]/i.test(name) || /\[(RD|AD|TB|PM)\+?\]/i.test(title);
@@ -670,6 +931,11 @@ function optimizeAndRankStreams(rawStreams) {
 
     const isHdr = /HDR/i.test(name) || /HDR/i.test(title);
     const isDv = /DV|Dolby Vision/i.test(name) || /DV|Dolby Vision/i.test(title);
+
+    // Extract Home Cinema Badges (Audio/Video/Edition)
+    const badgesObj = extractCinemaBadges(`${title} ${name} ${filename}`);
+    const cinemaHighlights = [...badgesObj.video, ...badgesObj.audio, ...badgesObj.edition];
+    const cinemaTag = cinemaHighlights.length > 0 ? ` • ${cinemaHighlights.slice(0, 3).join(' ')}` : '';
 
     // Calculate Speed & Buffer-Free Score
     let speedScore = 0;
@@ -721,8 +987,8 @@ function optimizeAndRankStreams(rawStreams) {
       _seeders: seeders,
       _isDead: seeders === 0 && !isDebrid,
       _isBufferRisk: seeders < 10 && sizeGB > 25,
-      name: `${speedBadge}\n${cleanAddonName}`,
-      title: `${title}\n✨ NightKnight Speed Optimization: ${recommendation}`
+      name: `${speedBadge}\n${cleanAddonName}${cinemaTag}`,
+      title: `${title}\n🎬 Cinema Format: ${cinemaHighlights.join(' | ') || 'Standard Digital'}\n🛡️ NightKnight Buffer Shield: ${recommendation}`
     });
   }
 
@@ -916,6 +1182,15 @@ const server = http.createServer(async (req, res) => {
         const tmdbPage = Math.floor(skip / 20) + 1;
         const resData = await fetchTmdb('/tv/on_the_air', { page: tmdbPage });
         const metas = (resData.results || []).map(item => formatMetaPreview(item, 'series', true));
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        res.end(JSON.stringify({ metas }));
+        return;
+      }
+
+      // Handle Dedicated Streaming Hub Catalogs (Netflix, Apple TV+, Max, Disney+, Prime, Paramount+)
+      if (catalogId === 'streaming_hub_movies' || catalogId === 'streaming_hub_series') {
+        const genre = extra.genre || 'Netflix';
+        const metas = await handleGenreCatalog(type, genre, skip);
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
         res.end(JSON.stringify({ metas }));
         return;
@@ -1169,26 +1444,34 @@ const server = http.createServer(async (req, res) => {
     <img src="/icon.png" alt="NightKnight Logo" class="logo-img">
     <h1>NightKnight Cinema</h1>
     <div class="byline">Crafted by NightKnight</div>
-    <div class="subtitle">Complete Actor filmographies, curated deep genres, 16:9 widescreen feeds, Stremio Calendar sync & an intelligent stream speed engine that eliminates buffering.</div>
+    <div class="subtitle">The ultimate cinema experience: Streaming Network hubs (Netflix, Apple TV+, Max, Disney+), Curated Franchises (MCU, Star Wars, Harry Potter), Critic Badges, Home Theater Audio/Video tags (Dolby Vision, Atmos, IMAX), actor filmographies & intelligent zero-buffer stream speed ranking.</div>
     
     <a href="${stremioUrl}" class="btn">🚀 Install on Stremio</a>
     
     <div class="features">
       <div class="feature-item">
+        <span class="tag">📺 Streaming Hubs</span>
+        <span>Browse Netflix, Apple TV+, Max (HBO), Disney+, Prime Video & Paramount+</span>
+      </div>
+      <div class="feature-item">
+        <span class="tag">🍿 Curated Universes</span>
+        <span>Marvel MCU, Star Wars, Harry Potter, LOTR, James Bond 007 & Studio Ghibli</span>
+      </div>
+      <div class="feature-item">
+        <span class="tag">🍅 Critic Badges</span>
+        <span>IMDb, TMDb score percentages, and award / Oscar recognitions</span>
+      </div>
+      <div class="feature-item">
+        <span class="tag">🔊 Home Cinema Tags</span>
+        <span>Automatic Dolby Vision, HDR10+, Dolby Atmos, DTS-HD & IMAX stream tagging</span>
+      </div>
+      <div class="feature-item">
         <span class="tag">⚡ Speed Engine</span>
         <span>Ranks streams by seeders, size & CDN reliability — fastest streams first</span>
       </div>
       <div class="feature-item">
-        <span class="tag">🛡️ Buffer Shield</span>
-        <span>Pushes unstreamable 80GB low-seeder remuxes to the bottom with warnings</span>
-      </div>
-      <div class="feature-item">
         <span class="tag">🎬 Actor Search</span>
         <span>Search any actor or director in Stremio for their complete filmography</span>
-      </div>
-      <div class="feature-item">
-        <span class="tag">📅 16:9 Feeds</span>
-        <span>Widescreen upcoming releases & Stremio Calendar episode synchronization</span>
       </div>
     </div>
 

@@ -1,34 +1,55 @@
-# ⚔️ NightKnight Cinema — Stremio Addon (v1.2.0)
+# ⚔️ NightKnight Cinema — Stremio Addon (v1.3.0)
 
 > **Created by NightKnight**  
-> An intelligent Stremio addon providing complete actor & director filmographies, curated deep genres, 16:9 widescreen upcoming release feeds, calendar synchronization, and an **Intelligent Stream Speed Ranking Engine & Buffer Shield**.
+> An intelligent, standalone Stremio cinema engine providing Streaming Platform hubs (Netflix, Apple TV+, Max, Disney+), Curated Franchises (MCU, Star Wars, Harry Potter), Critic Badges, Home Theater Audio/Video tags (Dolby Vision, Atmos, IMAX), actor filmographies, 16:9 previews & intelligent zero-buffer stream speed ranking.
 
 ---
 
 ## ✨ Features
 
-1. **⚡ Intelligent Stream Speed Ranking & Buffer Shield**
-   - Automatically queries and analyzes streams from upstream scrapers (such as Torrentio or personal Debrid endpoints).
-   - Computes a real-time **Speed & Streamability Score**:
-     - **Debrid Cloud CDN Streams (`[RD+]`, `[AD+]`, `[TB+]`)**: Ranked #1 as `🚀 [INSTANT CDN • 0 BUFFER]` for instant multi-gigabit playback.
-     - **P2P Torrents**: Evaluates seeders vs file size. The highest-seeding streams (e.g. 800+ seeders) are badged `⚡ [FASTEST • 894 👤]` and placed right at the top.
-     - **Buffer Warning**: Identifies high-risk streams (such as uncompressed 80GB remuxes with only 5 seeders) and flags them with `⚠️ [HIGH BUFFER RISK]`, moving them to the bottom so users don't encounter buffer stalls.
-     - **Dead Stream Elimination**: Automatically filters out dead torrents with 0 seeders.
+1. **📺 Streaming Platform Hubs**
+   - Browse dedicated rows and filter options for all major networks: **Netflix**, **Apple TV+**, **Max (HBO)**, **Disney+**, **Amazon Prime Video**, and **Paramount+**.
+   - Discover what's new and trending across top platforms without juggling separate subscriptions or searching blindly.
 
-2. **🎬 Complete Actor & Director Filmographies**
-   - Type any actor or director in Stremio's search bar (e.g. *Cillian Murphy*, *Leonardo DiCaprio*, *Florence Pugh*, *Christopher Nolan*) to immediately view their complete movie and TV filmography, ranked by popularity.
+2. **🍿 Curated Franchises & Cinematic Universes**
+   - Instant one-click access to complete sagas in chronological viewing order:
+     - 🦸 **Marvel Cinematic Universe (MCU)**
+     - 🌌 **Star Wars Saga**
+     - ⚡ **Harry Potter & Wizarding World**
+     - 💍 **The Lord of the Rings & The Hobbit**
+     - 🍸 **James Bond (007 Collection)**
+     - 🏮 **Studio Ghibli Masterpieces**
+     - 🎬 **Christopher Nolan & Quentin Tarantino Collections**
 
-3. **📅 16:9 Widescreen Landscape Feeds**
-   - **Upcoming Movie Releases**: Widescreen 16:9 backdrop cards for upcoming theatrical and digital releases.
-   - **Upcoming TV Shows (Airing Soon)**: Shows with new episodes airing in the next 7 days.
-   - **TV Shows Airing Today**: Live daily airing schedule.
+3. **🍅 Critic Badges & Awards Recognition**
+   - Injects verified IMDb ratings, TMDb audience percentages, and Academy Award / Oscar acknowledgments right above the synopsis:
+     `⭐ IMDb: 9.3/10 • 🍅 TMDb: 87% (31k votes) • 🏆 Nominated for 7 Oscars`
 
-4. **🎭 Curated Deep Genres**
-   - **Movies**: Cyberpunk, Superhero, Anime, Film-Noir, Korean Cinema, Martial Arts, Stand-Up Comedy, Classic Cinema, etc.
-   - **Series**: K-Drama, Anime, Reality-TV, Sci-Fi & Fantasy, Crime, War & Politics, etc.
+4. **🔊 Home Cinema Audio & Video Stream Badges**
+   - Automatically detects and tags streams with theater-grade specifications:
+     - **Dynamic Range**: `✨ Dolby Vision`, `🌈 HDR10+`, `🌈 HDR`, `10-bit`
+     - **Sound Codecs**: `🔊 Dolby Atmos`, `🔊 TrueHD 7.1`, `🔊 DTS-HD MA`, `🔊 DTS:X`, `🔊 5.1 Surround`
+     - **Editions**: `💎 Lossless Remux`, `🎞️ IMAX Enhanced`, `🎬 Extended / Director's Cut`
 
-5. **📆 Stremio Calendar Synchronization (`calendar-videos`)**
-   - Feeds upcoming season and episode air dates into Stremio's built-in **Calendar** grid for all shows added to your Library from this addon.
+5. **⏳ Decade Time-Machine Filters**
+   - Nostalgic time travel across movie and television history:
+     - **2020s Modern Cinema**
+     - **2010s Hits**
+     - **2000s Nostalgia**
+     - **90s Golden Age Thrillers & Action**
+     - **80s Retro Synth & Sci-Fi Classics**
+     - **70s Vintage Cinema**
+
+6. **⚡ Intelligent Stream Speed Ranking & Buffer Shield**
+   - Automatically analyzes streams from upstream scrapers (Torrentio, Real-Debrid, TorBox, etc.).
+   - Places instant CDN streams (`🚀 [INSTANT CDN • 0 BUFFER]`) and high-seeder torrents (`⚡ [FASTEST • 600+ 👤]`) at the very top.
+   - Filters dead torrents (0 seeders) and warns against massive low-seeder files.
+
+7. **🎬 Complete Actor & Director Filmographies**
+   - Type any actor or director in Stremio's search bar to immediately see their full catalog ranked by popularity.
+
+8. **📅 16:9 Widescreen Landscape Feeds & Calendar Sync**
+   - Dedicated 16:9 horizontal card feeds for upcoming releases, plus full Stremio Calendar air-date synchronization.
 
 ---
 
