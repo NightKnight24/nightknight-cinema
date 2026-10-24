@@ -14,7 +14,9 @@ const TMDB_API_KEY = process.env.TMDB_API_KEY || '3157bd6dacbc3a653ae2e5a3b19beb
 const PORT = process.env.PORT || 7000;
 const HOST = process.env.HOST || (process.env.PORT ? '0.0.0.0' : '127.0.0.1');
 
-// Load Configuration
+const ADDON_VERSION = '1.5.0';
+
+// Load server-wide DEFAULTS (read-only). Per-user settings live in the install URL, never on the server.
 function loadConfig() {
   try {
     if (fs.existsSync(CONFIG_PATH)) {
@@ -26,20 +28,87 @@ function loadConfig() {
   }
   return {
     upstreamScraper: 'https://torrentio.strem.fun',
-    prioritizeDebrid: true,
-    filterHighBufferRisk: false
+    filterHighBufferRisk: false,
+    defaultRegion: 'GB'
   };
 }
 
-function saveConfig(cfg) {
+const APP_CONFIG = loadConfig();
+
+// Regions supported for "where to watch" (BYOA) and streaming hub catalogs
+const REGIONS = {
+  GB: 'United Kingdom',
+  US: 'United States',
+  IE: 'Ireland',
+  CA: 'Canada',
+  AU: 'Australia'
+};
+
+// -------------------------------------------------------------
+// PER-USER CONFIGURATION (Stremio standard: config encoded in the install URL)
+// e.g. https://host/<base64url-json>/manifest.json
+// Nothing is stored server-side, so one user's settings (or Debrid key) can never affect or leak to another.
+// -------------------------------------------------------------
+function normalizeUpstream(raw) {
+  if (typeof raw !== 'string') return null;
+  let u = raw.trim();
+  if (!u) return null;
+  if (u.startsWith('stremio://')) u = 'https://' + u.slice('stremio://'.length);
+  u = u.replace(/\/manifest\.json$/i, '').replace(/\/+$/, '');
+  return isSafeUpstream(u) ? u : null;
+}
+
+// Blocks SSRF: only public https hostnames (no IP literals, localhost or internal names)
+function isSafeUpstream(u) {
   try {
-    fs.writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2), 'utf-8');
+    const x = new URL(u);
+    if (x.protocol !== 'https:') return false;
+    if (x.username || x.password) return false;
+    const h = x.hostname.toLowerCase();
+    if (!h || !h.includes('.')) return false;
+    if (h === 'localhost' || h.endsWith('.localhost') || h.endsWith('.local') || h.endsWith('.internal')) return false;
+    if (/^[\d.]+$/.test(h) || h.includes(':') || h.startsWith('[')) return false;
+    if (u.length > 600) return false;
+    return true;
   } catch (e) {
-    console.error('Error writing config.json:', e.message);
+    return false;
   }
 }
 
-let APP_CONFIG = loadConfig();
+const DEFAULT_USER_CONFIG = {
+  upstream: normalizeUpstream(APP_CONFIG.upstreamScraper) || 'https://torrentio.strem.fun',
+  hideRisk: !!APP_CONFIG.filterHighBufferRisk,
+  region: REGIONS[APP_CONFIG.defaultRegion] ? APP_CONFIG.defaultRegion : 'GB'
+};
+
+function decodeUserConfig(segment) {
+  const cfg = { ...DEFAULT_USER_CONFIG };
+  if (!segment) return cfg;
+  try {
+    const json = JSON.parse(Buffer.from(segment, 'base64url').toString('utf-8'));
+    if (json && typeof json === 'object') {
+      const up = normalizeUpstream(json.upstream);
+      if (up) cfg.upstream = up;
+      if (typeof json.hideRisk === 'boolean') cfg.hideRisk = json.hideRisk;
+      if (typeof json.region === 'string' && REGIONS[json.region.toUpperCase()]) cfg.region = json.region.toUpperCase();
+    }
+  } catch (e) {
+    // Invalid config segment -> safe defaults
+  }
+  return cfg;
+}
+
+function escapeHtml(str = '') {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// Last upstream scraper result (diagnostics only; never includes URLs/keys)
+const UPSTREAM_HEALTH = { lastStatus: null, lastError: null, lastStreams: null, at: null };
 
 // Simple in-memory cache with TTL
 const cache = new Map();
@@ -103,14 +172,18 @@ const TV_GENRES = {
 function getManifest(baseUrl) {
   return {
     id: 'org.stremio.nightknight.cinema',
-    version: '1.4.0',
+    version: ADDON_VERSION,
     name: 'NightKnight Cinema',
-    description: 'Created by NightKnight. The ultimate media hub: YouTube in-app playback & search, BYOA streaming hubs (Netflix, BBC iPlayer, ITVX, Channel 4, Disney+, Prime, Max), Curated Franchises, Critic Badges, Home Theater Audio/Video tags & intelligent zero-buffer stream ranking.',
+    description: 'Created by NightKnight. YouTube search & in-app playback, "where to watch" links for UK & global streaming services (BBC iPlayer, ITVX, Channel 4, Netflix, Disney+, Prime & more), franchises in release order, IMDb/TMDb ratings & awards, audio/video format tags and seeder-based stream ranking.',
     logo: `${baseUrl}/icon.png`,
     background: `${baseUrl}/background.png`,
     resources: ['catalog', 'meta', 'stream'],
     types: ['movie', 'series', 'channel'],
     idPrefixes: ['tmdb:', 'tt', 'yt:'],
+    behaviorHints: {
+      configurable: true,
+      configurationRequired: false
+    },
     catalogs: [
       {
         type: 'movie',
@@ -361,67 +434,115 @@ function formatMetaPreview(item, type, isLandscape = false) {
     background: item.backdrop_path ? `https://image.tmdb.org/t/p/original${item.backdrop_path}` : null,
     description: item.overview || '',
     releaseInfo: year,
-    released: date ? new Date(date).toISOString() : undefined,
-    imdbRating: item.vote_average ? item.vote_average.toFixed(1) : undefined
+    released: date ? new Date(date).toISOString() : undefined
+    // Note: no `imdbRating` here — TMDb list results only carry the TMDb score,
+    // and Stremio displays this field with an IMDb logo. Real IMDb ratings are added in handleMeta.
   };
 }
 
 // YouTube Search & Video Scraper (Zero-Auth, DRM-Free & BYOA)
 async function searchYouTube(query = 'Trending', skip = 0) {
-  const cacheKey = `yt:search:${query}:${skip}`;
-  const cached = getCache(cacheKey);
-  if (cached) return cached;
+  const cacheKey = `yt:query:${query}`;
+  let videos = getCache(cacheKey);
 
-  try {
-    const url = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
-    const res = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-      },
-      signal: AbortSignal.timeout(5000)
-    });
-    const html = await res.text();
-    const match = html.match(/ytInitialData\s*=\s*({.+?});<\/script>/);
-    if (!match) return [];
+  if (!videos) {
+    try {
+      const url = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
+      const res = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept-Language': 'en-GB,en;q=0.9'
+        },
+        signal: AbortSignal.timeout(6000)
+      });
+      const html = await res.text();
+      const match = html.match(/ytInitialData\s*=\s*({.+?});<\/script>/);
+      if (match) {
+        const data = JSON.parse(match[1]);
+        const contents = data.contents?.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer?.contents?.[0]?.itemSectionRenderer?.contents || [];
+        videos = [];
 
-    const data = JSON.parse(match[1]);
-    const contents = data.contents?.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer?.contents?.[0]?.itemSectionRenderer?.contents || [];
-    const videos = [];
+        for (const item of contents) {
+          const vr = item.videoRenderer;
+          if (vr && vr.videoId) {
+            const title = vr.title?.runs?.[0]?.text || '';
+            const channel = vr.ownerText?.runs?.[0]?.text || '';
+            const thumbnail = vr.thumbnail?.thumbnails?.[0]?.url || `https://i.ytimg.com/vi/${vr.videoId}/hqdefault.jpg`;
+            const length = vr.lengthText?.simpleText || '';
 
-    for (const item of contents) {
-      const vr = item.videoRenderer;
-      if (vr && vr.videoId) {
-        const title = vr.title?.runs?.[0]?.text || '';
-        const channel = vr.ownerText?.runs?.[0]?.text || '';
-        const thumbnail = vr.thumbnail?.thumbnails?.[0]?.url || `https://i.ytimg.com/vi/${vr.videoId}/hqdefault.jpg`;
-        const length = vr.lengthText?.simpleText || '';
-
-        videos.push({
-          id: `yt:${vr.videoId}`,
-          type: 'channel',
-          name: title,
-          poster: thumbnail,
-          background: `https://i.ytimg.com/vi/${vr.videoId}/maxresdefault.jpg`,
-          description: `Channel: ${channel} • Duration: ${length}\n\n▶️ Plays directly inside Stremio player (DRM-Free) or opens in YouTube app (BYOA).`,
-          releaseInfo: length || channel,
-          behaviorHints: {
-            defaultVideoId: `yt:${vr.videoId}`
+            const videoMeta = {
+              id: `yt:${vr.videoId}`,
+              type: 'channel',
+              name: title,
+              poster: thumbnail,
+              background: `https://i.ytimg.com/vi/${vr.videoId}/maxresdefault.jpg`,
+              description: `Channel: ${channel} • Duration: ${length}\n\n▶️ Plays directly inside Stremio player (DRM-Free) or opens in YouTube app (BYOA).`,
+              releaseInfo: length || channel,
+              behaviorHints: {
+                defaultVideoId: `yt:${vr.videoId}`
+              }
+            };
+            videos.push(videoMeta);
+            // Cache individual video meta for handleMeta
+            setCache(`yt:meta:${vr.videoId}`, videoMeta, 86400);
           }
-        });
+        }
+        setCache(cacheKey, videos, 1800);
       }
+    } catch (e) {
+      console.error('YouTube search error:', e.message);
     }
-
-    setCache(cacheKey, videos, 1800);
-    return videos;
-  } catch (e) {
-    console.error('YouTube search error:', e.message);
-    return [];
   }
+
+  if (!Array.isArray(videos)) return [];
+  return videos.slice(skip, skip + 20);
 }
 
+// Known TMDb Watch Provider definitions (matched by exact provider_id for 100% accuracy)
+const PROVIDER_METADATA = {
+  38: { name: 'BBC iPlayer', tag: '🇬🇧 [BBC iPLAYER • FREE]', url: q => `https://www.bbc.co.uk/iplayer/search?q=${encodeURIComponent(q)}` },
+  41: { name: 'ITVX', tag: '🇬🇧 [ITVX • FREE]', url: q => `https://www.itv.com/watch/search?q=${encodeURIComponent(q)}` },
+  2300: { name: 'ITVX Premium', tag: '🇬🇧 [ITVX PREMIUM • BYOA]', url: q => `https://www.itv.com/watch/search?q=${encodeURIComponent(q)}` },
+  103: { name: 'Channel 4', tag: '🇬🇧 [CHANNEL 4 • FREE]', url: () => `https://www.channel4.com/` },
+  2311: { name: 'Channel 4 Plus', tag: '🇬🇧 [CHANNEL 4+ • BYOA]', url: () => `https://www.channel4.com/` },
+  333: { name: 'My5', tag: '🇬🇧 [MY5 • FREE]', url: q => `https://www.channel5.com/search?q=${encodeURIComponent(q)}` },
+  137: { name: 'U (Dave / UKTV)', tag: '🇬🇧 [U / DAVE • FREE]', url: q => `https://u.co.uk/search?q=${encodeURIComponent(q)}` },
+  29: { name: 'Sky Go', tag: '🛰️ [SKY GO • BYOA]', url: () => `https://www.sky.com/watch/sky-go` },
+  39: { name: 'NOW', tag: '🟣 [NOW • BYOA]', url: q => `https://www.nowtv.com/watch/search?q=${encodeURIComponent(q)}` },
+  591: { name: 'NOW Cinema', tag: '🟣 [NOW CINEMA • BYOA]', url: q => `https://www.nowtv.com/watch/search?q=${encodeURIComponent(q)}` },
+  8: { name: 'Netflix', tag: '🔴 [NETFLIX • BYOA]', url: q => `https://www.netflix.com/search?q=${encodeURIComponent(q)}` },
+  1796: { name: 'Netflix Standard with Ads', tag: '🔴 [NETFLIX • BYOA]', url: q => `https://www.netflix.com/search?q=${encodeURIComponent(q)}` },
+  9: { name: 'Amazon Prime Video', tag: '📦 [PRIME VIDEO • BYOA]', url: q => `https://www.primevideo.com/search/ref=atv_nb_sug?phrase=${encodeURIComponent(q)}` },
+  2100: { name: 'Prime Video with Ads', tag: '📦 [PRIME VIDEO • BYOA]', url: q => `https://www.primevideo.com/search/ref=atv_nb_sug?phrase=${encodeURIComponent(q)}` },
+  337: { name: 'Disney+', tag: '🏰 [DISNEY+ • BYOA]', url: () => `https://www.disneyplus.com/` },
+  350: { name: 'Apple TV+', tag: '🍎 [APPLE TV+ • BYOA]', url: q => `https://tv.apple.com/search?term=${encodeURIComponent(q)}` },
+  531: { name: 'Paramount+', tag: '🏔️ [PARAMOUNT+ • BYOA]', url: q => `https://www.paramountplus.com/search/?q=${encodeURIComponent(q)}` },
+  2303: { name: 'Paramount+ Premium', tag: '🏔️ [PARAMOUNT+ • BYOA]', url: q => `https://www.paramountplus.com/search/?q=${encodeURIComponent(q)}` },
+  1899: { name: 'Max (HBO)', tag: '🟣 [MAX • BYOA]', url: q => `https://play.max.com/search?q=${encodeURIComponent(q)}` },
+  524: { name: 'Discovery+', tag: '🌍 [DISCOVERY+ • BYOA]', url: () => `https://www.discoveryplus.com/` },
+  151: { name: 'BritBox', tag: '🇬🇧 [BRITBOX • BYOA]', url: () => `https://www.britbox.com/` },
+  283: { name: 'Crunchyroll', tag: '🍜 [CRUNCHYROLL • BYOA]', url: () => `https://www.crunchyroll.com/` },
+  15: { name: 'Hulu', tag: '🟢 [HULU • BYOA]', url: () => `https://www.hulu.com/` },
+  386: { name: 'Peacock', tag: '🦚 [PEACOCK • BYOA]', url: () => `https://www.peacocktv.com/` },
+  387: { name: 'Peacock Premium Plus', tag: '🦚 [PEACOCK • BYOA]', url: () => `https://www.peacocktv.com/` },
+  223: { name: 'Hayu', tag: '💅 [HAYU • BYOA]', url: () => `https://www.hayu.com/` },
+  189: { name: 'Curzon Home Cinema', tag: '🎭 [CURZON • BYOA]', url: () => `https://www.curzon.com/` },
+  224: { name: 'BFI Player', tag: '🎞️ [BFI PLAYER • BYOA]', url: () => `https://player.bfi.org.uk/` },
+  593: { name: 'STV Player', tag: '🏴󠁧󠁢󠁳󠁣󠁴󠁿 [STV PLAYER • FREE]', url: () => `https://player.stv.tv/` },
+  2663: { name: 'S4C Clic', tag: '🏴󠁧󠁢󠁷󠁬󠁳󠁿 [S4C CLIC • FREE]', url: () => `https://www.s4c.cymru/clic/` },
+  11: { name: 'MUBI', tag: '🎬 [MUBI • BYOA]', url: q => `https://mubi.com/en/search/films?query=${encodeURIComponent(q)}` },
+  99: { name: 'Shudder', tag: '🩸 [SHUDDER • BYOA]', url: () => `https://www.shudder.com/` },
+  43: { name: 'Starz', tag: '⭐ [STARZ • BYOA]', url: () => `https://www.starz.com/` },
+  34: { name: 'MGM+', tag: '🦁 [MGM+ • BYOA]', url: () => `https://www.mgmplus.com/` },
+  538: { name: 'Plex', tag: '⚡ [PLEX • FREE]', url: q => `https://watch.plex.tv/search?q=${encodeURIComponent(q)}` },
+  73: { name: 'Tubi', tag: '📺 [TUBI • FREE]', url: q => `https://tubitv.com/search/${encodeURIComponent(q)}` },
+  300: { name: 'Pluto TV', tag: '🪐 [PLUTO TV • FREE]', url: () => `https://pluto.tv/` }
+};
+
 // Fetch BYOA Streaming Platform Deep-Links & Official Trailer
-async function fetchByoaStreams(type, tmdbId, title) {
-  const cacheKey = `byoa:${type}:${tmdbId}`;
+async function fetchByoaStreams(type, tmdbId, title, region = 'GB') {
+  const targetRegion = REGIONS[region] ? region : 'GB';
+  const cacheKey = `byoa:${type}:${tmdbId}:${targetRegion}`;
   const cached = getCache(cacheKey);
   if (cached) return cached;
 
@@ -444,84 +565,26 @@ async function fetchByoaStreams(type, tmdbId, title) {
       });
     }
 
-    // 2. BYOA Watch Providers (UK & Global)
+    // 2. BYOA Watch Providers for target region (with US fallback if target region has no stream)
     if (provRes?.results) {
-      const gb = provRes.results.GB || {};
-      const us = provRes.results.US || {};
+      const regionData = provRes.results[targetRegion] || provRes.results['GB'] || provRes.results['US'] || {};
       const allServices = [
-        ...(gb.flatrate || []),
-        ...(gb.free || []),
-        ...(us.flatrate || []),
-        ...(us.free || [])
+        ...(regionData.flatrate || []),
+        ...(regionData.free || [])
       ];
 
       const seen = new Set();
       for (const p of allServices) {
-        const name = p.provider_name;
-        if (!name || seen.has(name)) continue;
-        seen.add(name);
+        const pid = p.provider_id;
+        if (!pid || seen.has(pid)) continue;
+        seen.add(pid);
 
-        let tag = '';
-        let url = '';
-
-        if (/bbc iplayer/i.test(name)) {
-          tag = '🇬🇧 [BBC iPLAYER • FREE]';
-          url = `https://www.bbc.co.uk/iplayer/search?q=${encodeURIComponent(title)}`;
-        } else if (/itvx|itv/i.test(name)) {
-          tag = '🇬🇧 [ITVX • FREE]';
-          url = `https://www.itv.com/watch/search?q=${encodeURIComponent(title)}`;
-        } else if (/channel 4/i.test(name)) {
-          tag = '🇬🇧 [CHANNEL 4 • FREE]';
-          url = `https://www.channel4.com/search?q=${encodeURIComponent(title)}`;
-        } else if (/\b5\b|my5|five/i.test(name)) {
-          tag = '🇬🇧 [MY5 • FREE]';
-          url = `https://www.channel5.com/search?q=${encodeURIComponent(title)}`;
-        } else if (/uktv|dave/i.test(name)) {
-          tag = '🇬🇧 [U / DAVE • FREE]';
-          url = `https://u.co.uk/search?q=${encodeURIComponent(title)}`;
-        } else if (/sky go/i.test(name)) {
-          tag = '🛰️ [SKY GO • BYOA]';
-          url = `https://www.sky.com/watch/sky-go`;
-        } else if (/now/i.test(name)) {
-          tag = '🟣 [NOW • BYOA]';
-          url = `https://www.nowtv.com/watch/search?q=${encodeURIComponent(title)}`;
-        } else if (/britbox/i.test(name)) {
-          tag = '🇬🇧 [BRITBOX • BYOA]';
-          url = `https://www.britbox.co.uk/`;
-        } else if (/discovery\+/i.test(name)) {
-          tag = '🌍 [DISCOVERY+ • BYOA]';
-          url = `https://www.discoveryplus.com/gb/search?q=${encodeURIComponent(title)}`;
-        } else if (/disney/i.test(name)) {
-          tag = '🏰 [DISNEY+ • BYOA]';
-          url = `https://www.disneyplus.com/search?q=${encodeURIComponent(title)}`;
-        } else if (/paramount/i.test(name)) {
-          tag = '🏔️ [PARAMOUNT+ • BYOA]';
-          url = `https://www.paramountplus.com/search/?q=${encodeURIComponent(title)}`;
-        } else if (/prime|amazon/i.test(name)) {
-          tag = '📦 [PRIME VIDEO • BYOA]';
-          url = `https://www.amazon.co.uk/s?k=${encodeURIComponent(title)}&i=instant-video`;
-        } else if (/netflix/i.test(name)) {
-          tag = '🔴 [NETFLIX • BYOA]';
-          url = `https://www.netflix.com/search?q=${encodeURIComponent(title)}`;
-        } else if (/apple tv/i.test(name)) {
-          tag = '🍎 [APPLE TV+ • BYOA]';
-          url = `https://tv.apple.com/search?term=${encodeURIComponent(title)}`;
-        } else if (/hbo|max/i.test(name)) {
-          tag = '🟣 [MAX • BYOA]';
-          url = `https://play.max.com/search?q=${encodeURIComponent(title)}`;
-        } else if (/hayu/i.test(name)) {
-          tag = '💅 [HAYU • BYOA]';
-          url = `https://www.hayu.com/`;
-        } else if (/crunchyroll/i.test(name)) {
-          tag = '🍜 [CRUNCHYROLL • BYOA]';
-          url = `https://www.crunchyroll.com/search?q=${encodeURIComponent(title)}`;
-        }
-
-        if (tag && url) {
+        const meta = PROVIDER_METADATA[pid];
+        if (meta) {
           byoaStreams.push({
-            name: `${tag}\nOfficial Stream`,
-            title: `Watch "${title}" on ${name} with your account\n🔗 Opens official player / browser`,
-            externalUrl: url
+            name: `${meta.tag}\nOfficial Stream`,
+            title: `Watch "${title}" on ${meta.name} with your account\n🔗 Opens official player / website`,
+            externalUrl: meta.url(title)
           });
         }
       }
@@ -672,7 +735,7 @@ async function handleGenreCatalog(type, genre, skip = 0) {
 
   if (genre === 'Martial Arts') {
     const res = await fetchTmdb(`/discover/${isMovie ? 'movie' : 'tv'}`, {
-      with_keywords: '780|1701',
+      with_keywords: '779|780',
       sort_by: 'popularity.desc',
       page: tmdbPage
     });
@@ -681,7 +744,7 @@ async function handleGenreCatalog(type, genre, skip = 0) {
 
   if (genre === 'Cyberpunk') {
     const res = await fetchTmdb(`/discover/${isMovie ? 'movie' : 'tv'}`, {
-      with_keywords: '4565|10085',
+      with_keywords: '12190',
       sort_by: 'popularity.desc',
       page: tmdbPage
     });
@@ -690,9 +753,8 @@ async function handleGenreCatalog(type, genre, skip = 0) {
 
   if (genre === 'Film-Noir') {
     const res = await fetchTmdb('/discover/movie', {
-      with_genres: 80,
-      with_keywords: '9840',
-      sort_by: 'popularity.desc',
+      with_keywords: '9807',
+      sort_by: 'vote_count.desc',
       page: tmdbPage
     });
     return (res.results || []).map(item => formatMetaPreview(item, 'movie'));
@@ -726,19 +788,23 @@ async function handleGenreCatalog(type, genre, skip = 0) {
     return (res.results || []).map(item => formatMetaPreview(item, type));
   }
 
-  // 2. Curated Franchises & Universes
+  // 2. Curated Franchises & Universes in Chronological Viewing Order
+  const today = new Date().toISOString().slice(0, 10);
+
   if (genre === 'Marvel (MCU)') {
     if (isMovie) {
       const res = await fetchTmdb('/discover/movie', {
         with_keywords: '180547',
-        sort_by: 'primary_release_date.desc',
+        'primary_release_date.lte': today,
+        sort_by: 'primary_release_date.asc',
         page: tmdbPage
       });
       return (res.results || []).map(item => formatMetaPreview(item, 'movie'));
     } else {
       const res = await fetchTmdb('/discover/tv', {
         with_keywords: '180547',
-        sort_by: 'popularity.desc',
+        'first_air_date.lte': today,
+        sort_by: 'first_air_date.asc',
         page: tmdbPage
       });
       return (res.results || []).map(item => formatMetaPreview(item, 'series'));
@@ -746,17 +812,29 @@ async function handleGenreCatalog(type, genre, skip = 0) {
   }
 
   if (genre === 'Star Wars Saga') {
-    const res = await fetchTmdb(`/discover/${isMovie ? 'movie' : 'tv'}`, {
-      with_companies: '1',
-      sort_by: 'popularity.desc',
-      page: tmdbPage
-    });
-    return (res.results || []).map(item => formatMetaPreview(item, type));
+    if (isMovie) {
+      const col = await fetchTmdb('/collection/10').catch(() => null);
+      const rogue = await fetchTmdb('/movie/330459').catch(() => null);
+      const solo = await fetchTmdb('/movie/348350').catch(() => null);
+      const allParts = [...(col?.parts || [])];
+      if (rogue && rogue.id) allParts.push(rogue);
+      if (solo && solo.id) allParts.push(solo);
+      allParts.sort((a, b) => (a.release_date || '').localeCompare(b.release_date || ''));
+      const slice = allParts.slice(skip, skip + 20);
+      return slice.map(item => formatMetaPreview(item, 'movie'));
+    } else {
+      const swShowIds = [4194, 60554, 82856, 79093, 105971, 114478, 115036, 92830, 83867, 203085, 114461, 251091, 114479, 202879];
+      const shows = await Promise.all(swShowIds.map(id => fetchTmdb(`/tv/${id}`).catch(() => null)));
+      const validShows = shows.filter(Boolean);
+      validShows.sort((a, b) => (a.first_air_date || '').localeCompare(b.first_air_date || ''));
+      const slice = validShows.slice(skip, skip + 20);
+      return slice.map(item => formatMetaPreview(item, 'series'));
+    }
   }
 
   if (genre === 'Harry Potter' && isMovie) {
     const col = await fetchTmdb('/collection/1241');
-    const fbCol = await fetchTmdb('/collection/435634').catch(() => null);
+    const fbCol = await fetchTmdb('/collection/435259').catch(() => null);
     const parts = [...(col.parts || []), ...(fbCol?.parts || [])];
     parts.sort((a, b) => (a.release_date || '').localeCompare(b.release_date || ''));
     const slice = parts.slice(skip, skip + 20);
@@ -774,7 +852,7 @@ async function handleGenreCatalog(type, genre, skip = 0) {
 
   if (genre === 'James Bond (007)' && isMovie) {
     const col = await fetchTmdb('/collection/645');
-    const parts = (col.parts || []).sort((a, b) => (b.release_date || '').localeCompare(a.release_date || ''));
+    const parts = (col.parts || []).sort((a, b) => (a.release_date || '').localeCompare(b.release_date || ''));
     const slice = parts.slice(skip, skip + 20);
     return slice.map(item => formatMetaPreview(item, 'movie'));
   }
@@ -891,17 +969,36 @@ async function fetchTmdbVideos(tmdbId, seasons = [], imdbId) {
 async function handleMeta(type, id) {
   if (id.startsWith('yt:') || type === 'channel') {
     const videoId = id.replace('yt:', '');
-    return {
+    const cachedMeta = getCache(`yt:meta:${videoId}`);
+    if (cachedMeta) return cachedMeta;
+
+    let videoTitle = 'YouTube Video';
+    let authorName = '';
+
+    try {
+      const oembedRes = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`, {
+        signal: AbortSignal.timeout(4000)
+      });
+      if (oembedRes.ok) {
+        const oembed = await oembedRes.json();
+        if (oembed.title) videoTitle = oembed.title;
+        if (oembed.author_name) authorName = oembed.author_name;
+      }
+    } catch (e) {}
+
+    const meta = {
       id: `yt:${videoId}`,
       type: 'channel',
-      name: 'YouTube Video',
+      name: videoTitle,
       poster: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
       background: `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`,
-      description: '▶️ Watch directly inside Stremio player (DRM-Free) or launch in the YouTube app with your Google account (BYOA).',
+      description: authorName ? `Channel: ${authorName}\n\n▶️ Watch directly inside Stremio player (DRM-Free) or launch in the YouTube app with your Google account (BYOA).` : '▶️ Watch directly inside Stremio player (DRM-Free) or launch in the YouTube app with your Google account (BYOA).',
       behaviorHints: {
         defaultVideoId: `yt:${videoId}`
       }
     };
+    setCache(`yt:meta:${videoId}`, meta, 86400);
+    return meta;
   }
 
   const isMovie = type === 'movie';
@@ -934,18 +1031,21 @@ async function handleMeta(type, id) {
     let cinData = null;
     if (imdbId) {
       try {
-        const cinRes = await fetch(`https://v3-cinemeta.strem.io/meta/movie/${imdbId}.json`);
+        const cinRes = await fetch(`https://v3-cinemeta.strem.io/meta/movie/${imdbId}.json`, {
+          signal: AbortSignal.timeout(4000)
+        });
         if (cinRes.ok) cinData = await cinRes.json();
       } catch (e) {}
     }
 
-    const imdbScore = cinData?.meta?.imdbRating || (data.vote_average ? data.vote_average.toFixed(1) : null);
+    const imdbScore = cinData?.meta?.imdbRating || null;
+    const tmdbScore = data.vote_average ? data.vote_average.toFixed(1) : null;
     const tmdbPercent = data.vote_average ? Math.round(data.vote_average * 10) : null;
     const awardsText = cinData?.meta?.awards;
 
     const badges = [];
     if (imdbScore) badges.push(`⭐ IMDb: ${imdbScore}/10`);
-    if (tmdbPercent) badges.push(`🍅 TMDb: ${tmdbPercent}% (${(data.vote_count || 0).toLocaleString()} votes)`);
+    if (tmdbScore) badges.push(`🎬 TMDb: ${tmdbScore}/10 (${tmdbPercent}% • ${(data.vote_count || 0).toLocaleString()} votes)`);
     if (awardsText) badges.push(`🏆 ${awardsText}`);
 
     const badgeHeader = badges.length > 0 ? `${badges.join('   •   ')}\n\n` : '';
@@ -964,7 +1064,7 @@ async function handleMeta(type, id) {
       releaseInfo: (data.release_date || '').slice(0, 4),
       released: data.release_date ? new Date(data.release_date).toISOString() : undefined,
       runtime: data.runtime ? `${data.runtime} min` : undefined,
-      imdbRating: imdbScore || (data.vote_average ? data.vote_average.toFixed(1) : undefined),
+      imdbRating: imdbScore || undefined,
       director: (data.credits?.crew || []).filter(c => c.job === 'Director').map(c => c.name),
       cast: (data.credits?.cast || []).slice(0, 10).map(c => c.name),
       trailers: (data.videos?.results || [])
@@ -989,7 +1089,9 @@ async function handleMeta(type, id) {
     let cinData = null;
     if (imdbId) {
       try {
-        const cinRes = await fetch(`https://v3-cinemeta.strem.io/meta/series/${imdbId}.json`);
+        const cinRes = await fetch(`https://v3-cinemeta.strem.io/meta/series/${imdbId}.json`, {
+          signal: AbortSignal.timeout(4000)
+        });
         if (cinRes.ok) {
           cinData = await cinRes.json();
           if (cinData.meta && cinData.meta.videos && cinData.meta.videos.length > 0) {
@@ -1016,13 +1118,14 @@ async function handleMeta(type, id) {
       }
     }
 
-    const imdbScore = cinData?.meta?.imdbRating || (data.vote_average ? data.vote_average.toFixed(1) : null);
+    const imdbScore = cinData?.meta?.imdbRating || null;
+    const tmdbScore = data.vote_average ? data.vote_average.toFixed(1) : null;
     const tmdbPercent = data.vote_average ? Math.round(data.vote_average * 10) : null;
     const awardsText = cinData?.meta?.awards;
 
     const badges = [];
     if (imdbScore) badges.push(`⭐ IMDb: ${imdbScore}/10`);
-    if (tmdbPercent) badges.push(`🍅 TMDb: ${tmdbPercent}% (${(data.vote_count || 0).toLocaleString()} votes)`);
+    if (tmdbScore) badges.push(`🎬 TMDb: ${tmdbScore}/10 (${tmdbPercent}% • ${(data.vote_count || 0).toLocaleString()} votes)`);
     if (awardsText) badges.push(`🏆 ${awardsText}`);
 
     const badgeHeader = badges.length > 0 ? `${badges.join('   •   ')}\n\n` : '';
@@ -1039,7 +1142,7 @@ async function handleMeta(type, id) {
       background: data.backdrop_path ? `https://image.tmdb.org/t/p/original${data.backdrop_path}` : null,
       description: description,
       releaseInfo: (data.first_air_date || '').slice(0, 4),
-      imdbRating: imdbScore || (data.vote_average ? data.vote_average.toFixed(1) : undefined),
+      imdbRating: imdbScore || undefined,
       cast: (data.credits?.cast || []).slice(0, 10).map(c => c.name),
       videos: videos,
       trailers: (data.videos?.results || [])
@@ -1074,9 +1177,9 @@ function extractCinemaBadges(text = '') {
   else if (/7\.1/i.test(text)) audio.push('🔊 7.1');
 
   // Video & Dynamic Range
-  if (/dolby\s*vision|\bdv\b/i.test(text)) video.push('✨ DV');
+  if (/\b(dolby\s*vision|dovi)\b/i.test(text) || (/\bdv\b/i.test(text) && !/dvd/i.test(text))) video.push('✨ DV');
   if (/hdr10\+/i.test(text)) video.push('🌈 HDR10+');
-  else if (/hdr10|\bhdr\b/i.test(text)) video.push('🌈 HDR');
+  else if (/\bhdr(10)?\b/i.test(text) && !/hdrip/i.test(text)) video.push('🌈 HDR');
   if (/10bit|10-bit/i.test(text)) video.push('10-bit');
   if (/remux/i.test(text)) video.push('💎 Remux');
 
@@ -1088,7 +1191,7 @@ function extractCinemaBadges(text = '') {
   return { audio, video, edition };
 }
 
-function optimizeAndRankStreams(rawStreams) {
+function optimizeAndRankStreams(rawStreams, userConfig = DEFAULT_USER_CONFIG) {
   if (!Array.isArray(rawStreams) || rawStreams.length === 0) return [];
 
   const parsed = [];
@@ -1098,7 +1201,16 @@ function optimizeAndRankStreams(rawStreams) {
     const filename = s.behaviorHints?.filename || '';
 
     // Check for Debrid Cached Streams (Real-Debrid, AllDebrid, TorBox, Premiumize)
-    const isDebrid = /\[(RD|AD|TB|PM)\+?\]/i.test(name) || /\[(RD|AD|TB|PM)\+?\]/i.test(title);
+    let debridProvider = '';
+    const debridMatch = (name + ' ' + title).match(/\[(RD|AD|TB|PM)\+?\]/i);
+    if (debridMatch) {
+      const code = debridMatch[1].toUpperCase();
+      if (code === 'RD') debridProvider = 'Real-Debrid';
+      else if (code === 'AD') debridProvider = 'AllDebrid';
+      else if (code === 'TB') debridProvider = 'TorBox';
+      else if (code === 'PM') debridProvider = 'Premiumize';
+    }
+    const isDebrid = Boolean(debridProvider);
 
     // Parse Seeders
     const seedMatch = title.match(/👤\s*(\d+)/);
@@ -1113,7 +1225,7 @@ function optimizeAndRankStreams(rawStreams) {
     }
 
     // Quality & Codec Detection
-    let quality = '1080p';
+    let quality = '';
     let is4k = false;
     let is1080p = false;
     let is720p = false;
@@ -1126,10 +1238,12 @@ function optimizeAndRankStreams(rawStreams) {
     } else if (/720p/i.test(name) || /720p/i.test(title)) {
       quality = '720p';
       is720p = true;
+    } else if (/480p|576p|dvdrip|sd/i.test(name) || /480p|576p|dvdrip|sd/i.test(title)) {
+      quality = 'SD';
     }
 
     const isHdr = /HDR/i.test(name) || /HDR/i.test(title);
-    const isDv = /DV|Dolby Vision/i.test(name) || /DV|Dolby Vision/i.test(title);
+    const isDv = /\b(dolby\s*vision|dovi)\b/i.test(name + ' ' + title) || (/\bdv\b/i.test(name + ' ' + title) && !/dvd/i.test(name + ' ' + title));
 
     // Extract Home Cinema Badges (Audio/Video/Edition)
     const badgesObj = extractCinemaBadges(`${title} ${name} ${filename}`);
@@ -1144,7 +1258,7 @@ function optimizeAndRankStreams(rawStreams) {
     if (isDebrid) {
       speedScore = 100000 + (is4k ? 1000 : 500) + (isDv || isHdr ? 100 : 0) - (sizeGB * 0.1);
       speedBadge = '🚀 [INSTANT CDN • 0 BUFFER]';
-      recommendation = '⚡ Real-Debrid High-Speed Cloud Stream';
+      recommendation = `⚡ ${debridProvider} High-Speed Cloud Stream`;
     } else {
       if (seeders === 0) {
         speedScore = -1000;
@@ -1155,7 +1269,7 @@ function optimizeAndRankStreams(rawStreams) {
         speedBadge = `⚠️ [HIGH BUFFER RISK • ${seeders} 👤]`;
         recommendation = 'High buffering risk (Huge file, low seeders)';
       } else {
-        const qualityWeight = is4k ? 1.2 : (is1080p ? 1.0 : 0.8);
+        const qualityWeight = is4k ? 1.2 : (is1080p ? 1.0 : (is720p ? 0.8 : 0.7));
         const seederPoints = seeders * 12;
         const sizePenalty = seeders < 50 ? (sizeGB * 8) : (sizeGB * 2);
         
@@ -1177,8 +1291,8 @@ function optimizeAndRankStreams(rawStreams) {
       }
     }
 
-    const qualityLabel = `${quality}${isDv ? ' DV' : ''}${isHdr ? ' HDR' : ''}`;
-    const cleanAddonName = s.name.replace(/^Torrentio\n?/i, '').replace(/^\[[^\]]+\]\s*/, '').trim() || qualityLabel;
+    const qualityLabel = [quality, isDv ? 'DV' : '', isHdr && !isDv ? 'HDR' : ''].filter(Boolean).join(' ');
+    const cleanAddonName = s.name.replace(/^Torrentio\n?/i, '').replace(/^\[[^\]]+\]\s*/, '').trim() || qualityLabel || 'Stream';
 
     parsed.push({
       ...s,
@@ -1193,7 +1307,7 @@ function optimizeAndRankStreams(rawStreams) {
 
   let activeStreams = parsed.filter(s => !s._isDead);
 
-  if (APP_CONFIG.filterHighBufferRisk) {
+  if (userConfig.hideRisk) {
     activeStreams = activeStreams.filter(s => !s._isBufferRisk);
   }
 
@@ -1203,7 +1317,7 @@ function optimizeAndRankStreams(rawStreams) {
 }
 
 // Handle Streams Request
-async function handleStream(type, id) {
+async function handleStream(type, id, userConfig = DEFAULT_USER_CONFIG) {
   if (id.startsWith('yt:') || type === 'channel') {
     const videoId = id.replace('yt:', '');
     return [
@@ -1220,7 +1334,8 @@ async function handleStream(type, id) {
     ];
   }
 
-  const cacheKey = `stream:${type}:${id}`;
+  const region = userConfig.region || 'GB';
+  const cacheKey = `stream:${type}:${id}:${region}:${userConfig.upstream}:${userConfig.hideRisk}`;
   const cached = getCache(cacheKey);
   if (cached) return cached;
 
@@ -1262,12 +1377,12 @@ async function handleStream(type, id) {
     // 1. Fetch BYOA Streams & Official Trailer
     let byoaStreams = [];
     if (tmdbTargetId) {
-      byoaStreams = await fetchByoaStreams(type, tmdbTargetId, targetTitle || 'Title');
+      byoaStreams = await fetchByoaStreams(type, tmdbTargetId, targetTitle || 'Title', region);
     }
 
     if (!imdbTarget) return byoaStreams;
 
-    const scraperBase = (APP_CONFIG.upstreamScraper || 'https://torrentio.strem.fun').replace(/\/$/, '');
+    const scraperBase = (userConfig.upstream || APP_CONFIG.upstreamScraper || 'https://torrentio.strem.fun').replace(/\/$/, '');
     const upstreamUrl = `${scraperBase}/stream/${type}/${imdbTarget}.json`;
 
     let rawStreams = [];
@@ -1276,15 +1391,22 @@ async function handleStream(type, id) {
         headers: { 'User-Agent': 'Stremio/4.4.168' },
         signal: AbortSignal.timeout(6500)
       });
+      UPSTREAM_HEALTH.lastStatus = res.status;
+      UPSTREAM_HEALTH.at = new Date().toISOString();
       if (res.ok) {
         const data = await res.json();
         rawStreams = data.streams || [];
+        UPSTREAM_HEALTH.lastStreams = rawStreams.length;
+        UPSTREAM_HEALTH.lastError = null;
+      } else {
+        UPSTREAM_HEALTH.lastError = `HTTP ${res.status}`;
       }
     } catch (e) {
-      // Scraper fallback if blocked or unreachable
+      UPSTREAM_HEALTH.lastError = e.message;
+      UPSTREAM_HEALTH.at = new Date().toISOString();
     }
 
-    const optimized = optimizeAndRankStreams(rawStreams);
+    const optimized = optimizeAndRankStreams(rawStreams, userConfig);
     const combined = [...byoaStreams, ...optimized];
     setCache(cacheKey, combined, 600);
     return combined;
@@ -1308,12 +1430,27 @@ const server = http.createServer(async (req, res) => {
   }
 
   const parsedUrl = parseUrl(req.url, true);
-  const pathname = decodeURIComponent(parsedUrl.pathname || '/');
+  const rawPathname = decodeURIComponent(parsedUrl.pathname || '/');
+
+  // Strip optional user config segment from path (Stremio standard: /:config?/...)
+  let userConfig = DEFAULT_USER_CONFIG;
+  let configSegment = '';
+  let pathname = rawPathname;
+
+  const segments = rawPathname.split('/').filter(Boolean);
+  if (segments.length > 0) {
+    const first = segments[0];
+    if (!['catalog', 'meta', 'stream', 'manifest.json', 'icon.png', 'logo.png', 'background.png', 'bg.png', 'configure', 'api'].includes(first)) {
+      configSegment = first;
+      userConfig = decodeUserConfig(configSegment);
+      pathname = '/' + segments.slice(1).join('/');
+    }
+  }
 
   // Compute dynamic baseUrl from request headers
   const proto = req.headers['x-forwarded-proto'] || 'http';
   const host = req.headers.host || `${HOST}:${PORT}`;
-  const baseUrl = `${proto}://${host}`;
+  const baseUrl = configSegment ? `${proto}://${host}/${configSegment}` : `${proto}://${host}`;
 
   try {
     // Static files: /icon.png & /background.png
@@ -1337,6 +1474,17 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
+    // Health & diagnostic check (read-only)
+    if (pathname === '/api/health') {
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({
+        version: ADDON_VERSION,
+        status: 'online',
+        upstream: UPSTREAM_HEALTH
+      }));
+      return;
+    }
+
     // 1. Manifest
     if (pathname === '/manifest.json') {
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -1348,7 +1496,7 @@ const server = http.createServer(async (req, res) => {
     const streamMatch = pathname.match(/^\/stream\/(movie|series|channel)\/([^\/]+)\.json$/);
     if (streamMatch) {
       const [, type, id] = streamMatch;
-      const streams = await handleStream(type, id);
+      const streams = await handleStream(type, id, userConfig);
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
       res.end(JSON.stringify({ streams }));
       return;
@@ -1469,31 +1617,11 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    // 5. Config API endpoint
-    if (pathname === '/api/config' && req.method === 'POST') {
-      let body = '';
-      req.on('data', chunk => body += chunk);
-      req.on('end', () => {
-        try {
-          const newConfig = JSON.parse(body);
-          if (newConfig.upstreamScraper) {
-            APP_CONFIG.upstreamScraper = newConfig.upstreamScraper;
-          }
-          APP_CONFIG.filterHighBufferRisk = !!newConfig.filterHighBufferRisk;
-          saveConfig(APP_CONFIG);
-          res.setHeader('Content-Type', 'application/json');
-          res.end(JSON.stringify({ success: true, config: APP_CONFIG }));
-        } catch (e) {
-          res.writeHead(400, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: e.message }));
-        }
-      });
-      return;
-    }
-
-    // 6. Landing / Configuration Web Page
+    // 5. Landing / Configuration Web Page (Generates user-specific URL; no server-side mutation)
     if (pathname === '/' || pathname === '/configure') {
-      const stremioUrl = `stremio://${host}/manifest.json`;
+      const initialUpstream = escapeHtml(userConfig.upstream || 'https://torrentio.strem.fun');
+      const initialRegion = userConfig.region || 'GB';
+      const initialHideRisk = userConfig.hideRisk;
 
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       res.end(`
@@ -1637,7 +1765,7 @@ const server = http.createServer(async (req, res) => {
       margin-bottom: 6px;
       font-weight: 600;
     }
-    .input-group input[type="text"] {
+    .input-group input[type="text"], .input-group select {
       width: 100%;
       background: rgba(26, 34, 52, 0.8);
       border: 1px solid rgba(255, 255, 255, 0.15);
@@ -1647,7 +1775,7 @@ const server = http.createServer(async (req, res) => {
       font-size: 13px;
       box-sizing: border-box;
     }
-    .input-group input[type="text"]:focus {
+    .input-group input[type="text"]:focus, .input-group select:focus {
       outline: none;
       border-color: #38bdf8;
     }
@@ -1658,27 +1786,6 @@ const server = http.createServer(async (req, res) => {
       font-size: 13px;
       color: #cbd5e1;
       margin-bottom: 16px;
-    }
-    .save-btn {
-      background: rgba(56, 189, 248, 0.18);
-      color: #7dd3fc;
-      border: 1px solid rgba(56, 189, 248, 0.4);
-      padding: 9px 18px;
-      border-radius: 8px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .save-btn:hover {
-      background: rgba(56, 189, 248, 0.3);
-      color: #ffffff;
-    }
-    #save-msg {
-      font-size: 12px;
-      color: #34d399;
-      margin-left: 10px;
-      display: none;
     }
     .footer {
       margin-top: 24px;
@@ -1693,9 +1800,9 @@ const server = http.createServer(async (req, res) => {
     <img src="/icon.png" alt="NightKnight Logo" class="logo-img">
     <h1>NightKnight Cinema</h1>
     <div class="byline">Crafted by NightKnight</div>
-    <div class="subtitle">The ultimate media hub: YouTube in-app playback & search, BYOA streaming hubs (Netflix, BBC iPlayer, ITVX, Channel 4, Disney+, Prime, Max), Curated Franchises, Critic Badges, Home Theater Audio/Video tags & intelligent zero-buffer stream ranking.</div>
+    <div class="subtitle">The ultimate media hub: YouTube in-app playback & search, BYOA streaming hubs (Netflix, BBC iPlayer, ITVX, Channel 4, Disney+, Prime, Max), Curated Franchises, Critic Badges, Home Theater Audio/Video tags & intelligent stream speed ranking.</div>
     
-    <a href="${stremioUrl}" class="btn">🚀 Install on Stremio</a>
+    <a id="install-btn" href="stremio://${host}/manifest.json" class="btn">🚀 Install on Stremio</a>
     
     <div class="features">
       <div class="feature-item">
@@ -1712,11 +1819,11 @@ const server = http.createServer(async (req, res) => {
       </div>
       <div class="feature-item">
         <span class="tag">🍿 Curated Universes</span>
-        <span>Marvel MCU, Star Wars, Harry Potter, LOTR, James Bond 007 & Studio Ghibli</span>
+        <span>Marvel MCU, Star Wars, Harry Potter, LOTR, James Bond 007 & Studio Ghibli in viewing order</span>
       </div>
       <div class="feature-item">
-        <span class="tag">🍅 Critic Badges</span>
-        <span>IMDb, TMDb score percentages, and award / Oscar recognitions</span>
+        <span class="tag">⭐ Verified Ratings</span>
+        <span>Real IMDb scores, TMDb ratings, and award / Oscar recognitions</span>
       </div>
       <div class="feature-item">
         <span class="tag">🔊 Home Cinema Tags</span>
@@ -1726,7 +1833,6 @@ const server = http.createServer(async (req, res) => {
         <span class="tag">⚡ Speed Engine</span>
         <span>Ranks streams by seeders, size & CDN reliability — fastest streams first</span>
       </div>
-    </div>
       <div class="feature-item">
         <span class="tag">🎬 Actor Search</span>
         <span>Search any actor or director in Stremio for their complete filmography</span>
@@ -1734,38 +1840,54 @@ const server = http.createServer(async (req, res) => {
     </div>
 
     <div class="config-box">
-      <h3>⚙️ Stream Optimization Settings</h3>
+      <h3>⚙️ Personal Addon Configuration</h3>
+      <div class="input-group">
+        <label>Your Region (for Streaming Services / BYOA):</label>
+        <select id="region-select">
+          <option value="GB" ${initialRegion === 'GB' ? 'selected' : ''}>United Kingdom (BBC iPlayer, ITVX, Channel 4, My5, U, Sky Go, NOW)</option>
+          <option value="US" ${initialRegion === 'US' ? 'selected' : ''}>United States (Hulu, Peacock, Max, Prime, Disney+)</option>
+          <option value="CA" ${initialRegion === 'CA' ? 'selected' : ''}>Canada (Crave, CBC Gem, Prime, Disney+)</option>
+          <option value="AU" ${initialRegion === 'AU' ? 'selected' : ''}>Australia (Stan, ABC iview, Binge, Disney+)</option>
+          <option value="IE" ${initialRegion === 'IE' ? 'selected' : ''}>Ireland (RTÉ Player, Sky Go, NOW)</option>
+        </select>
+      </div>
       <div class="input-group">
         <label>Upstream Scraper (Default: Torrentio, or paste custom Real-Debrid / Scraper URL):</label>
-        <input type="text" id="upstream-input" value="${APP_CONFIG.upstreamScraper || 'https://torrentio.strem.fun'}" placeholder="https://torrentio.strem.fun">
+        <input type="text" id="upstream-input" value="${initialUpstream}" placeholder="https://torrentio.strem.fun">
       </div>
       <div class="checkbox-group">
-        <input type="checkbox" id="filter-buffer-risk" ${APP_CONFIG.filterHighBufferRisk ? 'checked' : ''}>
+        <input type="checkbox" id="filter-buffer-risk" ${initialHideRisk ? 'checked' : ''}>
         <label for="filter-buffer-risk">Auto-hide high buffer risk streams (&lt; 10 seeders on huge files)</label>
       </div>
-      <button class="save-btn" onclick="saveSettings()">Save Configuration</button>
-      <span id="save-msg">✓ Saved!</span>
     </div>
 
-    <div class="footer">NightKnight Cinema • Open Stremio Addon Protocol v1.2.0</div>
+    <div class="footer">NightKnight Cinema • v${ADDON_VERSION}</div>
   </div>
 
   <script>
-    async function saveSettings() {
+    function updateInstallLink() {
       const upstream = document.getElementById('upstream-input').value.trim() || 'https://torrentio.strem.fun';
-      const filterRisk = document.getElementById('filter-buffer-risk').checked;
-      
-      const res = await fetch('/api/config', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ upstreamScraper: upstream, filterHighBufferRisk: filterRisk })
-      });
-      if (res.ok) {
-        const msg = document.getElementById('save-msg');
-        msg.style.display = 'inline';
-        setTimeout(() => msg.style.display = 'none', 3000);
+      const region = document.getElementById('region-select').value;
+      const hideRisk = document.getElementById('filter-buffer-risk').checked;
+
+      const isDefault = upstream === 'https://torrentio.strem.fun' && region === 'GB' && !hideRisk;
+      const host = window.location.host;
+
+      let href = 'stremio://' + host + '/manifest.json';
+      if (!isDefault) {
+        const configJson = JSON.stringify({ upstream, region, hideRisk });
+        // Base64URL encode
+        const b64 = btoa(configJson).replace(/\\+/g, '-').replace(/\\//g, '_').replace(/=+$/, '');
+        href = 'stremio://' + host + '/' + b64 + '/manifest.json';
       }
+
+      document.getElementById('install-btn').href = href;
     }
+
+    document.getElementById('upstream-input').addEventListener('input', updateInstallLink);
+    document.getElementById('region-select').addEventListener('change', updateInstallLink);
+    document.getElementById('filter-buffer-risk').addEventListener('change', updateInstallLink);
+    updateInstallLink();
   </script>
 </body>
 </html>
@@ -1783,6 +1905,6 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`🚀 NightKnight Cinema Addon running at http://${HOST}:${PORT}`);
+  console.log(`🚀 NightKnight Cinema Addon (v${ADDON_VERSION}) running at http://${HOST}:${PORT}`);
   console.log(`👉 Stremio Install URL: stremio://${HOST}:${PORT}/manifest.json`);
 });

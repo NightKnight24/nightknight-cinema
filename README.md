@@ -1,7 +1,7 @@
-# ⚔️ NightKnight Cinema — Stremio Addon (v1.4.0)
+# ⚔️ NightKnight Cinema — Stremio Addon (v1.5.0)
 
 > **Created by NightKnight**  
-> The ultimate cinema & media hub: YouTube in-app playback & global search, BYOA streaming hubs (Netflix, BBC iPlayer, ITVX, Channel 4, Disney+, Prime, Max), Curated Franchises, Critic Badges, Home Theater Audio/Video tags & intelligent zero-buffer stream speed ranking.
+> The ultimate cinema & media hub: YouTube in-app playback & global search, BYOA streaming hubs (Netflix, BBC iPlayer, ITVX, Channel 4, Disney+, Prime, Max), Curated Franchises in release order, Verified IMDb & TMDb Ratings, Home Theater Audio/Video tags & intelligent stream speed ranking.
 
 ---
 
@@ -9,13 +9,14 @@
 
 1. **▶️ YouTube In-App Playback & Global Search (DRM-Free & BYOA)**
    - Search for **any YouTube video, channel, music, or podcast** directly in Stremio's global search bar or the dedicated **YouTube (NightKnight)** catalog.
-   - Stream video **directly inside Stremio's native player window** (DRM-Free hardware decoding).
+   - Stream video **directly inside Stremio's native player window** (DRM-Free via `ytId`).
+   - Resolves real video titles, channels, and thumbnails via YouTube oEmbed.
    - Also includes a **`[YOUTUBE • BYOA]`** button to open the video in the official YouTube app/website with your personal Google account.
 
 2. **🇬🇧 UK & Global BYOA (Bring Your Own Account) Streaming Hubs**
-   - Automatically detects where any movie or show is streaming legally across **28 official platforms**:
-     - **UK Free Catch-Up**: **BBC iPlayer**, **ITVX**, **Channel 4**, **My5**, and **U (Dave / UKTV Play)**.
-     - **UK & Global Subscriptions**: **Sky Go**, **NOW**, **BritBox**, **Amazon Prime Video**, **Disney+**, **Netflix**, **Paramount+**, **Apple TV+**, **Max (HBO)**, **Discovery+**, **Crunchyroll**, and **Hayu**.
+   - Automatically detects where any movie or show is streaming legally across official platforms matched with 100% provider ID precision:
+     - **UK Free Catch-Up**: **BBC iPlayer**, **ITVX**, **Channel 4**, **My5**, **STV Player**, **S4C Clic**, and **U (Dave / UKTV Play)**.
+     - **UK & Global Subscriptions**: **Sky Go**, **NOW**, **BritBox**, **Amazon Prime Video**, **Disney+**, **Netflix**, **Paramount+**, **Apple TV+**, **Max (HBO)**, **Discovery+**, **Crunchyroll**, **MUBI**, **BFI Player**, and **Hayu**.
    - 1-click deep-link buttons hand off securely to your official app or web browser where you are already logged into your personal account. Zero passwords or credentials ever pass through the addon (100% Zero-Knowledge security).
 
 3. **🎬 Official Studio Trailers In-App**
@@ -24,23 +25,24 @@
 4. **📺 Streaming Platform Hubs**
    - Browse dedicated rows and filter options for all major networks: **Netflix**, **Apple TV+**, **Max (HBO)**, **Disney+**, **Amazon Prime Video**, and **Paramount+**.
 
-5. **🍿 Curated Franchises & Sagas in Chronological Order**
-   - Instant one-click access to complete sagas in viewing order:
-     - 🦸 **Marvel Cinematic Universe (MCU)**
-     - 🌌 **Star Wars Saga**
-     - ⚡ **Harry Potter & Wizarding World**
+5. **🍿 Curated Franchises & Sagas in Chronological Viewing Order**
+   - Instant one-click access to complete sagas in verified release/chronological order:
+     - 🦸 **Marvel Cinematic Universe (MCU)**: Chronological from Iron Man (2008), excluding unreleased placeholders.
+     - 🌌 **Star Wars Saga**: Core episodic films and anthologies (Rogue One, Solo), plus curated TV series in release order (excluding non-Star Wars titles).
+     - ⚡ **Harry Potter & Wizarding World**: Complete collection including Fantastic Beasts.
      - 💍 **The Lord of the Rings & The Hobbit**
-     - 🍸 **James Bond (007 Collection)**
+     - 🍸 **James Bond (007 Collection)**: Viewing order from Dr. No.
      - 🏮 **Studio Ghibli Masterpieces**
      - 🎬 **Christopher Nolan & Quentin Tarantino Collections**
 
-6. **🍅 Critic Badges & Awards Recognition**
+6. **⭐ Verified Critic Badges & Awards Recognition**
    - Injects verified IMDb ratings, TMDb audience percentages, and Academy Award / Oscar acknowledgments right above the synopsis:
-     `⭐ IMDb: 9.3/10 • 🍅 TMDb: 87% (31k votes) • 🏆 Nominated for 7 Oscars`
+     `⭐ IMDb: 9.3/10 • 🎬 TMDb: 8.7/10 (87% • 31k votes) • 🏆 Nominated for 7 Oscars`
+   - Honest labeling: TMDb scores are never disguised as IMDb scores.
 
 7. **🔊 Home Cinema Audio & Video Stream Badges**
    - Automatically detects and tags streams with theater-grade specifications:
-     - **Dynamic Range**: `✨ Dolby Vision`, `🌈 HDR10+`, `🌈 HDR`, `10-bit`
+     - **Dynamic Range**: `✨ Dolby Vision`, `🌈 HDR10+`, `🌈 HDR`, `10-bit` (strictly distinguished from DVDRip / HDRip)
      - **Sound Codecs**: `🔊 Dolby Atmos`, `🔊 TrueHD 7.1`, `🔊 DTS-HD MA`, `🔊 DTS:X`, `🔊 5.1 Surround`
      - **Editions**: `💎 Lossless Remux`, `🎞️ IMAX Enhanced`, `🎬 Extended / Director's Cut`
 
