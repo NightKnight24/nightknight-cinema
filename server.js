@@ -103,14 +103,14 @@ const TV_GENRES = {
 function getManifest(baseUrl) {
   return {
     id: 'org.stremio.nightknight.cinema',
-    version: '1.3.0',
+    version: '1.4.0',
     name: 'NightKnight Cinema',
-    description: 'Created by NightKnight. The ultimate cinema engine: Streaming Network hubs (Netflix, Apple TV+, Max, Disney+), Curated Franchises (MCU, Star Wars, Harry Potter), Critic Badges, Home Theater Audio/Video tags (Dolby Vision, Atmos, IMAX), actor filmographies, 16:9 previews & intelligent zero-buffer stream speed ranking.',
+    description: 'Created by NightKnight. The ultimate media hub: YouTube in-app playback & search, BYOA streaming hubs (Netflix, BBC iPlayer, ITVX, Channel 4, Disney+, Prime, Max), Curated Franchises, Critic Badges, Home Theater Audio/Video tags & intelligent zero-buffer stream ranking.',
     logo: `${baseUrl}/icon.png`,
     background: `${baseUrl}/background.png`,
     resources: ['catalog', 'meta', 'stream'],
-    types: ['movie', 'series'],
-    idPrefixes: ['tmdb:', 'tt'],
+    types: ['movie', 'series', 'channel'],
+    idPrefixes: ['tmdb:', 'tt', 'yt:'],
     catalogs: [
       {
         type: 'movie',
@@ -296,6 +296,21 @@ function getManifest(baseUrl) {
             optionsLimit: 100
           }
         ]
+      },
+      {
+        type: 'channel',
+        id: 'youtube_videos',
+        name: 'YouTube (NightKnight)',
+        pageSize: 20,
+        extra: [
+          { name: 'search', isRequired: false },
+          {
+            name: 'genre',
+            options: ['Trending', 'Music', 'Gaming', 'Tech', 'Podcasts', 'News'],
+            isRequired: false
+          },
+          { name: 'skip', isRequired: false }
+        ]
       }
     ]
   };
@@ -349,6 +364,175 @@ function formatMetaPreview(item, type, isLandscape = false) {
     released: date ? new Date(date).toISOString() : undefined,
     imdbRating: item.vote_average ? item.vote_average.toFixed(1) : undefined
   };
+}
+
+// YouTube Search & Video Scraper (Zero-Auth, DRM-Free & BYOA)
+async function searchYouTube(query = 'Trending', skip = 0) {
+  const cacheKey = `yt:search:${query}:${skip}`;
+  const cached = getCache(cacheKey);
+  if (cached) return cached;
+
+  try {
+    const url = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      },
+      signal: AbortSignal.timeout(5000)
+    });
+    const html = await res.text();
+    const match = html.match(/ytInitialData\s*=\s*({.+?});<\/script>/);
+    if (!match) return [];
+
+    const data = JSON.parse(match[1]);
+    const contents = data.contents?.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer?.contents?.[0]?.itemSectionRenderer?.contents || [];
+    const videos = [];
+
+    for (const item of contents) {
+      const vr = item.videoRenderer;
+      if (vr && vr.videoId) {
+        const title = vr.title?.runs?.[0]?.text || '';
+        const channel = vr.ownerText?.runs?.[0]?.text || '';
+        const thumbnail = vr.thumbnail?.thumbnails?.[0]?.url || `https://i.ytimg.com/vi/${vr.videoId}/hqdefault.jpg`;
+        const length = vr.lengthText?.simpleText || '';
+
+        videos.push({
+          id: `yt:${vr.videoId}`,
+          type: 'channel',
+          name: title,
+          poster: thumbnail,
+          background: `https://i.ytimg.com/vi/${vr.videoId}/maxresdefault.jpg`,
+          description: `Channel: ${channel} • Duration: ${length}\n\n▶️ Plays directly inside Stremio player (DRM-Free) or opens in YouTube app (BYOA).`,
+          releaseInfo: length || channel,
+          behaviorHints: {
+            defaultVideoId: `yt:${vr.videoId}`
+          }
+        });
+      }
+    }
+
+    setCache(cacheKey, videos, 1800);
+    return videos;
+  } catch (e) {
+    console.error('YouTube search error:', e.message);
+    return [];
+  }
+}
+
+// Fetch BYOA Streaming Platform Deep-Links & Official Trailer
+async function fetchByoaStreams(type, tmdbId, title) {
+  const cacheKey = `byoa:${type}:${tmdbId}`;
+  const cached = getCache(cacheKey);
+  if (cached) return cached;
+
+  const byoaStreams = [];
+
+  try {
+    const endpointType = type === 'series' ? 'tv' : 'movie';
+    const [tmdbData, provRes] = await Promise.all([
+      fetchTmdb(`/${endpointType}/${tmdbId}`, { append_to_response: 'videos' }).catch(() => null),
+      fetchTmdb(`/${endpointType}/${tmdbId}/watch/providers`).catch(() => null)
+    ]);
+
+    // 1. DRM-Free Official Trailer (Plays natively in Stremio)
+    const trailer = (tmdbData?.videos?.results || []).find(v => v.site === 'YouTube' && v.type === 'Trailer');
+    if (trailer && trailer.key) {
+      byoaStreams.push({
+        name: '🎬 [OFFICIAL TRAILER]\nPlay Trailer in Stremio',
+        title: `${title} — Official Trailer\n▶️ Plays directly inside Stremio (DRM-Free)`,
+        ytId: trailer.key
+      });
+    }
+
+    // 2. BYOA Watch Providers (UK & Global)
+    if (provRes?.results) {
+      const gb = provRes.results.GB || {};
+      const us = provRes.results.US || {};
+      const allServices = [
+        ...(gb.flatrate || []),
+        ...(gb.free || []),
+        ...(us.flatrate || []),
+        ...(us.free || [])
+      ];
+
+      const seen = new Set();
+      for (const p of allServices) {
+        const name = p.provider_name;
+        if (!name || seen.has(name)) continue;
+        seen.add(name);
+
+        let tag = '';
+        let url = '';
+
+        if (/bbc iplayer/i.test(name)) {
+          tag = '🇬🇧 [BBC iPLAYER • FREE]';
+          url = `https://www.bbc.co.uk/iplayer/search?q=${encodeURIComponent(title)}`;
+        } else if (/itvx|itv/i.test(name)) {
+          tag = '🇬🇧 [ITVX • FREE]';
+          url = `https://www.itv.com/watch/search?q=${encodeURIComponent(title)}`;
+        } else if (/channel 4/i.test(name)) {
+          tag = '🇬🇧 [CHANNEL 4 • FREE]';
+          url = `https://www.channel4.com/search?q=${encodeURIComponent(title)}`;
+        } else if (/\b5\b|my5|five/i.test(name)) {
+          tag = '🇬🇧 [MY5 • FREE]';
+          url = `https://www.channel5.com/search?q=${encodeURIComponent(title)}`;
+        } else if (/uktv|dave/i.test(name)) {
+          tag = '🇬🇧 [U / DAVE • FREE]';
+          url = `https://u.co.uk/search?q=${encodeURIComponent(title)}`;
+        } else if (/sky go/i.test(name)) {
+          tag = '🛰️ [SKY GO • BYOA]';
+          url = `https://www.sky.com/watch/sky-go`;
+        } else if (/now/i.test(name)) {
+          tag = '🟣 [NOW • BYOA]';
+          url = `https://www.nowtv.com/watch/search?q=${encodeURIComponent(title)}`;
+        } else if (/britbox/i.test(name)) {
+          tag = '🇬🇧 [BRITBOX • BYOA]';
+          url = `https://www.britbox.co.uk/`;
+        } else if (/discovery\+/i.test(name)) {
+          tag = '🌍 [DISCOVERY+ • BYOA]';
+          url = `https://www.discoveryplus.com/gb/search?q=${encodeURIComponent(title)}`;
+        } else if (/disney/i.test(name)) {
+          tag = '🏰 [DISNEY+ • BYOA]';
+          url = `https://www.disneyplus.com/search?q=${encodeURIComponent(title)}`;
+        } else if (/paramount/i.test(name)) {
+          tag = '🏔️ [PARAMOUNT+ • BYOA]';
+          url = `https://www.paramountplus.com/search/?q=${encodeURIComponent(title)}`;
+        } else if (/prime|amazon/i.test(name)) {
+          tag = '📦 [PRIME VIDEO • BYOA]';
+          url = `https://www.amazon.co.uk/s?k=${encodeURIComponent(title)}&i=instant-video`;
+        } else if (/netflix/i.test(name)) {
+          tag = '🔴 [NETFLIX • BYOA]';
+          url = `https://www.netflix.com/search?q=${encodeURIComponent(title)}`;
+        } else if (/apple tv/i.test(name)) {
+          tag = '🍎 [APPLE TV+ • BYOA]';
+          url = `https://tv.apple.com/search?term=${encodeURIComponent(title)}`;
+        } else if (/hbo|max/i.test(name)) {
+          tag = '🟣 [MAX • BYOA]';
+          url = `https://play.max.com/search?q=${encodeURIComponent(title)}`;
+        } else if (/hayu/i.test(name)) {
+          tag = '💅 [HAYU • BYOA]';
+          url = `https://www.hayu.com/`;
+        } else if (/crunchyroll/i.test(name)) {
+          tag = '🍜 [CRUNCHYROLL • BYOA]';
+          url = `https://www.crunchyroll.com/search?q=${encodeURIComponent(title)}`;
+        }
+
+        if (tag && url) {
+          byoaStreams.push({
+            name: `${tag}\nOfficial Stream`,
+            title: `Watch "${title}" on ${name} with your account\n🔗 Opens official player / browser`,
+            externalUrl: url
+          });
+        }
+      }
+    }
+
+    setCache(cacheKey, byoaStreams, 3600);
+    return byoaStreams;
+  } catch (e) {
+    console.error('BYOA lookup error:', e.message);
+    return [];
+  }
 }
 
 // Handle Actor Filmography & Title Searches
@@ -705,6 +889,21 @@ async function fetchTmdbVideos(tmdbId, seasons = [], imdbId) {
 
 // Handle Metadata for clicked item
 async function handleMeta(type, id) {
+  if (id.startsWith('yt:') || type === 'channel') {
+    const videoId = id.replace('yt:', '');
+    return {
+      id: `yt:${videoId}`,
+      type: 'channel',
+      name: 'YouTube Video',
+      poster: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+      background: `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`,
+      description: '▶️ Watch directly inside Stremio player (DRM-Free) or launch in the YouTube app with your Google account (BYOA).',
+      behaviorHints: {
+        defaultVideoId: `yt:${videoId}`
+      }
+    };
+  }
+
   const isMovie = type === 'movie';
   const isImdb = id.startsWith('tt');
   let tmdbId = id;
@@ -1005,49 +1204,90 @@ function optimizeAndRankStreams(rawStreams) {
 
 // Handle Streams Request
 async function handleStream(type, id) {
+  if (id.startsWith('yt:') || type === 'channel') {
+    const videoId = id.replace('yt:', '');
+    return [
+      {
+        name: '▶️ [STREMIO PLAYER]\nYouTube Native Stream',
+        title: 'Watch directly inside Stremio (DRM-Free)',
+        ytId: videoId
+      },
+      {
+        name: '🔴 [YOUTUBE • BYOA]\nOfficial YouTube App',
+        title: 'Watch on YouTube with your account (likes, comments, subscriptions)\n🔗 Opens YouTube',
+        externalUrl: `https://www.youtube.com/watch?v=${videoId}`
+      }
+    ];
+  }
+
   const cacheKey = `stream:${type}:${id}`;
   const cached = getCache(cacheKey);
   if (cached) return cached;
 
   try {
     let imdbTarget = id;
+    let tmdbTargetId = null;
+    let targetTitle = '';
+
     if (id.startsWith('tmdb:')) {
       if (type === 'movie') {
-        const tmdbId = id.replace('tmdb:', '');
-        const movieData = await fetchTmdb(`/movie/${tmdbId}`, { append_to_response: 'external_ids' });
+        tmdbTargetId = id.replace('tmdb:', '');
+        const movieData = await fetchTmdb(`/movie/${tmdbTargetId}`, { append_to_response: 'external_ids' });
         imdbTarget = movieData.external_ids?.imdb_id || movieData.imdb_id;
+        targetTitle = movieData.title || '';
       } else {
         const parts = id.replace('tmdb:', '').split(':');
-        const showTmdbId = parts[0];
+        tmdbTargetId = parts[0];
         const season = parts[1];
         const ep = parts[2];
-        const tvData = await fetchTmdb(`/tv/${showTmdbId}`, { append_to_response: 'external_ids' });
+        const tvData = await fetchTmdb(`/tv/${tmdbTargetId}`, { append_to_response: 'external_ids' });
         const showImdb = tvData.external_ids?.imdb_id;
+        targetTitle = tvData.name || '';
         if (showImdb && season && ep) {
           imdbTarget = `${showImdb}:${season}:${ep}`;
         } else {
           imdbTarget = showImdb;
         }
       }
+    } else if (id.startsWith('tt')) {
+      const imdbBase = id.split(':')[0];
+      const findRes = await fetchTmdb(`/find/${imdbBase}`, { external_source: 'imdb_id' });
+      const match = (type === 'movie') ? findRes?.movie_results?.[0] : findRes?.tv_results?.[0];
+      if (match) {
+        tmdbTargetId = String(match.id);
+        targetTitle = match.title || match.name || '';
+      }
     }
 
-    if (!imdbTarget) return [];
+    // 1. Fetch BYOA Streams & Official Trailer
+    let byoaStreams = [];
+    if (tmdbTargetId) {
+      byoaStreams = await fetchByoaStreams(type, tmdbTargetId, targetTitle || 'Title');
+    }
+
+    if (!imdbTarget) return byoaStreams;
 
     const scraperBase = (APP_CONFIG.upstreamScraper || 'https://torrentio.strem.fun').replace(/\/$/, '');
     const upstreamUrl = `${scraperBase}/stream/${type}/${imdbTarget}.json`;
 
-    const res = await fetch(upstreamUrl, {
-      headers: { 'User-Agent': 'Stremio/4.4.168' },
-      signal: AbortSignal.timeout(6500)
-    });
-
-    if (!res.ok) return [];
-    const data = await res.json();
-    const rawStreams = data.streams || [];
+    let rawStreams = [];
+    try {
+      const res = await fetch(upstreamUrl, {
+        headers: { 'User-Agent': 'Stremio/4.4.168' },
+        signal: AbortSignal.timeout(6500)
+      });
+      if (res.ok) {
+        const data = await res.json();
+        rawStreams = data.streams || [];
+      }
+    } catch (e) {
+      // Scraper fallback if blocked or unreachable
+    }
 
     const optimized = optimizeAndRankStreams(rawStreams);
-    setCache(cacheKey, optimized, 600);
-    return optimized;
+    const combined = [...byoaStreams, ...optimized];
+    setCache(cacheKey, combined, 600);
+    return combined;
   } catch (e) {
     console.error(`Stream lookup error for ${type}/${id}:`, e.message);
     return [];
@@ -1105,7 +1345,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     // 2. Streams: /stream/:type/:id.json
-    const streamMatch = pathname.match(/^\/stream\/(movie|series)\/([^\/]+)\.json$/);
+    const streamMatch = pathname.match(/^\/stream\/(movie|series|channel)\/([^\/]+)\.json$/);
     if (streamMatch) {
       const [, type, id] = streamMatch;
       const streams = await handleStream(type, id);
@@ -1115,7 +1355,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     // 3. Catalog: /catalog/:type/:id/:extra?.json
-    const catalogMatch = pathname.match(/^\/catalog\/(movie|series)\/([^\/]+)(?:\/(.+))?\.json$/);
+    const catalogMatch = pathname.match(/^\/catalog\/(movie|series|channel)\/([^\/]+)(?:\/(.+))?\.json$/);
     if (catalogMatch) {
       const [, type, catalogId, extraStr] = catalogMatch;
       let extra = {};
@@ -1127,6 +1367,15 @@ const server = http.createServer(async (req, res) => {
       }
 
       const skip = parseInt(extra.skip, 10) || 0;
+
+      // Handle YouTube Catalog & Search
+      if (catalogId === 'youtube_videos' || type === 'channel') {
+        const query = extra.search || (extra.genre ? `${extra.genre} videos` : 'Trending');
+        const metas = await searchYouTube(query, skip);
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        res.end(JSON.stringify({ metas }));
+        return;
+      }
 
       // Handle Calendar Videos: /catalog/series/calendar-videos/calendarVideosIds=...
       if (type === 'series' && catalogId === 'calendar-videos') {
@@ -1210,8 +1459,8 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    // 4. Meta: /meta/:type/:id.json (supports tmdb:123 and tt1234567)
-    const metaMatch = pathname.match(/^\/meta\/(movie|series)\/((?:tmdb:[0-9]+)|(?:tt[0-9]+))\.json$/);
+    // 4. Meta: /meta/:type/:id.json (supports tmdb:123, tt1234567, and yt:VIDEO_ID)
+    const metaMatch = pathname.match(/^\/meta\/(movie|series|channel)\/((?:tmdb:[0-9]+)|(?:tt[0-9]+)|(?:yt:[a-zA-Z0-9_\-]+))\.json$/);
     if (metaMatch) {
       const [, type, id] = metaMatch;
       const meta = await handleMeta(type, id);
@@ -1444,14 +1693,22 @@ const server = http.createServer(async (req, res) => {
     <img src="/icon.png" alt="NightKnight Logo" class="logo-img">
     <h1>NightKnight Cinema</h1>
     <div class="byline">Crafted by NightKnight</div>
-    <div class="subtitle">The ultimate cinema experience: Streaming Network hubs (Netflix, Apple TV+, Max, Disney+), Curated Franchises (MCU, Star Wars, Harry Potter), Critic Badges, Home Theater Audio/Video tags (Dolby Vision, Atmos, IMAX), actor filmographies & intelligent zero-buffer stream speed ranking.</div>
+    <div class="subtitle">The ultimate media hub: YouTube in-app playback & search, BYOA streaming hubs (Netflix, BBC iPlayer, ITVX, Channel 4, Disney+, Prime, Max), Curated Franchises, Critic Badges, Home Theater Audio/Video tags & intelligent zero-buffer stream ranking.</div>
     
     <a href="${stremioUrl}" class="btn">🚀 Install on Stremio</a>
     
     <div class="features">
       <div class="feature-item">
-        <span class="tag">📺 Streaming Hubs</span>
-        <span>Browse Netflix, Apple TV+, Max (HBO), Disney+, Prime Video & Paramount+</span>
+        <span class="tag">▶️ YouTube In-App</span>
+        <span>Search & stream YouTube videos directly inside Stremio player (DRM-Free) + BYOA app links</span>
+      </div>
+      <div class="feature-item">
+        <span class="tag">🇬🇧 UK & Global BYOA</span>
+        <span>Instant launch links for BBC iPlayer, ITVX, Channel 4, My5, U/Dave, Sky Go, Prime & Disney+</span>
+      </div>
+      <div class="feature-item">
+        <span class="tag">🎬 Official Trailers</span>
+        <span>Watch official studio trailers directly inside Stremio before picking a title</span>
       </div>
       <div class="feature-item">
         <span class="tag">🍿 Curated Universes</span>
@@ -1469,6 +1726,7 @@ const server = http.createServer(async (req, res) => {
         <span class="tag">⚡ Speed Engine</span>
         <span>Ranks streams by seeders, size & CDN reliability — fastest streams first</span>
       </div>
+    </div>
       <div class="feature-item">
         <span class="tag">🎬 Actor Search</span>
         <span>Search any actor or director in Stremio for their complete filmography</span>

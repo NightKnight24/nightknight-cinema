@@ -1,18 +1,31 @@
-# ⚔️ NightKnight Cinema — Stremio Addon (v1.3.0)
+# ⚔️ NightKnight Cinema — Stremio Addon (v1.4.0)
 
 > **Created by NightKnight**  
-> An intelligent, standalone Stremio cinema engine providing Streaming Platform hubs (Netflix, Apple TV+, Max, Disney+), Curated Franchises (MCU, Star Wars, Harry Potter), Critic Badges, Home Theater Audio/Video tags (Dolby Vision, Atmos, IMAX), actor filmographies, 16:9 previews & intelligent zero-buffer stream speed ranking.
+> The ultimate cinema & media hub: YouTube in-app playback & global search, BYOA streaming hubs (Netflix, BBC iPlayer, ITVX, Channel 4, Disney+, Prime, Max), Curated Franchises, Critic Badges, Home Theater Audio/Video tags & intelligent zero-buffer stream speed ranking.
 
 ---
 
 ## ✨ Features
 
-1. **📺 Streaming Platform Hubs**
-   - Browse dedicated rows and filter options for all major networks: **Netflix**, **Apple TV+**, **Max (HBO)**, **Disney+**, **Amazon Prime Video**, and **Paramount+**.
-   - Discover what's new and trending across top platforms without juggling separate subscriptions or searching blindly.
+1. **▶️ YouTube In-App Playback & Global Search (DRM-Free & BYOA)**
+   - Search for **any YouTube video, channel, music, or podcast** directly in Stremio's global search bar or the dedicated **YouTube (NightKnight)** catalog.
+   - Stream video **directly inside Stremio's native player window** (DRM-Free hardware decoding).
+   - Also includes a **`[YOUTUBE • BYOA]`** button to open the video in the official YouTube app/website with your personal Google account.
 
-2. **🍿 Curated Franchises & Cinematic Universes**
-   - Instant one-click access to complete sagas in chronological viewing order:
+2. **🇬🇧 UK & Global BYOA (Bring Your Own Account) Streaming Hubs**
+   - Automatically detects where any movie or show is streaming legally across **28 official platforms**:
+     - **UK Free Catch-Up**: **BBC iPlayer**, **ITVX**, **Channel 4**, **My5**, and **U (Dave / UKTV Play)**.
+     - **UK & Global Subscriptions**: **Sky Go**, **NOW**, **BritBox**, **Amazon Prime Video**, **Disney+**, **Netflix**, **Paramount+**, **Apple TV+**, **Max (HBO)**, **Discovery+**, **Crunchyroll**, and **Hayu**.
+   - 1-click deep-link buttons hand off securely to your official app or web browser where you are already logged into your personal account. Zero passwords or credentials ever pass through the addon (100% Zero-Knowledge security).
+
+3. **🎬 Official Studio Trailers In-App**
+   - Automatically detects official studio trailers from TMDb and surfaces an **`🎬 [OFFICIAL TRAILER]`** stream that plays directly inside Stremio's built-in player.
+
+4. **📺 Streaming Platform Hubs**
+   - Browse dedicated rows and filter options for all major networks: **Netflix**, **Apple TV+**, **Max (HBO)**, **Disney+**, **Amazon Prime Video**, and **Paramount+**.
+
+5. **🍿 Curated Franchises & Sagas in Chronological Order**
+   - Instant one-click access to complete sagas in viewing order:
      - 🦸 **Marvel Cinematic Universe (MCU)**
      - 🌌 **Star Wars Saga**
      - ⚡ **Harry Potter & Wizarding World**
@@ -21,35 +34,28 @@
      - 🏮 **Studio Ghibli Masterpieces**
      - 🎬 **Christopher Nolan & Quentin Tarantino Collections**
 
-3. **🍅 Critic Badges & Awards Recognition**
+6. **🍅 Critic Badges & Awards Recognition**
    - Injects verified IMDb ratings, TMDb audience percentages, and Academy Award / Oscar acknowledgments right above the synopsis:
      `⭐ IMDb: 9.3/10 • 🍅 TMDb: 87% (31k votes) • 🏆 Nominated for 7 Oscars`
 
-4. **🔊 Home Cinema Audio & Video Stream Badges**
+7. **🔊 Home Cinema Audio & Video Stream Badges**
    - Automatically detects and tags streams with theater-grade specifications:
      - **Dynamic Range**: `✨ Dolby Vision`, `🌈 HDR10+`, `🌈 HDR`, `10-bit`
      - **Sound Codecs**: `🔊 Dolby Atmos`, `🔊 TrueHD 7.1`, `🔊 DTS-HD MA`, `🔊 DTS:X`, `🔊 5.1 Surround`
      - **Editions**: `💎 Lossless Remux`, `🎞️ IMAX Enhanced`, `🎬 Extended / Director's Cut`
 
-5. **⏳ Decade Time-Machine Filters**
-   - Nostalgic time travel across movie and television history:
-     - **2020s Modern Cinema**
-     - **2010s Hits**
-     - **2000s Nostalgia**
-     - **90s Golden Age Thrillers & Action**
-     - **80s Retro Synth & Sci-Fi Classics**
-     - **70s Vintage Cinema**
+8. **⏳ Decade Time-Machine Filters**
+   - Nostalgic time travel across movie and television history (2020s, 2010s, 2000s, 90s, 80s, 70s).
 
-6. **⚡ Intelligent Stream Speed Ranking & Buffer Shield**
-   - Automatically analyzes streams from upstream scrapers (Torrentio, Real-Debrid, TorBox, etc.).
+9. **⚡ Intelligent Stream Speed Ranking & Buffer Shield**
    - Places instant CDN streams (`🚀 [INSTANT CDN • 0 BUFFER]`) and high-seeder torrents (`⚡ [FASTEST • 600+ 👤]`) at the very top.
    - Filters dead torrents (0 seeders) and warns against massive low-seeder files.
 
-7. **🎬 Complete Actor & Director Filmographies**
-   - Type any actor or director in Stremio's search bar to immediately see their full catalog ranked by popularity.
+10. **🎬 Complete Actor & Director Filmographies**
+    - Type any actor or director in Stremio's search bar to immediately see their full filmography.
 
-8. **📅 16:9 Widescreen Landscape Feeds & Calendar Sync**
-   - Dedicated 16:9 horizontal card feeds for upcoming releases, plus full Stremio Calendar air-date synchronization.
+11. **📅 16:9 Widescreen Landscape Feeds & Calendar Sync**
+    - Dedicated 16:9 horizontal card feeds for upcoming releases, plus full Stremio Calendar air-date synchronization.
 
 ---
 
