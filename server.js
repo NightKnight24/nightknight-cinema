@@ -508,9 +508,23 @@ async function fetchTmdbVideos(tmdbId, seasons = [], imdbId) {
 
 // Handle Metadata for clicked item
 async function handleMeta(type, id) {
-  const tmdbId = id.replace('tmdb:', '');
   const isMovie = type === 'movie';
-  const cacheKey = `meta:${type}:${tmdbId}`;
+  const isImdb = id.startsWith('tt');
+  let tmdbId = id;
+
+  if (isImdb) {
+    const findRes = await fetchTmdb(`/find/${id}`, { external_source: 'imdb_id' });
+    const match = isMovie ? findRes?.movie_results?.[0] : findRes?.tv_results?.[0];
+    if (match) {
+      tmdbId = String(match.id);
+    } else {
+      return null;
+    }
+  } else {
+    tmdbId = id.replace('tmdb:', '');
+  }
+
+  const cacheKey = `meta:${type}:${id}`;
   const cached = getCache(cacheKey);
   if (cached) return cached;
 
@@ -518,10 +532,10 @@ async function handleMeta(type, id) {
     const data = await fetchTmdb(`/movie/${tmdbId}`, {
       append_to_response: 'external_ids,credits,videos'
     });
-    const imdbId = data.external_ids?.imdb_id || data.imdb_id;
+    const imdbId = data.external_ids?.imdb_id || (isImdb ? id : data.imdb_id);
 
     const meta = {
-      id: `tmdb:${tmdbId}`,
+      id: isImdb ? id : `tmdb:${tmdbId}`,
       imdb_id: imdbId || undefined,
       type: 'movie',
       name: data.title,
@@ -585,8 +599,8 @@ async function handleMeta(type, id) {
     }
 
     const meta = {
-      id: `tmdb:${tmdbId}`,
-      imdb_id: imdbId || undefined,
+      id: isImdb ? id : `tmdb:${tmdbId}`,
+      imdb_id: imdbId || (isImdb ? id : undefined),
       type: 'series',
       name: data.name,
       slug: `series/${(data.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${imdbId || tmdbId}`,
@@ -921,8 +935,8 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    // 4. Meta: /meta/:type/:id.json
-    const metaMatch = pathname.match(/^\/meta\/(movie|series)\/(tmdb:[0-9]+)\.json$/);
+    // 4. Meta: /meta/:type/:id.json (supports tmdb:123 and tt1234567)
+    const metaMatch = pathname.match(/^\/meta\/(movie|series)\/((?:tmdb:[0-9]+)|(?:tt[0-9]+))\.json$/);
     if (metaMatch) {
       const [, type, id] = metaMatch;
       const meta = await handleMeta(type, id);
