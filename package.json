@@ -1,0 +1,13 @@
+{
+  "name": "nightknight-cinema",
+  "version": "1.2.0",
+  "type": "module",
+  "description": "NightKnight Cinema — Complete Actor/Director Filmographies, Curated Genres, 16:9 Widescreen Feeds, Stremio Calendar Sync & Intelligent Stream Speed Optimizer",
+  "main": "server.js",
+  "author": "NightKnight",
+  "license": "MIT",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {}
+}

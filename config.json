@@ -1,0 +1,6 @@
+{
+  "upstreamScraper": "https://torrentio.strem.fun",
+  "prioritizeDebrid": true,
+  "minSeeders": 1,
+  "filterHighBufferRisk": false
+}
