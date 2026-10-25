@@ -2350,7 +2350,7 @@ const server = http.createServer(async (req, res) => {
     <div class="feedback-box">
       <div class="feedback-title">
         <span>💬 Community Feedback & Comments</span>
-        <a href="https://github.com/NightKnight24/nightknight-cinema/discussions" target="_blank" class="gh-link-btn" style="padding: 4px 10px; font-size: 11px;">Join Discussions</a>
+        <a href="https://github.com/NightKnight24/nightknight-cinema/issues" target="_blank" class="gh-link-btn" style="padding: 4px 10px; font-size: 11px;">GitHub Community & Issues</a>
       </div>
 
       <form id="fb-form" class="fb-form" onsubmit="event.preventDefault(); submitFeedback();">
