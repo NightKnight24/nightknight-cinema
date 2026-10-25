@@ -1,6 +1,6 @@
 {
   "name": "nightknight-cinema",
-  "version": "1.5.2",
+  "version": "1.5.3",
   "type": "module",
   "description": "NightKnight Cinema — Complete Actor/Director Filmographies, Curated Genres, 16:9 Widescreen Feeds, Stremio Calendar Sync & Intelligent Stream Speed Optimizer",
   "main": "server.js",

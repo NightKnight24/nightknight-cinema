@@ -15,7 +15,7 @@ const TMDB_API_KEY = process.env.TMDB_API_KEY || '3157bd6dacbc3a653ae2e5a3b19beb
 const PORT = process.env.PORT || 7000;
 const HOST = process.env.HOST || (process.env.PORT ? '0.0.0.0' : '127.0.0.1');
 
-const ADDON_VERSION = '1.5.2';
+const ADDON_VERSION = '1.5.3';
 
 // Load server-wide DEFAULTS (read-only). Per-user settings live in the install URL, never on the server.
 function loadConfig() {
@@ -512,6 +512,18 @@ function getManifest(baseUrl) {
         type: 'series',
         id: 'calendar-videos',
         name: 'Calendar videos',
+        extra: [
+          {
+            name: 'calendarVideosIds',
+            isRequired: true,
+            optionsLimit: 100
+          }
+        ]
+      },
+      {
+        type: 'movie',
+        id: 'calendar-movies',
+        name: 'Calendar movies',
         extra: [
           {
             name: 'calendarVideosIds',
@@ -1220,9 +1232,20 @@ async function handleMeta(type, id) {
       trailers: (data.videos?.results || [])
         .filter(v => v.site === 'YouTube' && v.type === 'Trailer')
         .map(v => ({ source: v.key, type: 'Trailer' })),
+      videos: (data.release_date && new Date(data.release_date) > new Date()) ? [
+        {
+          id: `${imdbId || `tmdb:${tmdbId}`}`,
+          title: `${data.title} — Theatrical Premiere`,
+          released: new Date(data.release_date).toISOString(),
+          thumbnail: data.backdrop_path ? `https://image.tmdb.org/t/p/w780${data.backdrop_path}` : undefined,
+          episode: 1,
+          number: 1,
+          season: 1
+        }
+      ] : undefined,
       behaviorHints: {
         defaultVideoId: imdbId || `tmdb:${tmdbId}`,
-        hasScheduledVideos: false
+        hasScheduledVideos: Boolean(data.release_date && new Date(data.release_date) > new Date())
       }
     };
 
@@ -1782,8 +1805,8 @@ const server = http.createServer(async (req, res) => {
       }
       persistStats();
 
-      // Handle Calendar Videos: /catalog/series/calendar-videos/calendarVideosIds=...
-      if (type === 'series' && catalogId === 'calendar-videos') {
+      // Handle Calendar Videos & Movies: /catalog/(series|movie)/(calendar-videos|calendar-movies)/calendarVideosIds=...
+      if (catalogId === 'calendar-videos' || catalogId === 'calendar-movies') {
         const idsStr = extra.calendarVideosIds || '';
         const ids = idsStr.split(',').map(s => s.trim()).filter(Boolean);
         const metasDetailed = [];
@@ -1791,19 +1814,27 @@ const server = http.createServer(async (req, res) => {
         for (const rawId of ids) {
           try {
             let tmdbId = null;
+            let itemType = type || 'series';
+
             if (rawId.startsWith('tmdb:')) {
               tmdbId = rawId.slice(5);
             } else if (rawId.startsWith('tt')) {
               const findRes = await fetchTmdb(`/find/${rawId}`, { external_source: 'imdb_id' });
-              if (findRes.tv_results && findRes.tv_results.length > 0) {
+              if (itemType === 'movie' && findRes.movie_results?.length > 0) {
+                tmdbId = findRes.movie_results[0].id;
+              } else if (findRes.tv_results?.length > 0) {
                 tmdbId = findRes.tv_results[0].id;
+                itemType = 'series';
+              } else if (findRes.movie_results?.length > 0) {
+                tmdbId = findRes.movie_results[0].id;
+                itemType = 'movie';
               }
             } else if (/^\d+$/.test(rawId)) {
               tmdbId = rawId;
             }
 
             if (tmdbId) {
-              const meta = await handleMeta('series', `tmdb:${tmdbId}`);
+              const meta = await handleMeta(itemType, `tmdb:${tmdbId}`);
               if (meta) {
                 metasDetailed.push({
                   ...meta,
