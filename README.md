@@ -1,7 +1,19 @@
-# ⚔️ NightKnight Cinema — Stremio Addon (v1.5.0)
+# ⚔️ NightKnight Cinema — Stremio Addon (v1.5.2)
 
 > **Created by NightKnight**  
-> The ultimate cinema & media hub: YouTube in-app playback & global search, BYOA streaming hubs (Netflix, BBC iPlayer, ITVX, Channel 4, Disney+, Prime, Max), Curated Franchises in release order, Verified IMDb & TMDb Ratings, Home Theater Audio/Video tags & intelligent stream speed ranking.
+> The ultimate cinema & media hub: YouTube in-app playback & global search, BYOA streaming hubs (Netflix, BBC iPlayer, ITVX, Channel 4, Disney+, Prime, Max), Curated Franchises in release order, Verified IMDb & TMDb Ratings, Home Theater Audio/Video tags, intelligent stream speed ranking & live community feedback.
+
+---
+
+## 🚀 Live Deployments & Links
+
+* 🌐 **Live Web Portal & Configuration**: [https://nightknight-cinema.onrender.com](https://nightknight-cinema.onrender.com)
+* 🚀 **Stremio 1-Click Install URL**: `stremio://nightknight-cinema.onrender.com/manifest.json`
+* 📊 **Live Anonymized Statistics**: [https://nightknight-cinema.onrender.com/api/stats](https://nightknight-cinema.onrender.com/api/stats)
+* 💬 **Community Discussions**: [GitHub Discussions](https://github.com/NightKnight24/nightknight-cinema/discussions)
+* 🐛 **Issue Tracker & Feature Requests**: [GitHub Issues](https://github.com/NightKnight24/nightknight-cinema/issues)
+* 📦 **Releases**: [GitHub Releases](https://github.com/NightKnight24/nightknight-cinema/releases)
+* 🐳 **Packages (Docker Container)**: [GitHub Packages](https://github.com/users/NightKnight24/packages?repo_name=nightknight-cinema)
 
 ---
 
@@ -153,6 +165,9 @@ Settings are saved in `config.json`.
 | **Speed-Ranked Streams** | `/stream/:type/:id.json` | Returns streams sorted by seeders, speed & CDN reliability |
 | **Movies Catalog** | `/catalog/movie/actor_genre_movies.json` | Actor filmographies, search & curated movie genres |
 | **Series Catalog** | `/catalog/series/actor_genre_series.json` | Actor filmographies, search & curated TV genres |
+| **Live Statistics** | `/api/stats` | Live anonymized install counter and request telemetry |
+| **Community Feedback** | `/api/feedback` | Get community feedback or submit comments (GET/POST) |
+| **Health Check** | `/api/health` | Diagnostic status of addon and upstream scrapers |
 | **Upcoming Movies (16:9)** | `/catalog/movie/upcoming_movies.json` | 16:9 landscape cards for upcoming movies |
 | **Upcoming TV Shows (16:9)**| `/catalog/series/on_the_air_series.json` | 16:9 landscape cards for shows airing next 7 days |
 | **Calendar Videos** | `/catalog/series/calendar-videos/calendarVideosIds=...` | Stremio calendar air date feed |
@@ -160,7 +175,16 @@ Settings are saved in `config.json`.
 
 ---
 
+## 💬 Community Feedback & Support
+
+We welcome feedback, title suggestions, and feature requests:
+- **On the Web Portal**: Use the built-in comment form at [https://nightknight-cinema.onrender.com](https://nightknight-cinema.onrender.com) to post comments or request platforms.
+- **GitHub Discussions**: Share ideas, movie recommendations, or ask questions on [GitHub Discussions](https://github.com/NightKnight24/nightknight-cinema/discussions).
+- **GitHub Issues**: Report bugs or broken streams via our structured [Issue Templates](https://github.com/NightKnight24/nightknight-cinema/issues/new/choose).
+
+---
+
 ## 📜 License & Credits
 
-- **Author**: **NightKnight**
+- **Author**: **NightKnight** (`@NightKnight24`)
 - **License**: MIT

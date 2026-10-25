@@ -15,7 +15,7 @@ const TMDB_API_KEY = process.env.TMDB_API_KEY || '3157bd6dacbc3a653ae2e5a3b19beb
 const PORT = process.env.PORT || 7000;
 const HOST = process.env.HOST || (process.env.PORT ? '0.0.0.0' : '127.0.0.1');
 
-const ADDON_VERSION = '1.5.1';
+const ADDON_VERSION = '1.5.2';
 
 // Load server-wide DEFAULTS (read-only). Per-user settings live in the install URL, never on the server.
 function loadConfig() {
@@ -200,6 +200,64 @@ function formatUptime(ms) {
   if (minutes > 0) parts.push(`${minutes}m`);
   parts.push(`${seconds}s`);
   return parts.join(' ');
+}
+
+// Helper to safely parse incoming JSON request bodies (max 32KB)
+function readJsonBody(req, maxBytes = 32768) {
+  return new Promise((resolve, reject) => {
+    let body = '';
+    let bytes = 0;
+    req.on('data', chunk => {
+      bytes += chunk.length;
+      if (bytes > maxBytes) {
+        reject(new Error('Payload too large'));
+        req.destroy();
+        return;
+      }
+      body += chunk;
+    });
+    req.on('end', () => {
+      try {
+        resolve(body ? JSON.parse(body) : {});
+      } catch (e) {
+        reject(new Error('Invalid JSON format'));
+      }
+    });
+    req.on('error', reject);
+  });
+}
+
+// -------------------------------------------------------------
+// COMMUNITY FEEDBACK & COMMENTS ENGINE
+// Anonymized community discussion & suggestions system.
+// -------------------------------------------------------------
+const FEEDBACK_PATH = path.join(__dirname, 'feedback.json');
+function loadFeedback() {
+  try {
+    if (fs.existsSync(FEEDBACK_PATH)) {
+      const data = JSON.parse(fs.readFileSync(FEEDBACK_PATH, 'utf-8'));
+      if (Array.isArray(data) && data.length > 0) return data;
+    }
+  } catch (e) {}
+  return [
+    {
+      id: 'pinned-1',
+      name: 'NightKnight',
+      badge: '👑 Creator',
+      category: 'Announcement',
+      message: 'Welcome to NightKnight Cinema! Feel free to leave comments, request movies/series, or suggest new streaming platforms right here or on GitHub.',
+      createdAt: '2026-10-25T12:00:00.000Z'
+    }
+  ];
+}
+
+const FEEDBACK_LIST = loadFeedback();
+const FEEDBACK_RATE_LIMIT = new Map();
+
+function persistFeedback() {
+  try {
+    fs.writeFileSync(FEEDBACK_PATH, JSON.stringify(FEEDBACK_LIST, null, 2), 'utf-8');
+  } catch (e) {}
 }
 
 // Simple in-memory cache with TTL
@@ -1602,6 +1660,79 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    // Community Feedback & Comments API
+    if (pathname === '/api/feedback') {
+      if (req.method === 'GET') {
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        res.end(JSON.stringify({
+          feedback: FEEDBACK_LIST.slice(-50).reverse()
+        }));
+        return;
+      }
+
+      if (req.method === 'POST') {
+        try {
+          const clientIp = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress || 'unknown';
+          const ua = req.headers['user-agent'] || 'unknown';
+          const clientHash = crypto.createHash('sha256').update(clientIp + ua + STATS_SALT).digest('hex').slice(0, 16);
+
+          // Rate limit: max 5 comments per 10 minutes per client
+          const now = Date.now();
+          const userHistory = FEEDBACK_RATE_LIMIT.get(clientHash) || [];
+          const recentSubmissions = userHistory.filter(t => now - t < 10 * 60 * 1000);
+          if (recentSubmissions.length >= 5) {
+            res.writeHead(429, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ error: 'Too many submissions. Please wait a few minutes before posting again.' }));
+            return;
+          }
+
+          const body = await readJsonBody(req);
+          const rawMessage = typeof body.message === 'string' ? body.message.trim() : '';
+          const rawName = typeof body.name === 'string' ? body.name.trim() : '';
+          const rawCategory = typeof body.category === 'string' ? body.category.trim() : 'General Feedback';
+
+          if (!rawMessage || rawMessage.length < 2) {
+            res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ error: 'Message cannot be empty.' }));
+            return;
+          }
+          if (rawMessage.length > 500) {
+            res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ error: 'Message cannot exceed 500 characters.' }));
+            return;
+          }
+
+          const allowedCategories = ['Feature Request', 'Bug Report', 'Streaming Service', 'General Feedback', 'Review'];
+          const category = allowedCategories.includes(rawCategory) ? rawCategory : 'General Feedback';
+          const cleanName = escapeHtml(rawName.slice(0, 30)) || 'Anonymous Viewer';
+          const cleanMessage = escapeHtml(rawMessage);
+
+          const newEntry = {
+            id: 'fb-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+            name: cleanName,
+            badge: cleanName.toLowerCase() === 'nightknight' ? '👑 Creator' : 'Community',
+            category,
+            message: cleanMessage,
+            createdAt: new Date().toISOString()
+          };
+
+          FEEDBACK_LIST.push(newEntry);
+          if (FEEDBACK_LIST.length > 200) FEEDBACK_LIST.splice(0, FEEDBACK_LIST.length - 200);
+          recentSubmissions.push(now);
+          FEEDBACK_RATE_LIMIT.set(clientHash, recentSubmissions);
+          persistFeedback();
+
+          res.setHeader('Content-Type', 'application/json; charset=utf-8');
+          res.end(JSON.stringify({ success: true, item: newEntry }));
+          return;
+        } catch (err) {
+          res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ error: err.message || 'Failed to submit feedback' }));
+          return;
+        }
+      }
+    }
+
     // 1. Manifest
     if (pathname === '/manifest.json') {
       STATS.manifestRequests++;
@@ -1965,6 +2096,165 @@ const server = http.createServer(async (req, res) => {
       .stats-grid {
         grid-template-columns: repeat(2, 1fr);
       }
+      .fb-row {
+        flex-direction: column;
+      }
+    }
+    .feedback-box {
+      margin-top: 24px;
+      background: rgba(11, 15, 25, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 20px;
+      text-align: left;
+    }
+    .feedback-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .fb-form {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+    .fb-row {
+      display: flex;
+      gap: 10px;
+    }
+    .fb-row input, .fb-row select {
+      flex: 1;
+      padding: 10px 14px;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      color: #fff;
+      font-size: 13px;
+      box-sizing: border-box;
+    }
+    .fb-row input:focus, .fb-row select:focus, .fb-form textarea:focus {
+      outline: none;
+      border-color: #38bdf8;
+    }
+    .fb-form textarea {
+      width: 100%;
+      padding: 10px 14px;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      color: #fff;
+      font-size: 13px;
+      resize: vertical;
+      font-family: inherit;
+      box-sizing: border-box;
+    }
+    .fb-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .fb-btn {
+      padding: 10px 18px;
+      background: linear-gradient(135deg, #38bdf8 0%, #6366f1 100%);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .fb-btn:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+    }
+    .gh-link-btn {
+      padding: 9px 14px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 8px;
+      color: #e2e8f0;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .gh-link-btn:hover {
+      background: rgba(255, 255, 255, 0.12);
+      color: #38bdf8;
+      border-color: #38bdf8;
+    }
+    .fb-status {
+      font-size: 12px;
+      min-height: 16px;
+    }
+    .fb-status.success { color: #4ade80; }
+    .fb-status.error { color: #f87171; }
+    .fb-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-height: 280px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+    .fb-item {
+      background: rgba(26, 34, 52, 0.45);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      padding: 12px 14px;
+    }
+    .fb-item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .fb-author {
+      font-weight: 700;
+      font-size: 13px;
+      color: #e2e8f0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .fb-badge {
+      font-size: 10px;
+      padding: 2px 7px;
+      border-radius: 12px;
+      background: rgba(56, 189, 248, 0.15);
+      color: #38bdf8;
+      font-weight: 600;
+    }
+    .fb-badge.creator {
+      background: rgba(245, 158, 11, 0.2);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+    .fb-category-tag {
+      font-size: 11px;
+      color: #94a3b8;
+    }
+    .fb-item-msg {
+      font-size: 13px;
+      color: #cbd5e1;
+      line-height: 1.5;
+      word-break: break-word;
+    }
+    .fb-time {
+      font-size: 10px;
+      color: #64748b;
+      margin-top: 6px;
     }
   </style>
 </head>
@@ -2057,6 +2347,37 @@ const server = http.createServer(async (req, res) => {
       </div>
     </div>
 
+    <div class="feedback-box">
+      <div class="feedback-title">
+        <span>💬 Community Feedback & Comments</span>
+        <a href="https://github.com/NightKnight24/nightknight-cinema/discussions" target="_blank" class="gh-link-btn" style="padding: 4px 10px; font-size: 11px;">Join Discussions</a>
+      </div>
+
+      <form id="fb-form" class="fb-form" onsubmit="event.preventDefault(); submitFeedback();">
+        <div class="fb-row">
+          <input type="text" id="fb-name" placeholder="Your Name or Handle (optional)" maxlength="30">
+          <select id="fb-category">
+            <option value="Feature Request">💡 Feature Request</option>
+            <option value="Streaming Service">📺 Streaming Service</option>
+            <option value="Bug Report">🐛 Bug Report</option>
+            <option value="Review">⭐ Review / Praise</option>
+            <option value="General Feedback" selected>💬 General Comment</option>
+          </select>
+        </div>
+        <textarea id="fb-msg" placeholder="Share your feedback, report a bug, or request a feature / streaming service..." rows="3" maxlength="500" required></textarea>
+        <div class="fb-actions">
+          <button type="submit" id="fb-submit" class="fb-btn">🚀 Post Comment</button>
+          <a href="https://github.com/NightKnight24/nightknight-cinema/issues/new/choose" target="_blank" class="gh-link-btn">🐙 GitHub Issue</a>
+        </div>
+        <div id="fb-status" class="fb-status"></div>
+      </form>
+
+      <div class="stats-title" style="margin-bottom: 10px; font-size: 11px;">Recent Community Comments</div>
+      <div id="fb-list" class="fb-list">
+        <div style="color: #64748b; font-size: 12px; text-align: center; padding: 12px;">Loading community feedback...</div>
+      </div>
+    </div>
+
     <div class="footer">NightKnight Cinema • v${ADDON_VERSION}</div>
   </div>
 
@@ -2094,6 +2415,92 @@ const server = http.createServer(async (req, res) => {
         if (d.totalRequests !== undefined) document.getElementById('stat-requests').textContent = d.totalRequests.toLocaleString();
       })
       .catch(() => {});
+
+    function timeAgo(dateString) {
+      const sec = Math.floor((Date.now() - new Date(dateString).getTime()) / 1000);
+      if (sec < 60) return 'Just now';
+      const min = Math.floor(sec / 60);
+      if (min < 60) return min + 'm ago';
+      const hr = Math.floor(min / 60);
+      if (hr < 24) return hr + 'h ago';
+      const days = Math.floor(hr / 24);
+      return days + 'd ago';
+    }
+
+    function renderFeedback(items) {
+      const container = document.getElementById('fb-list');
+      if (!items || items.length === 0) {
+        container.innerHTML = '<div style="color: #64748b; font-size: 12px; text-align: center; padding: 12px;">No comments yet. Be the first to share your thoughts!</div>';
+        return;
+      }
+      container.innerHTML = items.map(function(fb) {
+        const isCreator = (fb.name || '').toLowerCase() === 'nightknight';
+        return '<div class="fb-item">' +
+          '<div class="fb-item-header">' +
+            '<div class="fb-author">' +
+              '<span>' + fb.name + '</span>' +
+              '<span class="fb-badge ' + (isCreator ? 'creator' : '') + '">' + (fb.badge || 'Community') + '</span>' +
+            '</div>' +
+            '<span class="fb-category-tag">' + fb.category + '</span>' +
+          '</div>' +
+          '<div class="fb-item-msg">' + fb.message + '</div>' +
+          '<div class="fb-time">' + timeAgo(fb.createdAt) + '</div>' +
+        '</div>';
+      }).join('');
+    }
+
+    function loadFeedback() {
+      fetch('/api/feedback')
+        .then(r => r.json())
+        .then(d => {
+          if (d.feedback) renderFeedback(d.feedback);
+        })
+        .catch(() => {});
+    }
+    loadFeedback();
+
+    async function submitFeedback() {
+      const name = document.getElementById('fb-name').value.trim();
+      const category = document.getElementById('fb-category').value;
+      const message = document.getElementById('fb-msg').value.trim();
+      const statusEl = document.getElementById('fb-status');
+      const submitBtn = document.getElementById('fb-submit');
+
+      if (!message) {
+        statusEl.className = 'fb-status error';
+        statusEl.textContent = 'Please enter a message.';
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Posting...';
+      statusEl.className = 'fb-status';
+      statusEl.textContent = '';
+
+      try {
+        const res = await fetch('/api/feedback', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, category, message })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          statusEl.className = 'fb-status success';
+          statusEl.textContent = '✓ Thank you! Your comment has been posted.';
+          document.getElementById('fb-msg').value = '';
+          loadFeedback();
+        } else {
+          statusEl.className = 'fb-status error';
+          statusEl.textContent = data.error || 'Failed to submit feedback.';
+        }
+      } catch (e) {
+        statusEl.className = 'fb-status error';
+        statusEl.textContent = 'Network error. Please try again.';
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = '🚀 Post Comment';
+      }
+    }
   </script>
 </body>
 </html>

@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 💬 Community Discussions & Questions
+    url: https://github.com/NightKnight24/nightknight-cinema/discussions
+    about: Ask questions, share ideas, and discuss with other NightKnight Cinema users!
+  - name: 🚀 NightKnight Cinema Web Portal
+    url: https://nightknight-cinema.onrender.com
+    about: Configure your addon or submit in-app feedback directly from the live web portal.

@@ -5,3 +5,4 @@ addon.log
 .env
 backup_addon_collection.json
 stats.json
+feedback.json
