@@ -566,7 +566,8 @@ async function fetchTmdb(endpoint, params = {}) {
   if (cached) return cached;
 
   const res = await fetch(url.toString(), {
-    headers: { 'Accept': 'application/json' }
+    headers: { 'Accept': 'application/json' },
+    signal: AbortSignal.timeout(6500)
   });
   if (!res.ok) {
     throw new Error(`TMDb error: ${res.status} ${res.statusText}`);
@@ -995,26 +996,26 @@ async function handleGenreCatalog(type, genre, skip = 0) {
   }
 
   if (genre === 'Harry Potter' && isMovie) {
-    const col = await fetchTmdb('/collection/1241');
+    const col = await fetchTmdb('/collection/1241').catch(() => null);
     const fbCol = await fetchTmdb('/collection/435259').catch(() => null);
-    const parts = [...(col.parts || []), ...(fbCol?.parts || [])];
+    const parts = [...(col?.parts || []), ...(fbCol?.parts || [])];
     parts.sort((a, b) => (a.release_date || '').localeCompare(b.release_date || ''));
     const slice = parts.slice(skip, skip + 20);
     return slice.map(item => formatMetaPreview(item, 'movie'));
   }
 
   if (genre === 'Lord of the Rings' && isMovie) {
-    const lotr = await fetchTmdb('/collection/119');
-    const hobbit = await fetchTmdb('/collection/121938');
-    const parts = [...(lotr.parts || []), ...(hobbit.parts || [])];
+    const lotr = await fetchTmdb('/collection/119').catch(() => null);
+    const hobbit = await fetchTmdb('/collection/121938').catch(() => null);
+    const parts = [...(lotr?.parts || []), ...(hobbit?.parts || [])];
     parts.sort((a, b) => (a.release_date || '').localeCompare(b.release_date || ''));
     const slice = parts.slice(skip, skip + 20);
     return slice.map(item => formatMetaPreview(item, 'movie'));
   }
 
   if (genre === 'James Bond (007)' && isMovie) {
-    const col = await fetchTmdb('/collection/645');
-    const parts = (col.parts || []).sort((a, b) => (a.release_date || '').localeCompare(b.release_date || ''));
+    const col = await fetchTmdb('/collection/645').catch(() => null);
+    const parts = (col?.parts || []).sort((a, b) => (a.release_date || '').localeCompare(b.release_date || ''));
     const slice = parts.slice(skip, skip + 20);
     return slice.map(item => formatMetaPreview(item, 'movie'));
   }
@@ -1743,6 +1744,12 @@ const server = http.createServer(async (req, res) => {
           if (FEEDBACK_LIST.length > 200) FEEDBACK_LIST.splice(0, FEEDBACK_LIST.length - 200);
           recentSubmissions.push(now);
           FEEDBACK_RATE_LIMIT.set(clientHash, recentSubmissions);
+          if (FEEDBACK_RATE_LIMIT.size > 2000) {
+            const cutoff = now - 10 * 60 * 1000;
+            for (const [k, times] of FEEDBACK_RATE_LIMIT.entries()) {
+              if (!times.some(t => t > cutoff)) FEEDBACK_RATE_LIMIT.delete(k);
+            }
+          }
           persistFeedback();
 
           res.setHeader('Content-Type', 'application/json; charset=utf-8');

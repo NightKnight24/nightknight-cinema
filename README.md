@@ -87,19 +87,49 @@ Visit the web portal at **[https://nightknight-cinema.onrender.com](https://nigh
 
 ---
 
-## 📅 Calendar & Reminders Guide for Users
+## 📅 Stremio Calendar Sync Guide (Theatrical Movies & TV Shows)
 
-1. **One-Click Tracking (The Reminder Button)**:
-   - When browsing any upcoming movie or series in Stremio, click the **`+` (Add to Library)** button on the title card or detail page.
-   - Upcoming episodes will automatically appear in your Stremio **Calendar**.
+NightKnight Cinema fully integrates both **Cinema Theatrical Premieres** and **TV Series/Episodes** with Stremio's native Calendar system (`stremio://calendar`):
 
-2. **In-App & Desktop Release Notifications**:
-   - In Stremio, go to **Settings** $\rightarrow$ **General** $\rightarrow$ toggle **Notifications: ON**.
-   - Stremio will trigger desktop notifications when new episodes air for any title in your library.
+### 1. Tracking Upcoming Cinema Releases
+* Open the **Upcoming Movie Releases (16:9)** feed or search for any upcoming film in Stremio.
+* Click the **`+` (Add to Library)** button on the title card.
+* NightKnight Cinema detects the future release date, flags `hasScheduledVideos: true`, and injects a **Theatrical Premiere** event into Stremio's calendar feed.
+* The film automatically appears on that exact release day in your Stremio Calendar grid!
 
-3. **Phone & External Calendar Sync (Apple Calendar, Google Calendar, Outlook)**:
-   - In Stremio **Settings** $\rightarrow$ **General**, click **Subscribe to calendar**.
-   - Copy and import the `webcal://` link into Apple Calendar, Google Calendar, or Outlook for mobile lockscreen notifications.
+### 2. Tracking Airing TV Episodes
+* Browse the **Upcoming TV Shows (16:9)** feed or search any ongoing series.
+* Click **`+` (Add to Library)** on the series.
+* NightKnight Cinema automatically syncs all future episode air dates and times directly from TMDb's `next_episode_to_air` feed onto your Calendar.
+
+### 3. In-App Desktop Notifications
+* In Stremio, navigate to **Settings** $\rightarrow$ **General** $\rightarrow$ toggle **Notifications: ON**.
+* Stremio will trigger desktop notifications on the exact morning a movie hits theaters or an episode airs.
+
+### 4. Mobile Calendar Sync (Apple Calendar, Google Calendar, Outlook)
+* In Stremio, go to **Settings** $\rightarrow$ **General** $\rightarrow$ click **Subscribe to calendar**.
+* Copy the `webcal://` link provided by Stremio.
+* Paste it into your calendar application:
+  * **iPhone / iPad (Apple Calendar)**: Open *Settings* $\rightarrow$ *Calendar* $\rightarrow$ *Accounts* $\rightarrow$ *Add Subscribed Calendar* $\rightarrow$ paste the link.
+  * **Google Calendar**: Open *Google Calendar Web* $\rightarrow$ *Other calendars (+)* $\rightarrow$ *From URL* $\rightarrow$ paste the link.
+  * **Outlook**: Open *Calendar* $\rightarrow$ *Add Calendar* $\rightarrow$ *Subscribe from web*.
+* You will receive automatic lock screen alarms and reminders on your phone when movies hit theaters or new episodes air!
+
+---
+
+## 🛡️ Privacy, IP Protection & Debrid Cloud Encryption
+
+### Can an Addon Run a Native VPN?
+* Stremio addons are **server-side HTTP web services (APIs)**, not device operating system software.
+* An addon cannot install network adapters (TUN/TAP drivers) or create OS-level WireGuard/OpenVPN tunnels on your phone, TV, or PC because addons operate exclusively through JSON over HTTPS.
+* When you play a peer-to-peer torrent stream in Stremio without a proxy, the **Stremio client application itself** opens P2P connections directly from your home internet.
+
+### The Zero-Risk Solution: Debrid Cloud Shielding
+* To achieve 100% IP privacy without running a separate VPN client, NightKnight Cinema supports **Real-Debrid, AllDebrid, Premiumize, and TorBox**:
+  1. Instead of your home computer connecting to P2P torrent swarms, the high-speed Debrid cloud server downloads the file remotely.
+  2. The video is streamed to your Stremio player over an **encrypted HTTPS connection (TLS 1.3)**.
+  3. Your ISP only sees encrypted HTTPS traffic to a cloud server, and your home IP is **never exposed** to the BitTorrent swarm.
+* **How to Enable**: When generating your install link on [https://nightknight-cinema.onrender.com](https://nightknight-cinema.onrender.com), paste your Debrid-enabled Torrentio scraper URL into the **Upstream Scraper** box.
 
 ---
 
