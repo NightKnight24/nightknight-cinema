@@ -2329,19 +2329,19 @@ const server = http.createServer(async (req, res) => {
       <div class="stats-title">📊 Live Addon Statistics</div>
       <div class="stats-grid">
         <div class="stat-card">
-          <div class="stat-val" id="stat-installs">1</div>
+          <div class="stat-val" id="stat-installs">${Math.max(STATS.estimatedInstalls, STATS.uniqueClients.size)}</div>
           <div class="stat-lbl">Active Users</div>
         </div>
         <div class="stat-card">
-          <div class="stat-val" id="stat-manifests">-</div>
+          <div class="stat-val" id="stat-manifests">${STATS.manifestRequests.toLocaleString()}</div>
           <div class="stat-lbl">Manifest Hits</div>
         </div>
         <div class="stat-card">
-          <div class="stat-val" id="stat-streams">-</div>
+          <div class="stat-val" id="stat-streams">${STATS.streamRequests.toLocaleString()}</div>
           <div class="stat-lbl">Streams Served</div>
         </div>
         <div class="stat-card">
-          <div class="stat-val" id="stat-requests">-</div>
+          <div class="stat-val" id="stat-requests">${STATS.totalRequests.toLocaleString()}</div>
           <div class="stat-lbl">Total Requests</div>
         </div>
       </div>
@@ -2406,15 +2406,19 @@ const server = http.createServer(async (req, res) => {
     document.getElementById('filter-buffer-risk').addEventListener('change', updateInstallLink);
     updateInstallLink();
 
-    fetch('/api/stats')
-      .then(r => r.json())
-      .then(d => {
-        if (d.estimatedInstalls !== undefined) document.getElementById('stat-installs').textContent = d.estimatedInstalls;
-        if (d.manifestRequests !== undefined) document.getElementById('stat-manifests').textContent = d.manifestRequests.toLocaleString();
-        if (d.streamRequests !== undefined) document.getElementById('stat-streams').textContent = d.streamRequests.toLocaleString();
-        if (d.totalRequests !== undefined) document.getElementById('stat-requests').textContent = d.totalRequests.toLocaleString();
-      })
-      .catch(() => {});
+    function updateStats() {
+      fetch('/api/stats')
+        .then(r => r.json())
+        .then(d => {
+          if (d.estimatedInstalls !== undefined) document.getElementById('stat-installs').textContent = d.estimatedInstalls;
+          if (d.manifestRequests !== undefined) document.getElementById('stat-manifests').textContent = d.manifestRequests.toLocaleString();
+          if (d.streamRequests !== undefined) document.getElementById('stat-streams').textContent = d.streamRequests.toLocaleString();
+          if (d.totalRequests !== undefined) document.getElementById('stat-requests').textContent = d.totalRequests.toLocaleString();
+        })
+        .catch(() => {});
+    }
+    updateStats();
+    setInterval(updateStats, 8000);
 
     function timeAgo(dateString) {
       const sec = Math.floor((Date.now() - new Date(dateString).getTime()) / 1000);
