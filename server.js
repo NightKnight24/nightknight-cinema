@@ -15,7 +15,7 @@ const TMDB_API_KEY = process.env.TMDB_API_KEY || '3157bd6dacbc3a653ae2e5a3b19beb
 const PORT = process.env.PORT || 7000;
 const HOST = process.env.HOST || (process.env.PORT ? '0.0.0.0' : '127.0.0.1');
 
-const ADDON_VERSION = '1.6.1';
+const ADDON_VERSION = '1.6.2';
 
 // Load server-wide DEFAULTS (read-only). Per-user settings live in the install URL, never on the server.
 function loadConfig() {
@@ -1829,15 +1829,33 @@ async function handleMeta(type, id) {
       behaviorHints: {
         defaultVideoId: `${foundChannel.id}:live`
       },
-      videos: [
-        {
-          id: `${foundChannel.id}:live`,
-          title: `🔴 LIVE BROADCAST: ${foundChannel.name}`,
-          released: new Date().toISOString(),
-          thumbnail: foundChannel.logo,
-          overview: `Watch ${foundChannel.name} live unencrypted broadcast directly inside Stremio's native player (DRM-Free).`
+      videos: (() => {
+        const list = [
+          {
+            id: `${foundChannel.id}:live`,
+            title: `🔴 LIVE BROADCAST: ${foundChannel.name}`,
+            released: new Date().toISOString(),
+            thumbnail: foundChannel.logo,
+            overview: `Watch ${foundChannel.name} live unencrypted broadcast directly inside Stremio's native player (DRM-Free).`
+          }
+        ];
+        const nowMs = Date.now();
+        for (const prog of (foundChannel.guideSchedule || [])) {
+          const [h, m] = prog.time.split(':').map(Number);
+          const progDate = new Date();
+          progDate.setHours(h, m, 0, 0);
+          if (progDate.getTime() > nowMs) {
+            list.push({
+              id: `${foundChannel.id}:${prog.time.replace(':', '')}`,
+              title: `⏰ [AIRS AT ${prog.time}] ${prog.title}`,
+              released: progDate.toISOString(),
+              thumbnail: foundChannel.logo,
+              overview: `${prog.desc}\n\nBroadcasts today at ${prog.time}. Bookmark or add to your Stremio Library to track airtimes and get notified when it airs!`
+            });
+          }
         }
-      ]
+        return list;
+      })()
     };
   }
 
@@ -2232,7 +2250,8 @@ async function handleStream(type, id, userConfig = DEFAULT_USER_CONFIG) {
     STATS.drmFreeRequests = (STATS.drmFreeRequests || 0) + 1;
     persistStats();
 
-    const baseId = id.replace(/:live$/, '');
+    const parts = id.split(':');
+    const baseId = parts[0] + ':' + parts[1];
     let foundChannel = null;
     for (const channels of Object.values(REGIONAL_CHANNELS)) {
       const match = channels.find(c => c.id === baseId || c.id === id);

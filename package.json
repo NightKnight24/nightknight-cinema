@@ -1,6 +1,6 @@
 {
   "name": "nightknight-cinema",
-  "version": "1.6.1",
+  "version": "1.6.2",
   "type": "module",
   "description": "NightKnight Cinema — Regional Live TV & TV Guide (EPG), DRM-Free Cinema & Stream Engine",
   "main": "server.js",

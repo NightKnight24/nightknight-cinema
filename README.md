@@ -1,4 +1,4 @@
-# ⚔️ NightKnight Cinema — Stremio Addon (v1.6.1)
+# ⚔️ NightKnight Cinema — Stremio Addon (v1.6.2)
 
 > **Created by NightKnight**  
 > The ultimate cinema & media hub: Regional Live TV & TV Guide (EPG), Native DRM-Free Cinema, YouTube in-app playback & global search, BYOA streaming hubs (Netflix, BBC iPlayer, ITVX, Channel 4, Disney+, Prime, Max), Curated Franchises in release order, Verified IMDb & TMDb Ratings, Home Theater Audio/Video tags, intelligent stream speed ranking, real-time community feedback & live telemetry.
@@ -10,7 +10,7 @@
 * 🌐 **Live Web Portal & Configuration**: [https://nightknight-cinema.onrender.com](https://nightknight-cinema.onrender.com)
 * 🚀 **Stremio 1-Click Install**: [`stremio://nightknight-cinema.onrender.com/manifest.json`](stremio://nightknight-cinema.onrender.com/manifest.json)
 * 👨‍💻 **Developer Profile & Projects**: [https://github.com/NightKnight24](https://github.com/NightKnight24)
-* 📦 **Official Releases**: [GitHub Releases (v1.6.1)](https://github.com/NightKnight24/nightknight-cinema/releases)
+* 📦 **Official Releases**: [GitHub Releases (v1.6.2)](https://github.com/NightKnight24/nightknight-cinema/releases)
 * 🐳 **Container Packages**: [GitHub Packages (`ghcr.io`)](https://github.com/NightKnight24/nightknight-cinema/pkgs/container/nightknight-cinema)
 * 📊 **Live Anonymized Analytics**: [https://nightknight-cinema.onrender.com/api/stats](https://nightknight-cinema.onrender.com/api/stats)
 * 🐛 **Issue Tracker & Feature Requests**: [GitHub Issues](https://github.com/NightKnight24/nightknight-cinema/issues)
@@ -27,9 +27,10 @@
   * 🇨🇦 **Canada**: CBC News Network (1080p), CityNews Toronto (720p), DW English, Red Bull TV, NASA TV.
   * 🇦🇺 **Australia**: ABC News Australia (720p), Sky News / News24 Australia (1080p), MovieSphere Australia (1080p), Red Bull TV.
   * 🇮🇪 **Ireland**: Sky News HD (IE/UK), GREAT! Movies HD, DW English, NASA TV HD.
-* **Dynamic Hour-by-Hour TV Guide**: Opening any channel card displays:
+* **Dynamic Hour-by-Hour TV Guide & Reminders**: Opening any channel card displays:
   * **Now Airing**: Current show title, start time, and synopsis calculated dynamically for the current hour.
-  * **Coming Up Today**: Next 4 consecutive scheduled programs and airtimes.
+  * **Coming Up Today**: Next consecutive scheduled programs with airtimes.
+  * **Reminders & Library Tracking**: Each scheduled program is provided as an individual trackable video entry with its exact future airtime. Simply click **`+` (Add to Library)** on the channel in Stremio to receive automated desktop and mobile notifications right when your favorite live show or broadcast begins!
 * **100% In-App Playback**: Direct unencrypted HLS (`.m3u8`) streaming right inside Stremio's native media player with backup streams.
 
 ### 2. ⚡ Native DRM-Free Cinema & Public Domain Classics
@@ -129,11 +130,17 @@ NightKnight Cinema fully integrates both **Cinema Theatrical Premieres** and **T
 * Click **`+` (Add to Library)** on the series.
 * NightKnight Cinema automatically syncs all future episode air dates and times directly from TMDb's `next_episode_to_air` feed onto your Calendar.
 
-### 3. In-App Desktop Notifications
-* In Stremio, navigate to **Settings** $\rightarrow$ **General** $\rightarrow$ toggle **Notifications: ON**.
-* Stremio will trigger desktop notifications on the exact morning a movie hits theaters or an episode airs.
+### 3. Setting Reminders for Live TV Broadcasts
+* Browse the **Live TV & Guide** catalog for your region and select any channel (e.g. GB News, ABC News, GREAT! Movies, NASA TV).
+* Open the channel details to see the full list of today's upcoming scheduled programs with exact broadcast start times (`⏰ [AIRS AT 18:00] ...`, `⏰ [AIRS AT 20:00] ...`).
+* Click **`+` (Add to Library)** on the channel card.
+* Because NightKnight Cinema encodes future broadcast start times with ISO 8601 timestamps, Stremio automatically alerts you on your desktop or phone when that show begins!
 
-### 4. Mobile Calendar Sync (Apple Calendar, Google Calendar, Outlook)
+### 4. In-App Desktop Notifications
+* In Stremio, navigate to **Settings** $\rightarrow$ **General** $\rightarrow$ toggle **Notifications: ON**.
+* Stremio will trigger desktop notifications on the exact morning a movie hits theaters, when a new episode airs, or when a bookmarked live broadcast goes on the air.
+
+### 5. Mobile Calendar Sync (Apple Calendar, Google Calendar, Outlook)
 * In Stremio, go to **Settings** $\rightarrow$ **General** $\rightarrow$ click **Subscribe to calendar**.
 * Copy the `webcal://` link provided by Stremio.
 * Paste it into your calendar application:
