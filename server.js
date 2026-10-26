@@ -15,7 +15,7 @@ const TMDB_API_KEY = process.env.TMDB_API_KEY || '3157bd6dacbc3a653ae2e5a3b19beb
 const PORT = process.env.PORT || 7000;
 const HOST = process.env.HOST || (process.env.PORT ? '0.0.0.0' : '127.0.0.1');
 
-const ADDON_VERSION = '1.6.0';
+const ADDON_VERSION = '1.6.1';
 
 // Load server-wide DEFAULTS (read-only). Per-user settings live in the install URL, never on the server.
 function loadConfig() {
@@ -966,6 +966,10 @@ function getManifest(baseUrl, userConfig = DEFAULT_USER_CONFIG) {
     resources: ['catalog', 'meta', 'stream'],
     types: ['movie', 'series', 'channel'],
     idPrefixes: ['tmdb:', 'tt', 'yt:', 'tv:', 'drmfree:'],
+    stremioAddonsConfig: {
+      issuer: 'https://stremio-addons.net',
+      signature: 'eyJhbGciOiJkaXIiLCJlbmMiOiJBMTI4Q0JDLUhTMjU2In0..2WJ_2NQTQSHSfNK_4IS1sw.RiScIFZ2EmUgKhl-2CULyOClQ7eM8l1SuGwwz06YV7zTFeR8ZEVRjH72xF_iMMrfZoH9uulfwHqoph43zmhRjTNPMoI6efBylq_GUkpqhP1ktUkMU3WUh5H1fIsT-vya.nkY6rvIwMG-N3yT8_jeOtA'
+    },
     behaviorHints: {
       configurable: true,
       configurationRequired: false

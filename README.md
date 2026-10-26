@@ -1,4 +1,4 @@
-# ⚔️ NightKnight Cinema — Stremio Addon (v1.6.0)
+# ⚔️ NightKnight Cinema — Stremio Addon (v1.6.1)
 
 > **Created by NightKnight**  
 > The ultimate cinema & media hub: Regional Live TV & TV Guide (EPG), Native DRM-Free Cinema, YouTube in-app playback & global search, BYOA streaming hubs (Netflix, BBC iPlayer, ITVX, Channel 4, Disney+, Prime, Max), Curated Franchises in release order, Verified IMDb & TMDb Ratings, Home Theater Audio/Video tags, intelligent stream speed ranking, real-time community feedback & live telemetry.
@@ -10,7 +10,7 @@
 * 🌐 **Live Web Portal & Configuration**: [https://nightknight-cinema.onrender.com](https://nightknight-cinema.onrender.com)
 * 🚀 **Stremio 1-Click Install**: [`stremio://nightknight-cinema.onrender.com/manifest.json`](stremio://nightknight-cinema.onrender.com/manifest.json)
 * 👨‍💻 **Developer Profile & Projects**: [https://github.com/NightKnight24](https://github.com/NightKnight24)
-* 📦 **Official Releases**: [GitHub Releases (v1.6.0)](https://github.com/NightKnight24/nightknight-cinema/releases)
+* 📦 **Official Releases**: [GitHub Releases (v1.6.1)](https://github.com/NightKnight24/nightknight-cinema/releases)
 * 🐳 **Container Packages**: [GitHub Packages (`ghcr.io`)](https://github.com/NightKnight24/nightknight-cinema/pkgs/container/nightknight-cinema)
 * 📊 **Live Anonymized Analytics**: [https://nightknight-cinema.onrender.com/api/stats](https://nightknight-cinema.onrender.com/api/stats)
 * 🐛 **Issue Tracker & Feature Requests**: [GitHub Issues](https://github.com/NightKnight24/nightknight-cinema/issues)
