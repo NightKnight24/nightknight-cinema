@@ -15,7 +15,7 @@ const TMDB_API_KEY = process.env.TMDB_API_KEY || '3157bd6dacbc3a653ae2e5a3b19beb
 const PORT = process.env.PORT || 7000;
 const HOST = process.env.HOST || (process.env.PORT ? '0.0.0.0' : '127.0.0.1');
 
-const ADDON_VERSION = '1.5.3';
+const ADDON_VERSION = '1.5.4';
 
 // Load server-wide DEFAULTS (read-only). Per-user settings live in the install URL, never on the server.
 function loadConfig() {
@@ -324,7 +324,7 @@ function getManifest(baseUrl) {
     id: 'org.stremio.nightknight.cinema',
     version: ADDON_VERSION,
     name: 'NightKnight Cinema',
-    description: 'Created by NightKnight. YouTube search & in-app playback, "where to watch" links for UK & global streaming services (BBC iPlayer, ITVX, Channel 4, Netflix, Disney+, Prime & more), franchises in release order, IMDb/TMDb ratings & awards, audio/video format tags and seeder-based stream ranking.',
+    description: 'Created by NightKnight (@NightKnight24). Complete cinema hub: YouTube in-app playback, UK & global streaming hubs (BBC iPlayer, ITVX, Netflix, Disney+), franchise viewing orders, audio/video tags & speed engine. See my projects, discuss & report issues: https://github.com/NightKnight24',
     logo: `${baseUrl}/icon.png`,
     background: `${baseUrl}/background.png`,
     resources: ['catalog', 'meta', 'stream'],
@@ -2294,6 +2294,99 @@ const server = http.createServer(async (req, res) => {
       color: #64748b;
       margin-top: 6px;
     }
+    .author-link {
+      color: #38bdf8;
+      text-decoration: none;
+      font-weight: 700;
+      transition: color 0.2s;
+    }
+    .author-link:hover {
+      color: #818cf8;
+      text-decoration: underline;
+    }
+    .developer-box {
+      margin-top: 24px;
+      background: linear-gradient(135deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.8) 100%);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      border-radius: 16px;
+      padding: 20px;
+      text-align: left;
+    }
+    .dev-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+    .dev-avatar {
+      font-size: 26px;
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      border-radius: 12px;
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .dev-info {
+      flex: 1;
+    }
+    .dev-name {
+      font-size: 15px;
+      font-weight: 800;
+      color: #f8fafc;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .dev-sub {
+      font-size: 12px;
+      color: #94a3b8;
+      margin-top: 3px;
+      line-height: 1.4;
+    }
+    .dev-links {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    @media (max-width: 600px) {
+      .dev-links {
+        grid-template-columns: 1fr;
+      }
+    }
+    .dev-btn {
+      padding: 11px 14px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 10px;
+      color: #e2e8f0;
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      transition: all 0.2s ease;
+    }
+    .dev-btn:hover {
+      background: rgba(56, 189, 248, 0.15);
+      border-color: #38bdf8;
+      color: #38bdf8;
+      transform: translateY(-1px);
+    }
+    .dev-btn.primary {
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.22) 0%, rgba(99, 102, 241, 0.28) 100%);
+      border-color: rgba(56, 189, 248, 0.45);
+      color: #fff;
+    }
+    .dev-btn.primary:hover {
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.35) 0%, rgba(99, 102, 241, 0.45) 100%);
+      border-color: #38bdf8;
+    }
   </style>
 </head>
 <body>
@@ -2301,7 +2394,7 @@ const server = http.createServer(async (req, res) => {
   <div class="card">
     <img src="/icon.png" alt="NightKnight Logo" class="logo-img">
     <h1>NightKnight Cinema</h1>
-    <div class="byline">Crafted by NightKnight</div>
+    <div class="byline">Crafted by <a href="https://github.com/NightKnight24" target="_blank" class="author-link">NightKnight (@NightKnight24)</a></div>
     <div class="subtitle">The ultimate media hub: YouTube in-app playback & search, BYOA streaming hubs (Netflix, BBC iPlayer, ITVX, Channel 4, Disney+, Prime, Max), Curated Franchises, Critic Badges, Home Theater Audio/Video tags & intelligent stream speed ranking.</div>
     
     <a id="install-btn" href="stremio://${host}/manifest.json" class="btn">🚀 Install on Stremio</a>
@@ -2416,7 +2509,31 @@ const server = http.createServer(async (req, res) => {
       </div>
     </div>
 
-    <div class="footer">NightKnight Cinema • v${ADDON_VERSION}</div>
+    <div class="developer-box">
+      <div class="dev-header">
+        <div class="dev-avatar">⚔️</div>
+        <div class="dev-info">
+          <div class="dev-name">
+            <span>NightKnight Developer Hub</span>
+            <span class="fb-badge creator">Creator</span>
+          </div>
+          <div class="dev-sub">Explore all my open-source projects, discuss features, review code, or report issues directly on GitHub.</div>
+        </div>
+      </div>
+      <div class="dev-links">
+        <a href="https://github.com/NightKnight24" target="_blank" class="dev-btn primary">
+          <span>🐙 View All Projects</span>
+        </a>
+        <a href="https://github.com/NightKnight24/nightknight-cinema/discussions" target="_blank" class="dev-btn">
+          <span>💬 Join Discussions</span>
+        </a>
+        <a href="https://github.com/NightKnight24/nightknight-cinema/issues" target="_blank" class="dev-btn">
+          <span>🐛 Report / Review Issues</span>
+        </a>
+      </div>
+    </div>
+
+    <div class="footer">NightKnight Cinema • v${ADDON_VERSION} • <a href="https://github.com/NightKnight24" target="_blank" class="author-link">Follow @NightKnight24 on GitHub</a></div>
   </div>
 
   <script>
