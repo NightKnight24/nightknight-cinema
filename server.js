@@ -3265,6 +3265,83 @@ const server = http.createServer(async (req, res) => {
       background: linear-gradient(135deg, rgba(56, 189, 248, 0.35) 0%, rgba(99, 102, 241, 0.45) 100%);
       border-color: #38bdf8;
     }
+    .guide-box {
+      margin-top: 24px;
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      border-radius: 16px;
+      padding: 20px;
+      text-align: left;
+    }
+    .guide-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .guide-icon {
+      font-size: 24px;
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      border-radius: 10px;
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .guide-main-title {
+      font-size: 15px;
+      font-weight: 800;
+      color: #f8fafc;
+    }
+    .guide-main-sub {
+      font-size: 12px;
+      color: #94a3b8;
+      margin-top: 2px;
+    }
+    .guide-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .guide-item {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 10px;
+      padding: 10px 12px;
+    }
+    .guide-num {
+      width: 22px;
+      height: 22px;
+      background: #38bdf8;
+      color: #0b0f19;
+      font-weight: 800;
+      font-size: 12px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .guide-text {
+      font-size: 12px;
+      color: #cbd5e1;
+      line-height: 1.5;
+    }
+    .guide-text strong {
+      color: #38bdf8;
+    }
+    .guide-text em {
+      color: #f1f5f9;
+      font-style: normal;
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
@@ -3342,6 +3419,59 @@ const server = http.createServer(async (req, res) => {
       <div class="checkbox-group">
         <input type="checkbox" id="filter-buffer-risk" ${initialHideRisk ? 'checked' : ''}>
         <label for="filter-buffer-risk">Auto-hide high buffer risk streams (&lt; 10 seeders on huge files)</label>
+      </div>
+    </div>
+
+    <div class="guide-box">
+      <div class="guide-header">
+        <div class="guide-icon">📖</div>
+        <div>
+          <div class="guide-main-title">How to Use NightKnight Cinema</div>
+          <div class="guide-main-sub">Step-by-step guide to get the most out of every feature</div>
+        </div>
+      </div>
+      <div class="guide-steps">
+        <div class="guide-item">
+          <div class="guide-num">1</div>
+          <div class="guide-text">
+            <strong>Choose Your Region:</strong> Select your country (UK, US, Canada, Australia, Ireland) above. This tailors your <em>Live TV & Guide</em> channels and local catch-up hubs (BBC iPlayer, ITVX, Channel 4, CBC, ABC).
+          </div>
+        </div>
+        <div class="guide-item">
+          <div class="guide-num">2</div>
+          <div class="guide-text">
+            <strong>Install on Stremio:</strong> Click <strong>🚀 Install on Stremio</strong>. On Mobile, Fire TV, or Android TV, hold down or copy the button link and paste it into Stremio's Addon search bar.
+          </div>
+        </div>
+        <div class="guide-item">
+          <div class="guide-num">3</div>
+          <div class="guide-text">
+            <strong>Watch Live TV & TV Guide:</strong> In Stremio, open the <strong>Live TV & Guide</strong> catalog. Click any channel to view the real-time TV Guide (Now Airing + Today's Schedule). Hit Play to stream unencrypted HD broadcasts natively!
+          </div>
+        </div>
+        <div class="guide-item">
+          <div class="guide-num">4</div>
+          <div class="guide-text">
+            <strong>Set Broadcast & Release Reminders:</strong> Click <strong>`+` (Add to Library)</strong> on any channel, upcoming movie, or series. Stremio will automatically trigger alerts on your desktop or phone when the show goes live or hits theaters!
+          </div>
+        </div>
+        <div class="guide-item">
+          <div class="guide-num">5</div>
+          <div class="guide-text">
+            <strong>Native DRM-Free Cinema:</strong> Browse <strong>DRM-Free Cinema & Classics</strong> for verified public domain horror, sci-fi, and noir that stream instantly inside Stremio's built-in player with zero buffering risk.
+          </div>
+        </div>
+        <div class="guide-item">
+          <div class="guide-num">6</div>
+          <div class="guide-text">
+            <strong>Search Anything:</strong> Use Stremio's global search bar to search for actors, directors (full filmographies), or any YouTube video or creator.
+          </div>
+        </div>
+      </div>
+      <div style="margin-top: 14px; text-align: center;">
+        <a href="https://github.com/NightKnight24/nightknight-cinema#readme" target="_blank" class="dev-btn" style="display: inline-flex; width: auto; padding: 9px 18px; font-size: 12px; margin: 0 auto;">
+          📚 View Full GitHub Documentation & Setup Guide →
+        </a>
       </div>
     </div>
 

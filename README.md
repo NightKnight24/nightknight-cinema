@@ -9,6 +9,7 @@
 
 * 🌐 **Live Web Portal & Configuration**: [https://nightknight-cinema.onrender.com](https://nightknight-cinema.onrender.com)
 * 🚀 **Stremio 1-Click Install**: [`stremio://nightknight-cinema.onrender.com/manifest.json`](stremio://nightknight-cinema.onrender.com/manifest.json)
+* 📖 **Step-by-Step User Guide**: [Read Tutorial Below](#-complete-step-by-step-user-guide-how-to-use-everything)
 * 👨‍💻 **Developer Profile & Projects**: [https://github.com/NightKnight24](https://github.com/NightKnight24)
 * 📦 **Official Releases**: [GitHub Releases (v1.6.2)](https://github.com/NightKnight24/nightknight-cinema/releases)
 * 🐳 **Container Packages**: [GitHub Packages (`ghcr.io`)](https://github.com/NightKnight24/nightknight-cinema/pkgs/container/nightknight-cinema)
@@ -102,6 +103,70 @@
 
 ### 14. 📊 Live Anonymized Analytics & Telemetry
 * Real-time install counter and request telemetry via `/api/stats` using GDPR-compliant salted SHA-256 client hashes (zero raw IP addresses stored).
+
+---
+
+## 📖 Complete Step-by-Step User Guide (How to Use Everything)
+
+### 1. 🚀 How to Install on Any Device
+* **Desktop (Windows, macOS, Linux)**:
+  1. Open [https://nightknight-cinema.onrender.com](https://nightknight-cinema.onrender.com) in your browser.
+  2. Select your country region (UK, US, Canada, Australia, Ireland).
+  3. Click **`🚀 Install on Stremio`** — the Stremio app will open and prompt you to install.
+* **Android TV / Fire TV / Smart TVs**:
+  1. Install the addon on your computer or phone while logged into your Stremio account.
+  2. Because Stremio syncs addons across devices, NightKnight Cinema will automatically appear on your TV!
+  3. Alternatively, copy your configured install link and paste it into Stremio's Addon search bar on TV.
+* **iOS / Stremio Web (`web.stremio.com`)**:
+  1. Visit [https://nightknight-cinema.onrender.com](https://nightknight-cinema.onrender.com).
+  2. Long-press or right-click the **`🚀 Install on Stremio`** button and select **Copy Link Address**.
+  3. In Stremio Web, navigate to **Addons** $\rightarrow$ paste the copied link into the search bar $\rightarrow$ tap **Install**.
+
+---
+
+### 2. 📺 How to Watch Live Regional TV & Read the TV Guide
+* In Stremio, scroll to the **Live TV & Guide** catalog (customized to your region).
+* **Choose a Channel**: Select any broadcast channel (e.g. GB News, ABC News, GREAT! Movies, NASA TV, Red Bull TV).
+* **View the EPG TV Guide**: The channel details screen displays:
+  * **Now Airing**: The show currently broadcasting with runtime and overview.
+  * **Upcoming Shows Today**: A chronological schedule of upcoming programs with exact broadcast start times.
+* **Play Live Stream**: Click **Watch** or select the `🔴 LIVE BROADCAST` stream to start unencrypted HD streaming inside Stremio's native video player.
+
+---
+
+### 3. ⏰ How to Set Reminders & Push Alerts for Live TV & Episodes
+* **For Live TV Shows**: Open any channel in the **Live TV & Guide** feed. Browse the list of today's scheduled shows (e.g. `⏰ [AIRS AT 20:00] ...`). Click **`+` (Add to Library)** on the channel. When the show's airtime arrives, Stremio triggers a push notification alerting you that it is starting!
+* **For Cinema Premieres**: Open **Upcoming Movie Releases (16:9)** and click **`+` (Add to Library)** on any upcoming movie. Stremio will display the film on your Stremio Calendar and notify you on premiere day.
+* **For Ongoing Series**: Open **Upcoming TV Shows (16:9)** and click **`+` (Add to Library)** on any series to track episode air dates.
+* **Make Sure Notifications Are Enabled**: In Stremio, navigate to **Settings** $\rightarrow$ **General** $\rightarrow$ toggle **Notifications: ON**.
+
+---
+
+### 4. ⚡ How to Stream DRM-Free Cinema Classics
+* Navigate to the **DRM-Free Cinema & Classics** catalog in Stremio.
+* Filter by genre: *Sci-Fi & Cyber*, *Film Noir & Crime*, *Cult Horror & Mystery*, *Cinema Classics*, *Comedy & Drama*, or *Animation & Family*.
+* Select any masterpiece (e.g. *Night of the Living Dead*, *Nosferatu*, *The General*, *His Girl Friday*, *The Stranger*).
+* Click **Play** — video streams instantly in high-definition directly from open-source archive CDNs with zero buffering risk.
+
+---
+
+### 5. ▶️ How to Use YouTube In-App & BYOA Streaming Hubs
+* **YouTube In-App Playback**:
+  * Type any video title or creator in Stremio's top search bar, or browse the **YouTube (NightKnight)** catalog.
+  * Click to play directly inside Stremio (DRM-Free) or pick **`[YOUTUBE • BYOA]`** to hand off to the official YouTube app.
+* **BYOA (Bring Your Own Account) Streaming Hubs**:
+  * When viewing any movie or show, NightKnight Cinema checks if it is available on your local streaming services (BBC iPlayer, ITVX, Channel 4, Netflix, Disney+, Prime, Max, etc.).
+  * Clicking the provider stream button deep-links directly into that official platform where you are already signed in.
+
+---
+
+### 6. 🛡️ How to Enable Real-Debrid for Encrypted Cloud Streaming
+* If you have a Real-Debrid, AllDebrid, Premiumize, or TorBox subscription:
+  1. Generate your configured scraper URL from Torrentio (with your API key).
+  2. Visit [https://nightknight-cinema.onrender.com](https://nightknight-cinema.onrender.com).
+  3. Paste that link into the **Upstream Scraper** box.
+  4. Click **`🚀 Install on Stremio`**.
+  5. All video streams will now download to high-speed Debrid cloud servers and stream to your device over encrypted TLS 1.3 with zero P2P exposure.
 
 ---
 
