@@ -1,8 +1,8 @@
 {
   "name": "nightknight-cinema",
-  "version": "1.5.4",
+  "version": "1.6.0",
   "type": "module",
-  "description": "NightKnight Cinema — Complete Actor/Director Filmographies, Curated Genres, 16:9 Widescreen Feeds, Stremio Calendar Sync & Intelligent Stream Speed Optimizer",
+  "description": "NightKnight Cinema — Regional Live TV & TV Guide (EPG), DRM-Free Cinema & Stream Engine",
   "main": "server.js",
   "author": "NightKnight",
   "license": "MIT",

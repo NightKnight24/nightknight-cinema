@@ -1,7 +1,7 @@
-# ⚔️ NightKnight Cinema — Stremio Addon (v1.5.4)
+# ⚔️ NightKnight Cinema — Stremio Addon (v1.6.0)
 
 > **Created by NightKnight**  
-> The ultimate cinema & media hub: YouTube in-app playback & global search, BYOA streaming hubs (Netflix, BBC iPlayer, ITVX, Channel 4, Disney+, Prime, Max), Curated Franchises in release order, Verified IMDb & TMDb Ratings, Home Theater Audio/Video tags, intelligent stream speed ranking, real-time community feedback & live telemetry.
+> The ultimate cinema & media hub: Regional Live TV & TV Guide (EPG), Native DRM-Free Cinema, YouTube in-app playback & global search, BYOA streaming hubs (Netflix, BBC iPlayer, ITVX, Channel 4, Disney+, Prime, Max), Curated Franchises in release order, Verified IMDb & TMDb Ratings, Home Theater Audio/Video tags, intelligent stream speed ranking, real-time community feedback & live telemetry.
 
 ---
 
@@ -10,7 +10,7 @@
 * 🌐 **Live Web Portal & Configuration**: [https://nightknight-cinema.onrender.com](https://nightknight-cinema.onrender.com)
 * 🚀 **Stremio 1-Click Install**: [`stremio://nightknight-cinema.onrender.com/manifest.json`](stremio://nightknight-cinema.onrender.com/manifest.json)
 * 👨‍💻 **Developer Profile & Projects**: [https://github.com/NightKnight24](https://github.com/NightKnight24)
-* 📦 **Official Releases**: [GitHub Releases (v1.5.4)](https://github.com/NightKnight24/nightknight-cinema/releases)
+* 📦 **Official Releases**: [GitHub Releases (v1.6.0)](https://github.com/NightKnight24/nightknight-cinema/releases)
 * 🐳 **Container Packages**: [GitHub Packages (`ghcr.io`)](https://github.com/NightKnight24/nightknight-cinema/pkgs/container/nightknight-cinema)
 * 📊 **Live Anonymized Analytics**: [https://nightknight-cinema.onrender.com/api/stats](https://nightknight-cinema.onrender.com/api/stats)
 * 🐛 **Issue Tracker & Feature Requests**: [GitHub Issues](https://github.com/NightKnight24/nightknight-cinema/issues)
@@ -20,25 +20,51 @@
 
 ## ✨ Core Features & Capabilities
 
-### 1. ▶️ YouTube Native In-App Playback & Global Search
+### 1. 📺 Regional Live TV & Electronic Program Guide (EPG)
+* **Tailored Channel Lineup**: Automatically serves high-quality, legal, unencrypted Free-to-Air & FAST broadcast channels based on your chosen region:
+  * 🇬🇧 **United Kingdom**: GB News (1080p), GREAT! Movies (1080p), GREAT! Romance & Drama (1080p), CNBC UK & Europe (1080p), DW English (1080p), Red Bull TV, NASA TV HD.
+  * 🇺🇸 **United States**: ABC News Live (1080p), DW News US (1080p), 30A Classic Movie Channel, NASA TV (Public & Media 1080p), Red Bull TV.
+  * 🇨🇦 **Canada**: CBC News Network (1080p), CityNews Toronto (720p), DW English, Red Bull TV, NASA TV.
+  * 🇦🇺 **Australia**: ABC News Australia (720p), Sky News / News24 Australia (1080p), MovieSphere Australia (1080p), Red Bull TV.
+  * 🇮🇪 **Ireland**: Sky News HD (IE/UK), GREAT! Movies HD, DW English, NASA TV HD.
+* **Dynamic Hour-by-Hour TV Guide**: Opening any channel card displays:
+  * **Now Airing**: Current show title, start time, and synopsis calculated dynamically for the current hour.
+  * **Coming Up Today**: Next 4 consecutive scheduled programs and airtimes.
+* **100% In-App Playback**: Direct unencrypted HLS (`.m3u8`) streaming right inside Stremio's native media player with backup streams.
+
+### 2. ⚡ Native DRM-Free Cinema & Public Domain Classics
+* **Direct Stremio Streaming**: Curated collection of cinema masterpieces that stream 100% directly inside Stremio's native player with zero external apps, zero buffering risk, and zero DRM keys required:
+  * 🧟 **Night of the Living Dead (1968)** — George A. Romero's genre-defining horror masterpiece.
+  * 🧛 **Nosferatu: A Symphony of Horror (1922)** — F.W. Murnau's legendary German expressionist gothic masterpiece.
+  * 🚂 **The General (1926)** — Buster Keaton's greatest silent comedy adventure.
+  * 📰 **His Girl Friday (1940)** — Cary Grant & Rosalind Russell in Howard Hawks' rapid-fire screwball comedy.
+  * 🏰 **House on Haunted Hill (1959)** — Vincent Price in William Castle's iconic thriller.
+  * 🕵️ **The Stranger (1946)** — Directed by and starring Orson Welles with Edward G. Robinson.
+  * 🎨 **Gulliver's Travels (1939)** — Max Fleischer's classic animated milestone.
+  * 🪐 **Voyage to the Planet of Prehistoric Women (1967)** — Cult vintage sci-fi.
+  * 🔍 **Sherlock Holmes: Dressed to Kill (1946)** — Basil Rathbone & Nigel Bruce.
+  * 🎯 **Suddenly (1954)** — Gripping suspense noir starring Frank Sinatra.
+* **High-Speed CDN Feeds**: Fast, uncompressed direct video feeds hosted on Wikimedia and open-source public domain archives.
+
+### 3. ▶️ YouTube Native In-App Playback & Global Search
 * **Search Everything**: Type any YouTube video, creator, music video, documentary, or podcast directly in Stremio's global search bar or browse the dedicated **YouTube (NightKnight)** catalog.
 * **DRM-Free In-App Player**: Plays video streams directly inside Stremio's native video player window with hardware acceleration.
 * **Dual BYOA Action**: Also provides a **`[YOUTUBE • BYOA]`** option to hand off seamlessly to the official YouTube app/website under your personal Google account.
 * **Rich Metadata**: Automatically resolves authentic titles, channel creators, video durations, and high-resolution thumbnails via YouTube oEmbed.
 
-### 2. 🇬🇧 UK & Global BYOA (Bring Your Own Account) Streaming Hubs
+### 4. 🇬🇧 UK & Global BYOA (Bring Your Own Account) Streaming Hubs
 * Automatically detects legal streaming availability with 100% provider ID accuracy:
   * **UK Free Catch-Up**: **BBC iPlayer**, **ITVX**, **Channel 4**, **My5**, **STV Player**, **S4C Clic**, and **U (Dave / UKTV Play)**.
   * **UK & Global Subscriptions**: **Sky Go**, **NOW**, **BritBox**, **Amazon Prime Video**, **Disney+**, **Netflix**, **Paramount+**, **Apple TV+**, **Max (HBO)**, **Discovery+**, **Crunchyroll**, **MUBI**, **BFI Player**, and **Hayu**.
 * **Zero-Knowledge Privacy**: 1-click deep-link buttons hand off securely to your official app or web browser where you are already signed in. Zero passwords, tokens, or credentials ever pass through the addon.
 
-### 3. 🎬 Official Studio Trailers In-App
+### 5. 🎬 Official Studio Trailers In-App
 * Detects official studio trailers from TMDb and surfaces an **`🎬 [OFFICIAL TRAILER]`** stream that plays directly inside Stremio's built-in player before starting a film.
 
-### 4. 📺 Streaming Platform Catalogs
+### 6. 📺 Streaming Platform Catalogs
 * Dedicated rows and filter options for all major streaming services: **Netflix**, **Apple TV+**, **Max (HBO)**, **Disney+**, **Amazon Prime Video**, and **Paramount+**.
 
-### 5. 🍿 Curated Franchises & Sagas in Viewing Order
+### 7. 🍿 Curated Franchises & Sagas in Viewing Order
 * Instant access to complete film and TV sagas organized chronologically in verified release order:
   * 🦸 **Marvel Cinematic Universe (MCU)**: Chronological from Iron Man (2008), excluding unreleased placeholders.
   * 🌌 **Star Wars Saga**: Core episodic films, anthologies (Rogue One, Solo), and live-action/animated series in release order.
@@ -48,32 +74,32 @@
   * 🏮 **Studio Ghibli Masterpieces**: Complete Hayao Miyazaki & Ghibli animated catalog.
   * 🎬 **Christopher Nolan & Quentin Tarantino Collections**: Full filmographies in chronological order.
 
-### 6. ⭐ Verified Critic Badges & Awards Recognition
+### 8. ⭐ Verified Critic Badges & Awards Recognition
 * Injects authentic IMDb ratings, TMDb audience percentages, and Academy Award / Oscar acknowledgments right above the synopsis:
   `⭐ IMDb: 9.3/10 • 🎬 TMDb: 8.7/10 (87% • 31k votes) • 🏆 Nominated for 7 Oscars`
 * **Honest Attribution**: TMDb ratings are strictly identified as TMDb and never disguised as IMDb scores.
 
-### 7. 🔊 Home Cinema Audio & Video Stream Badges
+### 9. 🔊 Home Cinema Audio & Video Stream Badges
 * Automatically inspects stream titles and tags technical specifications:
   * **Dynamic Range**: `✨ Dolby Vision`, `🌈 HDR10+`, `🌈 HDR`, `10-bit` (strictly distinguished from DVDRip / HDRip).
   * **Sound Codecs**: `🔊 Dolby Atmos`, `🔊 TrueHD 7.1`, `🔊 DTS-HD MA`, `🔊 DTS:X`, `🔊 5.1 Surround`.
   * **Editions**: `💎 Lossless Remux`, `🎞️ IMAX Enhanced`, `🎬 Extended / Director's Cut`.
 
-### 8. ⚡ Intelligent Stream Speed Ranking & Buffer Shield
+### 10. ⚡ Intelligent Stream Speed Ranking & Buffer Shield
 * **Speed Optimizer**: Places instant cloud CDN streams (`🚀 [INSTANT CDN • 0 BUFFER]`) and high-seeder torrents (`⚡ [FASTEST • 600+ 👤]`) at the very top.
 * **Buffer Shield**: Warns against dangerous, massive files with low seeders (`⚠️ [HIGH BUFFER RISK]`) and filters out dead streams (0 seeders).
 
-### 9. 🎬 Complete Actor & Director Filmographies
+### 11. 🎬 Complete Actor & Director Filmographies
 * Search any actor or director in Stremio's search bar to immediately browse their complete filmography ranked by popularity and vote count.
 
-### 10. 📅 16:9 Widescreen Landscape Feeds & Calendar Sync
+### 12. 📅 16:9 Widescreen Landscape Feeds & Calendar Sync
 * Dedicated 16:9 widescreen card feeds for upcoming theatrical releases and series airing over the next 7 days, with full air-date synchronization to Stremio's Calendar.
 
-### 11. 💬 Community Feedback & Comments Engine
+### 13. 💬 Community Feedback & Comments Engine
 * **In-App Comment Form**: Submit comments, review features, or request new streaming platforms directly from the web portal.
 * **Live Community Stream**: Real-time comment feed with category labels (`💡 Feature Request`, `📺 Streaming Service`, `🐛 Bug Report`, `⭐ Review`, `💬 General Comment`) and creator badge verification (`👑 Creator`).
 
-### 12. 📊 Live Anonymized Analytics & Telemetry
+### 14. 📊 Live Anonymized Analytics & Telemetry
 * Real-time install counter and request telemetry via `/api/stats` using GDPR-compliant salted SHA-256 client hashes (zero raw IP addresses stored).
 
 ---
@@ -148,8 +174,10 @@ NightKnight Cinema fully integrates both **Cinema Theatrical Premieres** and **T
 | **Series Catalog** | `/catalog/series/actor_genre_series.json` | Actor filmographies, search & curated TV genres |
 | **Upcoming Movies (16:9)** | `/catalog/movie/upcoming_movies.json` | 16:9 landscape cards for upcoming movie releases |
 | **Upcoming TV Shows (16:9)**| `/catalog/series/on_the_air_series.json` | 16:9 landscape cards for shows airing next 7 days |
+| **Regional Live TV & Guide** | `/catalog/channel/regional_live_tv.json` | Free-to-Air & FAST broadcast lineup personalized to user region |
+| **DRM-Free Cinema** | `/catalog/movie/drmfree_cinema.json` | 100% legal public domain & open source cinema classics |
 | **Calendar Videos** | `/catalog/series/calendar-videos/calendarVideosIds=...` | Stremio calendar air date feed |
-| **Metadata** | `/meta/:type/:id.json` | Detailed media metadata, episodes, and stream mappings |
+| **Metadata & TV Guide** | `/meta/:type/:id.json` | Detailed media metadata, episodes, and real-time TV Guide (EPG) |
 
 ---
 

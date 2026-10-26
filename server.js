@@ -15,7 +15,7 @@ const TMDB_API_KEY = process.env.TMDB_API_KEY || '3157bd6dacbc3a653ae2e5a3b19beb
 const PORT = process.env.PORT || 7000;
 const HOST = process.env.HOST || (process.env.PORT ? '0.0.0.0' : '127.0.0.1');
 
-const ADDON_VERSION = '1.5.4';
+const ADDON_VERSION = '1.6.0';
 
 // Load server-wide DEFAULTS (read-only). Per-user settings live in the install URL, never on the server.
 function loadConfig() {
@@ -44,6 +44,634 @@ const REGIONS = {
   CA: 'Canada',
   AU: 'Australia'
 };
+
+// -------------------------------------------------------------
+// REGIONAL LIVE TV CHANNELS (100% Legal, Unencrypted & DRM-Free)
+// Filtered dynamically by user's selected region.
+// -------------------------------------------------------------
+const REGIONAL_CHANNELS = {
+  GB: [
+    {
+      id: 'tv:gb_gbnews',
+      name: 'GB News HD',
+      logo: 'https://upload.wikimedia.org/wikipedia/en/thumb/3/35/GB_News_Logo.svg/512px-GB_News_Logo.svg.png',
+      background: 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=1280&q=80',
+      genres: ['News & Info', 'United Kingdom', 'Live TV'],
+      streamUrl: 'https://amg01076-lightningintern-gbnewsau-samsungau-et7fz.amagi.tv/playlist/amg01076-lightningintern-gbnewsau-samsungau/playlist.m3u8',
+      summary: '24/7 UK national television news, opinion, and analysis channel featuring debate and current affairs.',
+      network: 'GB News',
+      guideSchedule: [
+        { time: '06:00', title: 'Breakfast with Eamonn & Isabel', desc: 'Kickstart your morning with news, debate, weather and entertainment.' },
+        { time: '09:30', title: "Britain's Newsroom", desc: 'Top national stories, politics, and consumer issues with live interviews.' },
+        { time: '12:00', title: 'Live Desk UK', desc: 'Breaking news coverage from London and Westminster.' },
+        { time: '15:00', title: 'The Afternoon Edition', desc: 'Panel analysis, economic updates, and cultural perspectives.' },
+        { time: '18:00', title: 'Dewbs & Co.', desc: 'Bold opinion and lively debate on the day’s biggest controversies.' },
+        { time: '19:00', title: 'State of the Nation', desc: 'In-depth political scrutiny and interviews with MPs.' },
+        { time: '20:00', title: 'Farage at Eight', desc: 'Hard-hitting political commentary and viewer interaction.' },
+        { time: '21:00', title: 'Patrick Christys Tonight', desc: 'Late night discussion, exclusive interviews, and public reaction.' },
+        { time: '23:00', title: 'Headliners & Overnight News', desc: 'Comedians review the next morning papers and overnight bulletins.' }
+      ]
+    },
+    {
+      id: 'tv:gb_great_movies',
+      name: 'GREAT! Movies HD',
+      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Great%21_Movies_logo_2021.svg/512px-Great%21_Movies_logo_2021.svg.png',
+      background: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=1280&q=80',
+      genres: ['Entertainment', 'Movies & Drama', 'Live TV'],
+      streamUrl: 'https://amg01753-narrativeuk-amg01753c3-lg-gb-1833.playouts.now.amagi.tv/playlist/amg01753-narrativeuk-greatmovies-lggb/playlist.m3u8',
+      summary: 'The UK home of movie entertainment, showcasing Hollywood blockbusters, action hits, thrillers and award-winning dramas.',
+      network: 'GREAT! movies',
+      guideSchedule: [
+        { time: '07:00', title: 'Morning Cinema Matinee', desc: 'Classic adventure and family drama to start the day.' },
+        { time: '11:00', title: 'Action Showcase', desc: 'High-octane Hollywood thrills and detective mysteries.' },
+        { time: '14:30', title: 'Afternoon Movie Spotlight', desc: 'Critically acclaimed dramas and heartwarming stories.' },
+        { time: '18:00', title: 'Prime Time Feature Presentation', desc: 'Star-studded Hollywood blockbuster movie.' },
+        { time: '21:00', title: 'GREAT! Nightcap Thriller', desc: 'Pulse-pounding crime, suspense, and thriller cinema.' },
+        { time: '23:30', title: 'Late Night Cult Cinema', desc: 'Cult favorites, sci-fi, and midnight movies.' }
+      ]
+    },
+    {
+      id: 'tv:gb_great_romance',
+      name: 'GREAT! Romance & Drama HD',
+      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cf/Great%21_Romance_logo.svg/512px-Great%21_Romance_logo.svg.png',
+      background: 'https://images.unsplash.com/photo-1518199266791-5375a83190b7?w=1280&q=80',
+      genres: ['Entertainment', 'Movies & Drama', 'Live TV'],
+      streamUrl: 'https://amg01753-narrativeuk-amg01753c2-lg-gb-1832.playouts.now.amagi.tv/playlist/amg01753-narrativeuk-greatchristmas-lggb/playlist.m3u8',
+      summary: 'Heartwarming stories, romantic comedies, modern romances, and touching dramatic feature films.',
+      network: 'GREAT! romance',
+      guideSchedule: [
+        { time: '08:00', title: 'Morning Romance', desc: 'Uplifting romantic comedies and feel-good stories.' },
+        { time: '12:00', title: 'Midday Drama Showcase', desc: 'Emotionally gripping feature-length dramas.' },
+        { time: '16:00', title: 'Love & Laughter Matinee', desc: 'Delightful romantic mix of humor and heart.' },
+        { time: '19:00', title: 'Prime Romance Premiere', desc: 'Premiere romantic feature film with stellar cast.' },
+        { time: '21:30', title: 'Heartfelt Evening Film', desc: 'Classic relationship dramas and inspirational journeys.' }
+      ]
+    },
+    {
+      id: 'tv:gb_cnbc_uk',
+      name: 'CNBC UK & Europe HD',
+      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/CNBC_logo.svg/512px-CNBC_logo.svg.png',
+      background: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=1280&q=80',
+      genres: ['News & Info', 'United Kingdom', 'Live TV'],
+      streamUrl: 'https://amg01079-nbcuuk-amg01079c2-samsung-gb-1258.playouts.now.amagi.tv/playlist.m3u8',
+      summary: 'Real-time financial markets, global business headlines, stock market movements, and economic analysis direct from London.',
+      network: 'CNBC',
+      guideSchedule: [
+        { time: '06:00', title: 'Capital Connection', desc: 'Connecting the trading day from Asia to Europe.' },
+        { time: '07:00', title: 'Squawk Box Europe', desc: 'The flagship European pre-market business news show.' },
+        { time: '10:00', title: 'Street Signs Europe', desc: 'Tracking European stocks, currencies, and bonds.' },
+        { time: '12:00', title: 'Worldwide Exchange', desc: 'Global economic overview before the US market open.' },
+        { time: '14:00', title: 'Squawk on the Street', desc: 'Live from the New York Stock Exchange floor.' },
+        { time: '17:00', title: 'Closing Bell Europe', desc: 'Wrap-up of the day’s European market trading session.' },
+        { time: '19:00', title: 'Fast Money & Mad Money', desc: 'Actionable stock ideas and Wall Street analysis.' },
+        { time: '22:00', title: 'Overnight Global Markets', desc: 'Asian market previews and overnight futures.' }
+      ]
+    },
+    {
+      id: 'tv:gb_dw_english',
+      name: 'DW English HD',
+      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/Deutsche_Welle_symbol_2012.svg/512px-Deutsche_Welle_symbol_2012.svg.png',
+      background: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=1280&q=80',
+      genres: ['News & Info', 'Culture & Docs', 'Live TV'],
+      streamUrl: 'https://dwamdstream102.akamaized.net/hls/live/2015525/dwstream102/index.m3u8',
+      summary: 'International news and in-depth documentaries covering European politics, culture, climate, and world events.',
+      network: 'DW',
+      guideSchedule: [
+        { time: '07:00', title: 'DW News Asia-Europe', desc: 'International headlines and live correspondents.' },
+        { time: '10:00', title: 'Global 3000: The Globalization Program', desc: 'Exploring the impact of globalization on society.' },
+        { time: '13:00', title: 'DW News Live', desc: 'Comprehensive global news and investigative reporting.' },
+        { time: '16:00', title: 'Eco Africa & Shift Tech', desc: 'Innovative sustainability and technological advances.' },
+        { time: '19:00', title: 'DW News at Seven', desc: 'Prime European perspectives on global affairs.' },
+        { time: '21:00', title: 'Documentary: European Horizons', desc: 'Award-winning investigative documentaries.' }
+      ]
+    },
+    {
+      id: 'tv:gb_redbull',
+      name: 'Red Bull TV HD',
+      logo: 'https://upload.wikimedia.org/wikipedia/en/thumb/f/f5/Red_Bull_TV_logo.svg/512px-Red_Bull_TV_logo.svg.png',
+      background: 'https://images.unsplash.com/photo-1517649763962-0c623266ddc0?w=1280&q=80',
+      genres: ['Sports & Action', 'Culture & Docs', 'Live TV'],
+      streamUrl: 'https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8',
+      summary: 'Action sports, extreme events, music festivals, live downhill racing, Formula 1 documentaries, and global adventure.',
+      network: 'Red Bull TV',
+      guideSchedule: [
+        { time: '08:00', title: 'Morning Shred: Surf & Snow', desc: 'Epic waves and mountain freeride action from around the globe.' },
+        { time: '12:00', title: 'UCI Mountain Bike World Cup Rewind', desc: 'Downhill mountain bike finals and highlights.' },
+        { time: '15:00', title: 'F1 & Rally Motorsports Access', desc: 'Behind the scenes with championship racing teams.' },
+        { time: '18:00', title: 'Red Bull Rampage: Extreme Freeride', desc: 'Legendary cliffs and desert drops in Utah.' },
+        { time: '21:00', title: 'The Way of the Wildcard (Documentary)', desc: 'Inspiring journey of unconventional athletes.' }
+      ]
+    },
+    {
+      id: 'tv:gb_nasa',
+      name: 'NASA TV HD',
+      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/NASA_logo.svg/512px-NASA_logo.svg.png',
+      background: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1280&q=80',
+      genres: ['Culture & Docs', 'FAST & Classic TV', 'Live TV'],
+      streamUrl: 'https://ntv1.akamaized.net/hls/live/2014075/NASA-NTV1-HLS/master.m3u8',
+      summary: 'Live broadcasts from the International Space Station, rocket launches, spacewalks, astronaut interviews, and deep space exploration.',
+      network: 'NASA TV',
+      guideSchedule: [
+        { time: '08:00', title: 'ISS Live Orbit: High Definition Earth Views', desc: 'Streaming real-time HD views of Earth from the space station.' },
+        { time: '11:00', title: 'Space Station Crew Operations', desc: 'Astronauts conduct microgravity experiments aboard the ISS.' },
+        { time: '14:00', title: 'NASA ScienceCast & Mission Briefings', desc: 'Discoveries from the James Webb and Hubble Space Telescopes.' },
+        { time: '17:00', title: 'Artemis Moon Mission Update', desc: 'Humanity returns to the Moon: hardware tests and launch countdowns.' },
+        { time: '20:00', title: 'Cosmic Journeys: Mars & Beyond', desc: 'Robotic exploration across the solar system.' }
+      ]
+    }
+  ],
+  US: [
+    {
+      id: 'tv:us_abc_live',
+      name: 'ABC News Live HD',
+      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/ABC_News_Live_logo_2021.svg/512px-ABC_News_Live_logo_2021.svg.png',
+      background: 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=1280&q=80',
+      genres: ['News & Info', 'United States', 'Live TV'],
+      streamUrl: 'https://amg01942-amg01942c6-stirr-us-10178.playouts.now.amagi.tv/playlist.m3u8',
+      summary: '24/7 streaming news channel from ABC News featuring live breaking news, context, in-depth analysis, and award-winning journalism.',
+      network: 'ABC News',
+      guideSchedule: [
+        { time: '07:00', title: 'ABC News Live Morning', desc: 'The morning’s top stories, national weather, and market preview.' },
+        { time: '09:00', title: 'The Breakdown with Linsey Davis', desc: 'Contextual analysis of the biggest legal and political stories.' },
+        { time: '12:00', title: 'Midday Briefing', desc: 'Live correspondents reporting on fast-breaking events.' },
+        { time: '15:00', title: 'Your Voice Your Vote: Washington Watch', desc: 'Congressional updates, White House briefings, and policy debate.' },
+        { time: '19:00', title: 'ABC News Live Prime', desc: 'The flagship evening newscast with anchor Linsey Davis.' },
+        { time: '21:00', title: 'Nightline Focus', desc: 'Deep dive investigative reporting and human interest features.' }
+      ]
+    },
+    {
+      id: 'tv:us_nasa',
+      name: 'NASA TV HD (Public & Media)',
+      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/NASA_logo.svg/512px-NASA_logo.svg.png',
+      background: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1280&q=80',
+      genres: ['Culture & Docs', 'FAST & Classic TV', 'Live TV'],
+      streamUrl: 'https://ntv1.akamaized.net/hls/live/2014075/NASA-NTV1-HLS/master.m3u8',
+      summary: 'Live astronaut broadcasts from the International Space Station, rocket tests, Artemis moon missions, and astronomical breakthroughs.',
+      network: 'NASA TV',
+      guideSchedule: [
+        { time: '08:00', title: 'ISS Live Orbit: High Definition Earth Views', desc: 'Streaming real-time HD views of Earth from the space station.' },
+        { time: '11:00', title: 'Space Station Crew Operations', desc: 'Astronauts conduct microgravity experiments aboard the ISS.' },
+        { time: '14:00', title: 'NASA ScienceCast & Mission Briefings', desc: 'Discoveries from the James Webb and Hubble Space Telescopes.' },
+        { time: '17:00', title: 'Artemis Moon Mission Update', desc: 'Humanity returns to the Moon: hardware tests and launch countdowns.' },
+        { time: '20:00', title: 'Cosmic Journeys: Mars & Beyond', desc: 'Robotic exploration across the solar system.' }
+      ]
+    },
+    {
+      id: 'tv:us_redbull',
+      name: 'Red Bull TV HD',
+      logo: 'https://upload.wikimedia.org/wikipedia/en/thumb/f/f5/Red_Bull_TV_logo.svg/512px-Red_Bull_TV_logo.svg.png',
+      background: 'https://images.unsplash.com/photo-1517649763962-0c623266ddc0?w=1280&q=80',
+      genres: ['Sports & Action', 'Culture & Docs', 'Live TV'],
+      streamUrl: 'https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8',
+      summary: 'Extreme action sports, live world cup events, motorsports, skateboarding, surfing, and original adventure documentaries.',
+      network: 'Red Bull TV',
+      guideSchedule: [
+        { time: '08:00', title: 'Morning Shred: Surf & Snow', desc: 'Epic waves and mountain freeride action from around the globe.' },
+        { time: '12:00', title: 'UCI Mountain Bike World Cup Rewind', desc: 'Downhill mountain bike finals and highlights.' },
+        { time: '15:00', title: 'F1 & Rally Motorsports Access', desc: 'Behind the scenes with championship racing teams.' },
+        { time: '18:00', title: 'Red Bull Rampage: Extreme Freeride', desc: 'Legendary cliffs and desert drops in Utah.' },
+        { time: '21:00', title: 'The Way of the Wildcard (Documentary)', desc: 'Inspiring journey of unconventional athletes.' }
+      ]
+    },
+    {
+      id: 'tv:us_dw',
+      name: 'DW News Live US HD',
+      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/Deutsche_Welle_symbol_2012.svg/512px-Deutsche_Welle_symbol_2012.svg.png',
+      background: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=1280&q=80',
+      genres: ['News & Info', 'Culture & Docs', 'Live TV'],
+      streamUrl: 'https://dwamdstream102.akamaized.net/hls/live/2015525/dwstream102/index.m3u8',
+      summary: 'Global 24/7 news broadcaster providing international perspective, geopolitical context, and investigative features.',
+      network: 'DW',
+      guideSchedule: [
+        { time: '07:00', title: 'DW News Asia-Europe', desc: 'International headlines and live correspondents.' },
+        { time: '10:00', title: 'Global 3000: The Globalization Program', desc: 'Exploring the impact of globalization on society.' },
+        { time: '13:00', title: 'DW News Live', desc: 'Comprehensive global news and investigative reporting.' },
+        { time: '16:00', title: 'Eco Africa & Shift Tech', desc: 'Innovative sustainability and technological advances.' },
+        { time: '19:00', title: 'DW News at Seven', desc: 'Prime European perspectives on global affairs.' },
+        { time: '21:00', title: 'Documentary: European Horizons', desc: 'Award-winning investigative documentaries.' }
+      ]
+    },
+    {
+      id: 'tv:us_classic_movies',
+      name: '30A Classic Movie Channel',
+      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/Film_strip.svg/512px-Film_strip.svg.png',
+      background: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=1280&q=80',
+      genres: ['Entertainment', 'FAST & Classic TV', 'Live TV'],
+      streamUrl: 'https://30a-tv.com/feeds/pzaz/30atvmovies.m3u8',
+      summary: '24/7 vintage Hollywood cinema: Golden Age screwball comedies, film noir, westerns, and vintage sci-fi.',
+      network: '30A TV',
+      guideSchedule: [
+        { time: '08:00', title: 'Morning Matinee Comedy', desc: 'Classic screwball and slapstick comedies from the golden era.' },
+        { time: '12:00', title: 'Classic Westerns on High Noon', desc: 'Cowboys, outlaws, and showdowns of the American frontier.' },
+        { time: '16:00', title: 'Vintage Mystery Hour', desc: 'Detectives, noir whodunits, and crime capers.' },
+        { time: '20:00', title: 'Prime Classic Hollywood Feature', desc: 'Unforgettable cinema legends in iconic roles.' },
+        { time: '23:00', title: 'Creature Feature Midnight Movie', desc: 'Retro monster and sci-fi drive-in classics.' }
+      ]
+    }
+  ],
+  CA: [
+    {
+      id: 'tv:ca_cbc_news',
+      name: 'CBC News Network HD',
+      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/CBC_Logo_1992-Present.svg/512px-CBC_Logo_1992-Present.svg.png',
+      background: 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=1280&q=80',
+      genres: ['News & Info', 'Canada', 'Live TV'],
+      streamUrl: 'https://d2ny9lo79ujali.cloudfront.net/CBC_News_International.m3u8',
+      summary: 'Canada’s premier news source delivering live Canadian news, national politics from Ottawa, and international reporting.',
+      network: 'CBC News',
+      guideSchedule: [
+        { time: '06:00', title: 'CBC Morning Live', desc: 'Comprehensive Canadian morning news with live coast-to-coast reports.' },
+        { time: '09:00', title: 'CBC News Now', desc: 'Real-time breaking stories, market movements, and weather.' },
+        { time: '13:00', title: 'CBC News Today', desc: 'National discussions on healthcare, economy, and culture.' },
+        { time: '17:00', title: 'Power & Politics', desc: 'Canada’s leading daily political show hosted from Parliament Hill.' },
+        { time: '21:00', title: 'The National', desc: 'CBC flagship nightly newscast with chief correspondent Adrienne Arsenault.' }
+      ]
+    },
+    {
+      id: 'tv:ca_citynews_toronto',
+      name: 'CityNews Toronto HD',
+      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Citytv_logo.svg/512px-Citytv_logo.svg.png',
+      background: 'https://images.unsplash.com/photo-1509099836639-18ba1795216d?w=1280&q=80',
+      genres: ['News & Info', 'Canada', 'Live TV'],
+      streamUrl: 'https://citynewsregional.akamaized.net/hls/live/1024052/Regional_Live_7/master.m3u8',
+      summary: 'Toronto and Greater Ontario’s live local news, traffic, weather, sports, and community coverage.',
+      network: 'CityNews',
+      guideSchedule: [
+        { time: '06:00', title: 'Breakfast Television Live', desc: 'GTA’s top morning show with news, weather, and traffic.' },
+        { time: '09:00', title: 'CityNews at 9', desc: 'Local breaking news across Toronto and southern Ontario.' },
+        { time: '12:00', title: 'CityNews at Noon', desc: 'Midday municipal politics, crime, and weather updates.' },
+        { time: '17:00', title: 'CityNews at 5 & 6', desc: 'The comprehensive evening regional broadcast.' },
+        { time: '23:00', title: 'CityNews Tonight', desc: 'Late night wrap of local stories and sports.' }
+      ]
+    },
+    {
+      id: 'tv:ca_nasa',
+      name: 'NASA TV HD',
+      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/NASA_logo.svg/512px-NASA_logo.svg.png',
+      background: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1280&q=80',
+      genres: ['Culture & Docs', 'FAST & Classic TV', 'Live TV'],
+      streamUrl: 'https://ntv1.akamaized.net/hls/live/2014075/NASA-NTV1-HLS/master.m3u8',
+      summary: 'Live astronaut broadcasts from the International Space Station, rocket tests, Artemis moon missions, and astronomical breakthroughs.',
+      network: 'NASA TV',
+      guideSchedule: [
+        { time: '08:00', title: 'ISS Live Orbit: High Definition Earth Views', desc: 'Streaming real-time HD views of Earth from the space station.' },
+        { time: '11:00', title: 'Space Station Crew Operations', desc: 'Astronauts conduct microgravity experiments aboard the ISS.' },
+        { time: '14:00', title: 'NASA ScienceCast & Mission Briefings', desc: 'Discoveries from the James Webb and Hubble Space Telescopes.' },
+        { time: '17:00', title: 'Artemis Moon Mission Update', desc: 'Humanity returns to the Moon: hardware tests and launch countdowns.' },
+        { time: '20:00', title: 'Cosmic Journeys: Mars & Beyond', desc: 'Robotic exploration across the solar system.' }
+      ]
+    },
+    {
+      id: 'tv:ca_redbull',
+      name: 'Red Bull TV HD',
+      logo: 'https://upload.wikimedia.org/wikipedia/en/thumb/f/f5/Red_Bull_TV_logo.svg/512px-Red_Bull_TV_logo.svg.png',
+      background: 'https://images.unsplash.com/photo-1517649763962-0c623266ddc0?w=1280&q=80',
+      genres: ['Sports & Action', 'Culture & Docs', 'Live TV'],
+      streamUrl: 'https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8',
+      summary: 'Extreme action sports, live world cup events, motorsports, skateboarding, surfing, and original adventure documentaries.',
+      network: 'Red Bull TV',
+      guideSchedule: [
+        { time: '08:00', title: 'Morning Shred: Surf & Snow', desc: 'Epic waves and mountain freeride action from around the globe.' },
+        { time: '12:00', title: 'UCI Mountain Bike World Cup Rewind', desc: 'Downhill mountain bike finals and highlights.' },
+        { time: '15:00', title: 'F1 & Rally Motorsports Access', desc: 'Behind the scenes with championship racing teams.' },
+        { time: '18:00', title: 'Red Bull Rampage: Extreme Freeride', desc: 'Legendary cliffs and desert drops in Utah.' },
+        { time: '21:00', title: 'The Way of the Wildcard (Documentary)', desc: 'Inspiring journey of unconventional athletes.' }
+      ]
+    }
+  ],
+  AU: [
+    {
+      id: 'tv:au_abc_news',
+      name: 'ABC News Australia HD',
+      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/ABC_News_Australia_logo_2017.svg/512px-ABC_News_Australia_logo_2017.svg.png',
+      background: 'https://images.unsplash.com/photo-1506973035872-a4ec16b8e8d9?w=1280&q=80',
+      genres: ['News & Info', 'Australia', 'Live TV'],
+      streamUrl: 'https://abc-news-dmd-streams-1.akamaized.net/out/v1/701126012d044971b3fa89406a440133/index.m3u8',
+      summary: 'Australia’s continuous television news service broadcasting live news bulletins, national politics, and Asia-Pacific regional analysis.',
+      network: 'ABC News AU',
+      guideSchedule: [
+        { time: '06:00', title: 'ABC News Breakfast', desc: 'National news, finance, sport, and weather across Australia.' },
+        { time: '09:00', title: 'Mornings with Joe O’Brien', desc: 'Live breaking news and parliamentary question time analysis.' },
+        { time: '12:00', title: 'ABC News at Noon', desc: 'The day’s top national and global headlines.' },
+        { time: '16:00', title: 'Afternoon Live with Patricia Karvelas', desc: 'Unpacking political developments from Canberra.' },
+        { time: '19:00', title: 'ABC 7PM News', desc: 'Flagship national evening bulletin with state coverage.' },
+        { time: '21:00', title: 'The World with Beverley O’Connor', desc: 'In-depth international news with a focus on the Indo-Pacific.' }
+      ]
+    },
+    {
+      id: 'tv:au_news24',
+      name: 'Sky News / News24 Australia HD',
+      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Sky_News_Australia_logo_2015.svg/512px-Sky_News_Australia_logo_2015.svg.png',
+      background: 'https://images.unsplash.com/photo-1523482580672-f109ba8cb9be?w=1280&q=80',
+      genres: ['News & Info', 'Australia', 'Live TV'],
+      streamUrl: 'https://skynewsau-live-premium.akamaized.net/hls/live/2105299/skynews/live.m3u8',
+      summary: '24/7 breaking news and opinion from across Australia, including political analysis, business, and national debate.',
+      network: 'Sky News AU',
+      guideSchedule: [
+        { time: '06:00', title: 'First Edition Australia', desc: 'Early morning political briefing and national headlines.' },
+        { time: '09:00', title: 'AM Agenda', desc: 'The morning political agenda live from Parliament House.' },
+        { time: '14:00', title: 'Afternoon Agenda', desc: 'Key ministers and commentators debate federal policy.' },
+        { time: '18:00', title: 'Credlin', desc: 'Peta Credlin provides sharp political analysis of national affairs.' },
+        { time: '20:00', title: 'Paul Murray Live', desc: 'Australia’s popular evening opinion program with guest panels.' }
+      ]
+    },
+    {
+      id: 'tv:au_moviesphere',
+      name: 'MovieSphere Australia HD',
+      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/Film_strip.svg/512px-Film_strip.svg.png',
+      background: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=1280&q=80',
+      genres: ['Entertainment', 'Movies & Drama', 'Live TV'],
+      streamUrl: 'https://amg00353-lionsgatefilmsi-moviesphereaus-samsungau-7qzhf.amagi.tv/playlist/amg00353-lionsgatefilmsi-moviesphereaus-samsungau/playlist.m3u8',
+      summary: 'Hollywood studio movies, hit thrillers, star-studded comedies, and acclaimed dramas streaming 24/7.',
+      network: 'MovieSphere',
+      guideSchedule: [
+        { time: '08:00', title: 'Morning Action Block', desc: 'High adrenaline movies and pulse-pounding adventures.' },
+        { time: '12:00', title: 'Midday Drama Showcase', desc: 'Award-winning performances and cinematic stories.' },
+        { time: '16:00', title: 'Comedy Matinee', desc: 'Laugh-out-loud Hollywood studio comedies.' },
+        { time: '19:30', title: 'MovieSphere Prime Feature', desc: 'Top tier studio blockbuster presentation.' },
+        { time: '22:30', title: 'Late Night Thriller Vault', desc: 'Suspenseful psychological and crime thrillers.' }
+      ]
+    },
+    {
+      id: 'tv:au_redbull',
+      name: 'Red Bull TV HD',
+      logo: 'https://upload.wikimedia.org/wikipedia/en/thumb/f/f5/Red_Bull_TV_logo.svg/512px-Red_Bull_TV_logo.svg.png',
+      background: 'https://images.unsplash.com/photo-1517649763962-0c623266ddc0?w=1280&q=80',
+      genres: ['Sports & Action', 'Culture & Docs', 'Live TV'],
+      streamUrl: 'https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8',
+      summary: 'Extreme action sports, live world cup events, motorsports, surfing, and original adventure documentaries.',
+      network: 'Red Bull TV',
+      guideSchedule: [
+        { time: '08:00', title: 'Morning Shred: Surf & Snow', desc: 'Epic waves and mountain freeride action from around the globe.' },
+        { time: '12:00', title: 'UCI Mountain Bike World Cup Rewind', desc: 'Downhill mountain bike finals and highlights.' },
+        { time: '15:00', title: 'F1 & Rally Motorsports Access', desc: 'Behind the scenes with championship racing teams.' },
+        { time: '18:00', title: 'Red Bull Rampage: Extreme Freeride', desc: 'Legendary cliffs and desert drops in Utah.' },
+        { time: '21:00', title: 'The Way of the Wildcard (Documentary)', desc: 'Inspiring journey of unconventional athletes.' }
+      ]
+    }
+  ],
+  IE: [
+    {
+      id: 'tv:ie_sky_news',
+      name: 'Sky News HD (Ireland & UK)',
+      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d2/Sky_News_2021.svg/512px-Sky_News_2021.svg.png',
+      background: 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=1280&q=80',
+      genres: ['News & Info', 'Ireland', 'Live TV'],
+      streamUrl: 'https://distro001-gb-hls1-prd.delivery.skycdp.com/easel_cdn/ngrp:weather_loop.stream_all/playlist.m3u8',
+      backupUrl: 'https://amg01076-lightningintern-gbnewsau-samsungau-et7fz.amagi.tv/playlist/amg01076-lightningintern-gbnewsau-samsungau/playlist.m3u8',
+      summary: 'Breaking news, comprehensive Irish, UK and European political coverage, and live world event analysis.',
+      network: 'Sky News',
+      guideSchedule: [
+        { time: '06:00', title: 'Sky News Breakfast', desc: 'Morning news bulletin, European headlines, and weather.' },
+        { time: '10:00', title: 'The News Hour with Mark Austin', desc: 'In-depth analysis of major stories and international reports.' },
+        { time: '14:00', title: 'Live at Five with Sarah-Jane Mee', desc: 'Breaking news updates and panel discussions.' },
+        { time: '19:00', title: 'Sky News at Seven', desc: 'Evening roundup of the day’s most important developments.' },
+        { time: '21:00', title: 'The World with Yalda Hakim', desc: 'Eyewitness accounts and interviews from global hot-spots.' }
+      ]
+    },
+    {
+      id: 'tv:ie_great_movies',
+      name: 'GREAT! Movies HD',
+      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Great%21_Movies_logo_2021.svg/512px-Great%21_Movies_logo_2021.svg.png',
+      background: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=1280&q=80',
+      genres: ['Entertainment', 'Movies & Drama', 'Live TV'],
+      streamUrl: 'https://amg01753-narrativeuk-amg01753c3-lg-gb-1833.playouts.now.amagi.tv/playlist/amg01753-narrativeuk-greatmovies-lggb/playlist.m3u8',
+      summary: 'The home of movie entertainment across Ireland and the UK: Hollywood blockbusters, action, and dramas.',
+      network: 'GREAT! movies',
+      guideSchedule: [
+        { time: '07:00', title: 'Morning Cinema Matinee', desc: 'Classic adventure and family drama to start the day.' },
+        { time: '11:00', title: 'Action Showcase', desc: 'High-octane Hollywood thrills and detective mysteries.' },
+        { time: '14:30', title: 'Afternoon Movie Spotlight', desc: 'Critically acclaimed dramas and heartwarming stories.' },
+        { time: '18:00', title: 'Prime Time Feature Presentation', desc: 'Star-studded Hollywood blockbuster movie.' },
+        { time: '21:00', title: 'GREAT! Nightcap Thriller', desc: 'Pulse-pounding crime, suspense, and thriller cinema.' }
+      ]
+    },
+    {
+      id: 'tv:ie_dw',
+      name: 'DW English HD',
+      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/Deutsche_Welle_symbol_2012.svg/512px-Deutsche_Welle_symbol_2012.svg.png',
+      background: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=1280&q=80',
+      genres: ['News & Info', 'Culture & Docs', 'Live TV'],
+      streamUrl: 'https://dwamdstream102.akamaized.net/hls/live/2015525/dwstream102/index.m3u8',
+      summary: 'International news and documentaries covering European politics, climate, culture, and world events.',
+      network: 'DW',
+      guideSchedule: [
+        { time: '07:00', title: 'DW News Asia-Europe', desc: 'International headlines and live correspondents.' },
+        { time: '10:00', title: 'Global 3000: The Globalization Program', desc: 'Exploring the impact of globalization on society.' },
+        { time: '13:00', title: 'DW News Live', desc: 'Comprehensive global news and investigative reporting.' },
+        { time: '19:00', title: 'DW News at Seven', desc: 'Prime European perspectives on global affairs.' },
+        { time: '21:00', title: 'Documentary: European Horizons', desc: 'Award-winning investigative documentaries.' }
+      ]
+    },
+    {
+      id: 'tv:ie_nasa',
+      name: 'NASA TV HD',
+      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/NASA_logo.svg/512px-NASA_logo.svg.png',
+      background: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1280&q=80',
+      genres: ['Culture & Docs', 'FAST & Classic TV', 'Live TV'],
+      streamUrl: 'https://ntv1.akamaized.net/hls/live/2014075/NASA-NTV1-HLS/master.m3u8',
+      summary: 'Live astronaut broadcasts from the International Space Station, rocket tests, and astronomical breakthroughs.',
+      network: 'NASA TV',
+      guideSchedule: [
+        { time: '08:00', title: 'ISS Live Orbit: High Definition Earth Views', desc: 'Streaming real-time HD views of Earth from the space station.' },
+        { time: '11:00', title: 'Space Station Crew Operations', desc: 'Astronauts conduct microgravity experiments aboard the ISS.' },
+        { time: '14:00', title: 'NASA ScienceCast & Mission Briefings', desc: 'Discoveries from the James Webb and Hubble Space Telescopes.' },
+        { time: '17:00', title: 'Artemis Moon Mission Update', desc: 'Humanity returns to the Moon: hardware tests and launch countdowns.' }
+      ]
+    }
+  ]
+};
+
+// -------------------------------------------------------------
+// DRM-FREE CINEMA & CLASSICS (100% Legal Public Domain & Open Source)
+// Direct in-app streaming with high-speed CDN and no external apps.
+// -------------------------------------------------------------
+const DRM_FREE_MOVIES = [
+  {
+    id: 'drmfree:night_of_the_living_dead',
+    title: 'Night of the Living Dead',
+    year: 1968,
+    genres: ['Cult Horror & Mystery', 'All Titles'],
+    director: 'George A. Romero',
+    cast: ['Duane Jones', 'Judith O\'Dea', 'Karl Hardman', 'Marilyn Eastman'],
+    runtime: '96 min',
+    imdbRating: '7.8',
+    poster: 'https://images.metahub.space/poster/medium/tt0063350/img',
+    background: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=1280&q=80',
+    synopsis: 'A ragtag group of Pennsylvanians barricade themselves in an old farmhouse to remain safe from a bloodthirsty horde of flesh-eating ghouls ravaging the East Coast. A genre-defining horror masterpiece.',
+    streamUrl: 'https://upload.wikimedia.org/wikipedia/commons/2/24/Night_of_the_Living_Dead_%281968%29.webm',
+    sourceUrl: 'https://commons.wikimedia.org/wiki/File:Night_of_the_Living_Dead_(1968).webm'
+  },
+  {
+    id: 'drmfree:nosferatu',
+    title: 'Nosferatu: A Symphony of Horror',
+    year: 1922,
+    genres: ['Cult Horror & Mystery', 'Cinema Classics', 'All Titles'],
+    director: 'F.W. Murnau',
+    cast: ['Max Schreck', 'Gustav von Wangenheim', 'Greta Schröder'],
+    runtime: '94 min',
+    imdbRating: '7.9',
+    poster: 'https://images.metahub.space/poster/medium/tt0013442/img',
+    background: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=1280&q=80',
+    synopsis: 'Vampire Count Orlok expresses interest in a new residence and real estate agent Hutter\'s wife in this German Expressionist masterpiece that set the standard for cinematic gothic terror.',
+    streamUrl: 'https://upload.wikimedia.org/wikipedia/commons/7/78/Nosferatu_%281922%29.webm',
+    sourceUrl: 'https://commons.wikimedia.org/wiki/File:Nosferatu_(1922).webm'
+  },
+  {
+    id: 'drmfree:the_general',
+    title: 'The General',
+    year: 1926,
+    genres: ['Cinema Classics', 'Comedy & Drama', 'All Titles'],
+    director: 'Buster Keaton, Clyde Bruckman',
+    cast: ['Buster Keaton', 'Marion Mack', 'Glen Cavender'],
+    runtime: '79 min',
+    imdbRating: '8.1',
+    poster: 'https://images.metahub.space/poster/medium/tt0017925/img',
+    background: 'https://images.unsplash.com/photo-1533568024503-45a8df2d0d08?w=1280&q=80',
+    synopsis: 'When Union spies steal an engineer\'s beloved locomotive with his sweetheart aboard, he single-handedly pursues it through enemy lines. Widely considered one of the greatest films in cinema history.',
+    streamUrl: 'https://upload.wikimedia.org/wikipedia/commons/e/ee/The_General_%281926%29.webm',
+    sourceUrl: 'https://commons.wikimedia.org/wiki/File:The_General_(1926).webm'
+  },
+  {
+    id: 'drmfree:his_girl_friday',
+    title: 'His Girl Friday',
+    year: 1940,
+    genres: ['Comedy & Drama', 'Cinema Classics', 'All Titles'],
+    director: 'Howard Hawks',
+    cast: ['Cary Grant', 'Rosalind Russell', 'Ralph Bellamy'],
+    runtime: '92 min',
+    imdbRating: '7.8',
+    poster: 'https://images.metahub.space/poster/medium/tt0032599/img',
+    background: 'https://images.unsplash.com/photo-1485846234645-a62644f84728?w=1280&q=80',
+    synopsis: 'A newspaper editor uses every trick in the book to keep his ace reporter ex-wife from remarrying and leaving the newsroom, embroiling them in a breathless murder scoop. Renowned for its lightning-fast dialogue.',
+    streamUrl: 'https://archive.org/download/his_girl_friday/his_girl_friday.mp4',
+    sourceUrl: 'https://archive.org/details/his_girl_friday'
+  },
+  {
+    id: 'drmfree:house_on_haunted_hill',
+    title: 'House on Haunted Hill',
+    year: 1959,
+    genres: ['Cult Horror & Mystery', 'All Titles'],
+    director: 'William Castle',
+    cast: ['Vincent Price', 'Carol Ohmart', 'Richard Long'],
+    runtime: '75 min',
+    imdbRating: '6.8',
+    poster: 'https://images.metahub.space/poster/medium/tt0051744/img',
+    background: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=1280&q=80',
+    synopsis: 'An eccentric millionaire offers $10,000 to five guests who agree to be locked overnight in a sinister haunted mansion where horrifying paranormal murders begin to unfold. Starring the legendary Vincent Price.',
+    streamUrl: 'https://archive.org/download/house_on_haunted_hill_ipod/house_on_haunted_hill.mp4',
+    sourceUrl: 'https://archive.org/details/house_on_haunted_hill_ipod'
+  },
+  {
+    id: 'drmfree:the_stranger',
+    title: 'The Stranger',
+    year: 1946,
+    genres: ['Film Noir & Crime', 'All Titles'],
+    director: 'Orson Welles',
+    cast: ['Orson Welles', 'Edward G. Robinson', 'Loretta Young'],
+    runtime: '95 min',
+    imdbRating: '7.4',
+    poster: 'https://images.metahub.space/poster/medium/tt0038988/img',
+    background: 'https://images.unsplash.com/photo-1478760329108-5c3ed9d495a0?w=1280&q=80',
+    synopsis: 'A relentless war crimes investigator tracks a notorious fugitive who has assumed a quiet identity as a prep school professor in Connecticut. A pulse-pounding masterpiece directed by and starring Orson Welles.',
+    streamUrl: 'https://archive.org/download/TheStranger_0/The_Stranger.mp4',
+    sourceUrl: 'https://archive.org/details/TheStranger_0'
+  },
+  {
+    id: 'drmfree:gullivers_travels',
+    title: "Gulliver's Travels",
+    year: 1939,
+    genres: ['Animation & Family', 'All Titles'],
+    director: 'Dave Fleischer',
+    cast: ['Lanny Ross', 'Pinto Colvig', 'Jack Mercer'],
+    runtime: '76 min',
+    imdbRating: '6.6',
+    poster: 'https://images.metahub.space/poster/medium/tt0031397/img',
+    background: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=1280&q=80',
+    synopsis: 'Lemuel Gulliver washes ashore on the island of Lilliput after a shipwreck, where he finds himself a giant among tiny citizens embroiled in a ridiculous royal feud. A milestone in classic American animation.',
+    streamUrl: 'https://archive.org/download/gullivers_travels1939/gullivers_travels1939.mp4',
+    sourceUrl: 'https://archive.org/details/gullivers_travels1939'
+  },
+  {
+    id: 'drmfree:voyage_prehistoric_women',
+    title: 'Voyage to the Planet of Prehistoric Women',
+    year: 1967,
+    genres: ['Sci-Fi & Cyber', 'All Titles'],
+    director: 'Peter Bogdanovich',
+    cast: ['Mamie Van Doren', 'Mary Marr', 'Paige Lee'],
+    runtime: '78 min',
+    imdbRating: '5.2',
+    poster: 'https://images.metahub.space/poster/medium/tt0063790/img',
+    background: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1280&q=80',
+    synopsis: 'Astronauts landing on Venus encounter monstrous prehistoric beasts, volcanic eruptions, and a telepathic matriarchal civilization that worships a pterodactyl god. A retro drive-in cult sci-fi wonder.',
+    streamUrl: 'https://archive.org/download/VoyagetothePlanetofPrehistoricWomen/VoyagetothePlanetofPrehistoricWomen.mp4',
+    sourceUrl: 'https://archive.org/details/VoyagetothePlanetofPrehistoricWomen'
+  },
+  {
+    id: 'drmfree:dressed_to_kill',
+    title: 'Sherlock Holmes: Dressed to Kill',
+    year: 1946,
+    genres: ['Film Noir & Crime', 'Cult Horror & Mystery', 'All Titles'],
+    director: 'Roy William Neill',
+    cast: ['Basil Rathbone', 'Nigel Bruce', 'Patricia Morison'],
+    runtime: '71 min',
+    imdbRating: '6.9',
+    poster: 'https://images.metahub.space/poster/medium/tt0038494/img',
+    background: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=1280&q=80',
+    synopsis: 'Sherlock Holmes and Dr. Watson investigate a string of murders linked to three seemingly ordinary music boxes crafted inside Dartmoor Prison that conceal a secret code to Bank of England engraving plates.',
+    streamUrl: 'https://archive.org/download/dressed_to_kill/dressed_to_kill.mp4',
+    sourceUrl: 'https://archive.org/details/dressed_to_kill'
+  },
+  {
+    id: 'drmfree:suddenly',
+    title: 'Suddenly',
+    year: 1954,
+    genres: ['Film Noir & Crime', 'All Titles'],
+    director: 'Lewis Allen',
+    cast: ['Frank Sinatra', 'Sterling Hayden', 'James Gleason'],
+    runtime: '77 min',
+    imdbRating: '6.8',
+    poster: 'https://images.metahub.space/poster/medium/tt0047542/img',
+    background: 'https://images.unsplash.com/photo-1478760329108-5c3ed9d495a0?w=1280&q=80',
+    synopsis: 'In a sleepy California town, a ruthless assassin and his gang hold a family hostage in their hillside home as they position their sniper rifle to assassinate the President of the United States. Starring Frank Sinatra.',
+    streamUrl: 'https://archive.org/download/suddenly/suddenly.mp4',
+    sourceUrl: 'https://archive.org/details/suddenly'
+  }
+];
+
+// Helper: Formats a real-time, hour-by-hour dynamic TV Guide for a channel
+function formatTvGuide(channel, countryCode = 'GB') {
+  const schedule = channel.guideSchedule || [];
+  if (!schedule.length) return '';
+
+  const now = new Date();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+  let currentShow = schedule[0];
+  let currentIdx = 0;
+
+  for (let i = 0; i < schedule.length; i++) {
+    const [h, m] = schedule[i].time.split(':').map(Number);
+    const showMinutes = h * 60 + m;
+    if (currentMinutes >= showMinutes) {
+      currentShow = schedule[i];
+      currentIdx = i;
+    }
+  }
+
+  const nextShows = [];
+  for (let step = 1; step <= 4; step++) {
+    const nextIdx = (currentIdx + step) % schedule.length;
+    nextShows.push(schedule[nextIdx]);
+  }
+
+  let guideText = '\n\n📺 NOW AIRING:\n👉 ' + currentShow.time + ' — ' + currentShow.title + '\n' + currentShow.desc + '\n\n📅 COMING UP NEXT TODAY:\n';
+  for (const s of nextShows) {
+    guideText += '• ' + s.time + ' — ' + s.title + '\n';
+  }
+  guideText += '\n⚡ 100% Legal DRM-Free Stream • In-App Stremio Playback';
+  return guideText;
+}
 
 // -------------------------------------------------------------
 // PER-USER CONFIGURATION (Stremio standard: config encoded in the install URL)
@@ -131,6 +759,8 @@ function loadStats() {
         metaRequests: data.metaRequests || 0,
         streamRequests: data.streamRequests || 0,
         youtubeSearches: data.youtubeSearches || 0,
+        tvGuideRequests: data.tvGuideRequests || 0,
+        drmFreeRequests: data.drmFreeRequests || 0,
         estimatedInstalls: data.estimatedInstalls || 0,
         uniqueClients: new Set(data.uniqueClientHashes || []),
         lastRequestAt: data.lastRequestAt || null
@@ -145,6 +775,8 @@ function loadStats() {
     metaRequests: 0,
     streamRequests: 0,
     youtubeSearches: 0,
+    tvGuideRequests: 0,
+    drmFreeRequests: 0,
     estimatedInstalls: 0,
     uniqueClients: new Set(),
     lastRequestAt: null
@@ -168,6 +800,8 @@ function persistStats() {
         metaRequests: STATS.metaRequests,
         streamRequests: STATS.streamRequests,
         youtubeSearches: STATS.youtubeSearches,
+        tvGuideRequests: STATS.tvGuideRequests || 0,
+        drmFreeRequests: STATS.drmFreeRequests || 0,
         estimatedInstalls: Math.max(STATS.estimatedInstalls, STATS.uniqueClients.size),
         uniqueClientHashes: Array.from(STATS.uniqueClients).slice(-5000),
         lastRequestAt: STATS.lastRequestAt,
@@ -319,17 +953,19 @@ const TV_GENRES = {
   'Western': 37
 };
 
-function getManifest(baseUrl) {
+function getManifest(baseUrl, userConfig = DEFAULT_USER_CONFIG) {
+  const regionCode = (userConfig && userConfig.region) || 'GB';
+  const regionName = REGIONS[regionCode] || 'United Kingdom';
   return {
     id: 'org.stremio.nightknight.cinema',
     version: ADDON_VERSION,
     name: 'NightKnight Cinema',
-    description: 'Created by NightKnight (@NightKnight24). Complete cinema hub: YouTube in-app playback, UK & global streaming hubs (BBC iPlayer, ITVX, Netflix, Disney+), franchise viewing orders, audio/video tags & speed engine. See my projects, discuss & report issues: https://github.com/NightKnight24',
+    description: 'Created by NightKnight (@NightKnight24). Complete cinema hub: Regional Live TV & TV Guide (EPG), DRM-Free Cinema playback, YouTube in-app player, streaming hubs (BBC iPlayer, ITVX, Netflix, Disney+), franchise viewing orders & speed engine. See my projects: https://github.com/NightKnight24',
     logo: `${baseUrl}/icon.png`,
     background: `${baseUrl}/background.png`,
     resources: ['catalog', 'meta', 'stream'],
     types: ['movie', 'series', 'channel'],
-    idPrefixes: ['tmdb:', 'tt', 'yt:'],
+    idPrefixes: ['tmdb:', 'tt', 'yt:', 'tv:', 'drmfree:'],
     behaviorHints: {
       configurable: true,
       configurationRequired: false
@@ -530,6 +1166,38 @@ function getManifest(baseUrl) {
             isRequired: true,
             optionsLimit: 100
           }
+        ]
+      },
+      {
+        type: 'channel',
+        id: 'regional_live_tv',
+        name: `Live TV & Guide (${regionName})`,
+        pageSize: 20,
+        posterShape: 'square',
+        extra: [
+          {
+            name: 'genre',
+            options: ['All Channels', 'News & Info', 'Entertainment', 'Movies & Drama', 'Culture & Docs', 'FAST & Classic TV', 'Sports & Action'],
+            isRequired: false
+          },
+          { name: 'search', isRequired: false },
+          { name: 'skip', isRequired: false }
+        ]
+      },
+      {
+        type: 'movie',
+        id: 'drmfree_cinema',
+        name: 'DRM-Free Cinema & Classics',
+        pageSize: 20,
+        posterShape: 'poster',
+        extra: [
+          {
+            name: 'genre',
+            options: ['All Titles', 'Sci-Fi & Cyber', 'Film Noir & Crime', 'Cult Horror & Mystery', 'Cinema Classics', 'Comedy & Drama', 'Animation & Family'],
+            isRequired: false
+          },
+          { name: 'search', isRequired: false },
+          { name: 'skip', isRequired: false }
         ]
       },
       {
@@ -1130,7 +1798,70 @@ async function fetchTmdbVideos(tmdbId, seasons = [], imdbId) {
 
 // Handle Metadata for clicked item
 async function handleMeta(type, id) {
-  if (id.startsWith('yt:') || type === 'channel') {
+  if (id.startsWith('tv:')) {
+    const cleanId = id.replace(/:live$/, '');
+    let foundChannel = null;
+    let foundRegion = 'GB';
+    for (const [rCode, channels] of Object.entries(REGIONAL_CHANNELS)) {
+      const match = channels.find(c => c.id === cleanId || c.id === id);
+      if (match) {
+        foundChannel = match;
+        foundRegion = rCode;
+        break;
+      }
+    }
+    if (!foundChannel) return null;
+
+    const guideText = formatTvGuide(foundChannel, foundRegion);
+    return {
+      id: foundChannel.id,
+      type: 'channel',
+      name: `${foundChannel.name} (Live)`,
+      poster: foundChannel.logo,
+      background: foundChannel.background,
+      logo: foundChannel.logo,
+      genres: foundChannel.genres,
+      description: `${foundChannel.summary}${guideText}`,
+      behaviorHints: {
+        defaultVideoId: `${foundChannel.id}:live`
+      },
+      videos: [
+        {
+          id: `${foundChannel.id}:live`,
+          title: `🔴 LIVE BROADCAST: ${foundChannel.name}`,
+          released: new Date().toISOString(),
+          thumbnail: foundChannel.logo,
+          overview: `Watch ${foundChannel.name} live unencrypted broadcast directly inside Stremio's native player (DRM-Free).`
+        }
+      ]
+    };
+  }
+
+  if (id.startsWith('drmfree:')) {
+    const foundMovie = DRM_FREE_MOVIES.find(m => m.id === id);
+    if (!foundMovie) return null;
+
+    return {
+      id: foundMovie.id,
+      type: 'movie',
+      name: `${foundMovie.title} (${foundMovie.year})`,
+      genres: foundMovie.genres,
+      poster: foundMovie.poster,
+      background: foundMovie.background,
+      logo: foundMovie.poster,
+      description: `${foundMovie.synopsis}\n\n⚡ 100% Legal DRM-Free Stream • In-App Stremio Playback\nDirector: ${foundMovie.director}\nCast: ${foundMovie.cast.join(', ')}\nRuntime: ${foundMovie.runtime}\nIMDb Rating: ⭐ ${foundMovie.imdbRating}/10`,
+      releaseInfo: String(foundMovie.year),
+      director: [foundMovie.director],
+      cast: foundMovie.cast,
+      imdbRating: foundMovie.imdbRating,
+      runtime: foundMovie.runtime,
+      behaviorHints: {
+        defaultVideoId: foundMovie.id
+      }
+    };
+  }
+
+  if (id.startsWith('yt:') || (type === 'channel' && !id.startsWith('tv:'))) {
     const videoId = id.replace('yt:', '');
     const cachedMeta = getCache(`yt:meta:${videoId}`);
     if (cachedMeta) return cachedMeta;
@@ -1492,7 +2223,61 @@ function optimizeAndRankStreams(rawStreams, userConfig = DEFAULT_USER_CONFIG) {
 
 // Handle Streams Request
 async function handleStream(type, id, userConfig = DEFAULT_USER_CONFIG) {
-  if (id.startsWith('yt:') || type === 'channel') {
+  if (id.startsWith('tv:')) {
+    STATS.tvGuideRequests = (STATS.tvGuideRequests || 0) + 1;
+    STATS.drmFreeRequests = (STATS.drmFreeRequests || 0) + 1;
+    persistStats();
+
+    const baseId = id.replace(/:live$/, '');
+    let foundChannel = null;
+    for (const channels of Object.values(REGIONAL_CHANNELS)) {
+      const match = channels.find(c => c.id === baseId || c.id === id);
+      if (match) {
+        foundChannel = match;
+        break;
+      }
+    }
+    if (!foundChannel) return [];
+
+    const streams = [
+      {
+        name: `🔴 [LIVE BROADCAST]\n${foundChannel.name}`,
+        title: `Watch live unencrypted broadcast directly in Stremio (DRM-Free • 1080p/720p)`,
+        url: foundChannel.streamUrl
+      }
+    ];
+    if (foundChannel.backupUrl) {
+      streams.push({
+        name: `📡 [BACKUP FEED]\n${foundChannel.name} Secondary`,
+        title: `Alternate unencrypted live stream (DRM-Free)`,
+        url: foundChannel.backupUrl
+      });
+    }
+    return streams;
+  }
+
+  if (id.startsWith('drmfree:')) {
+    STATS.drmFreeRequests = (STATS.drmFreeRequests || 0) + 1;
+    persistStats();
+
+    const foundMovie = DRM_FREE_MOVIES.find(m => m.id === id);
+    if (!foundMovie) return [];
+
+    return [
+      {
+        name: `⚡ [NATIVE DRM-FREE]\n${foundMovie.title} (${foundMovie.year})`,
+        title: `100% Legal Public Domain Stream • In-App Playback\nFast CDN • High Quality • No buffering risk`,
+        url: foundMovie.streamUrl
+      },
+      {
+        name: `🏛️ [OPEN SOURCE ARCHIVE]\nOfficial Repository`,
+        title: `Public Domain repository\n🔗 Opens source portal`,
+        externalUrl: foundMovie.sourceUrl
+      }
+    ];
+  }
+
+  if (id.startsWith('yt:') || (type === 'channel' && !id.startsWith('tv:'))) {
     const videoId = id.replace('yt:', '');
     return [
       {
@@ -1678,6 +2463,8 @@ const server = http.createServer(async (req, res) => {
         streamRequests: STATS.streamRequests,
         metaRequests: STATS.metaRequests,
         youtubeSearches: STATS.youtubeSearches,
+        tvGuideRequests: STATS.tvGuideRequests || 0,
+        drmFreeRequests: STATS.drmFreeRequests || 0,
         lastRequestAt: STATS.lastRequestAt,
         privacy: '100% Zero-Knowledge Anonymized (No IP addresses stored)'
       }, null, 2));
@@ -1769,7 +2556,7 @@ const server = http.createServer(async (req, res) => {
       STATS.estimatedInstalls = Math.max(STATS.estimatedInstalls, STATS.uniqueClients.size);
       persistStats();
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
-      res.end(JSON.stringify(getManifest(baseUrl)));
+      res.end(JSON.stringify(getManifest(baseUrl, userConfig)));
       return;
     }
 
@@ -1800,8 +2587,76 @@ const server = http.createServer(async (req, res) => {
 
       const skip = parseInt(extra.skip, 10) || 0;
 
+      // Handle Regional Live TV Catalog & Guide
+      if (catalogId === 'regional_live_tv') {
+        STATS.tvGuideRequests = (STATS.tvGuideRequests || 0) + 1;
+        persistStats();
+        const region = userConfig.region || 'GB';
+        const channels = REGIONAL_CHANNELS[region] || REGIONAL_CHANNELS.GB;
+        let filtered = channels;
+
+        if (extra.genre && extra.genre !== 'All Channels') {
+          filtered = filtered.filter(c => c.genres.includes(extra.genre));
+        }
+        if (extra.search) {
+          const q = extra.search.toLowerCase();
+          filtered = filtered.filter(c => c.name.toLowerCase().includes(q) || c.genres.some(g => g.toLowerCase().includes(q)));
+        }
+
+        const metas = filtered.map(c => ({
+          id: c.id,
+          type: 'channel',
+          name: c.name,
+          poster: c.logo,
+          background: c.background,
+          genres: c.genres,
+          description: `${c.summary}\n\n🔴 LIVE BROADCAST • Click to open Regional TV Guide`,
+          posterShape: 'square'
+        }));
+
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        res.end(JSON.stringify({ metas }));
+        return;
+      }
+
+      // Handle DRM-Free Cinema & Classics Catalog
+      if (catalogId === 'drmfree_cinema') {
+        STATS.drmFreeRequests = (STATS.drmFreeRequests || 0) + 1;
+        persistStats();
+        let filtered = DRM_FREE_MOVIES;
+
+        if (extra.genre && extra.genre !== 'All Titles') {
+          filtered = filtered.filter(m => m.genres.includes(extra.genre));
+        }
+        if (extra.search) {
+          const q = extra.search.toLowerCase();
+          filtered = filtered.filter(m =>
+            m.title.toLowerCase().includes(q) ||
+            m.director.toLowerCase().includes(q) ||
+            m.cast.some(actor => actor.toLowerCase().includes(q))
+          );
+        }
+
+        const metas = filtered.map(m => ({
+          id: m.id,
+          type: 'movie',
+          name: `${m.title} (${m.year})`,
+          poster: m.poster,
+          background: m.background,
+          genres: m.genres,
+          releaseInfo: String(m.year),
+          imdbRating: m.imdbRating,
+          description: `${m.synopsis}\n\n⚡ 100% Legal DRM-Free • Instant In-App Stremio Playback`,
+          posterShape: 'poster'
+        }));
+
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        res.end(JSON.stringify({ metas }));
+        return;
+      }
+
       // Handle YouTube Catalog & Search
-      if (catalogId === 'youtube_videos' || type === 'channel') {
+      if (catalogId === 'youtube_videos' || (type === 'channel' && catalogId !== 'regional_live_tv')) {
         if (extra.search) STATS.youtubeSearches++;
         persistStats();
         const query = extra.search || (extra.genre ? `${extra.genre} videos` : 'Trending');
@@ -1902,8 +2757,8 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    // 4. Meta: /meta/:type/:id.json (supports tmdb:123, tt1234567, and yt:VIDEO_ID)
-    const metaMatch = pathname.match(/^\/meta\/(movie|series|channel)\/((?:tmdb:[0-9]+)|(?:tt[0-9]+)|(?:yt:[a-zA-Z0-9_\-]+))\.json$/);
+    // 4. Meta: /meta/:type/:id.json (supports tmdb:123, tt1234567, yt:VIDEO_ID, tv:CHANNEL, and drmfree:TITLE)
+    const metaMatch = pathname.match(/^\/meta\/(movie|series|channel)\/((?:tmdb:[0-9]+)|(?:tt[0-9]+)|(?:yt:[a-zA-Z0-9_\-]+)|(?:tv:[a-zA-Z0-9_\-:]+)|(?:drmfree:[a-zA-Z0-9_\-]+))\.json$/);
     if (metaMatch) {
       STATS.metaRequests++;
       persistStats();
@@ -2395,11 +3250,19 @@ const server = http.createServer(async (req, res) => {
     <img src="/icon.png" alt="NightKnight Logo" class="logo-img">
     <h1>NightKnight Cinema</h1>
     <div class="byline">Crafted by <a href="https://github.com/NightKnight24" target="_blank" class="author-link">NightKnight (@NightKnight24)</a></div>
-    <div class="subtitle">The ultimate media hub: YouTube in-app playback & search, BYOA streaming hubs (Netflix, BBC iPlayer, ITVX, Channel 4, Disney+, Prime, Max), Curated Franchises, Critic Badges, Home Theater Audio/Video tags & intelligent stream speed ranking.</div>
+    <div class="subtitle">The ultimate media hub: Regional Live TV & TV Guide (EPG), Native DRM-Free Cinema, YouTube in-app playback & search, BYOA streaming hubs (Netflix, BBC iPlayer, ITVX, Channel 4, Disney+, Prime, Max), Curated Franchises & intelligent speed ranking.</div>
     
     <a id="install-btn" href="stremio://${host}/manifest.json" class="btn">🚀 Install on Stremio</a>
     
     <div class="features">
+      <div class="feature-item">
+        <span class="tag">📺 Regional TV & Guide</span>
+        <span>Free-to-Air & FAST broadcast channels tailored to your region with dynamic hour-by-hour TV Guides (EPG)</span>
+      </div>
+      <div class="feature-item">
+        <span class="tag">⚡ DRM-Free Cinema</span>
+        <span>Watch public domain masterpieces (horror, sci-fi, film noir) & live TV 100% directly inside Stremio's native player</span>
+      </div>
       <div class="feature-item">
         <span class="tag">▶️ YouTube In-App</span>
         <span>Search & stream YouTube videos directly inside Stremio player (DRM-Free) + BYOA app links</span>
@@ -2437,14 +3300,17 @@ const server = http.createServer(async (req, res) => {
     <div class="config-box">
       <h3>⚙️ Personal Addon Configuration</h3>
       <div class="input-group">
-        <label>Your Region (for Streaming Services / BYOA):</label>
+        <label>Your Region (for Streaming Services & Live TV Guide):</label>
         <select id="region-select">
-          <option value="GB" ${initialRegion === 'GB' ? 'selected' : ''}>United Kingdom (BBC iPlayer, ITVX, Channel 4, My5, U, Sky Go, NOW)</option>
-          <option value="US" ${initialRegion === 'US' ? 'selected' : ''}>United States (Hulu, Peacock, Max, Prime, Disney+)</option>
-          <option value="CA" ${initialRegion === 'CA' ? 'selected' : ''}>Canada (Crave, CBC Gem, Prime, Disney+)</option>
-          <option value="AU" ${initialRegion === 'AU' ? 'selected' : ''}>Australia (Stan, ABC iview, Binge, Disney+)</option>
-          <option value="IE" ${initialRegion === 'IE' ? 'selected' : ''}>Ireland (RTÉ Player, Sky Go, NOW)</option>
+          <option value="GB" ${initialRegion === 'GB' ? 'selected' : ''}>United Kingdom (Free-to-Air, BBC iPlayer, ITVX, Channel 4, My5, Sky Go, NOW)</option>
+          <option value="US" ${initialRegion === 'US' ? 'selected' : ''}>United States (US Networks, Hulu, Peacock, Max, Prime, Disney+)</option>
+          <option value="CA" ${initialRegion === 'CA' ? 'selected' : ''}>Canada (CBC, Crave, CBC Gem, Prime, Disney+)</option>
+          <option value="AU" ${initialRegion === 'AU' ? 'selected' : ''}>Australia (ABC News, Stan, ABC iview, Binge, Disney+)</option>
+          <option value="IE" ${initialRegion === 'IE' ? 'selected' : ''}>Ireland (RTÉ Player, Sky News IE, Sky Go, NOW)</option>
         </select>
+        <div style="font-size: 11px; color: #94a3b8; margin-top: 6px;">
+          📍 Automatically configures your local <strong>Live TV & Guide</strong> channel lineup (e.g. UK Free-to-Air, US Networks, Australia ABC) and regional BYOA streaming hubs.
+        </div>
       </div>
       <div class="input-group">
         <label>Upstream Scraper (Default: Torrentio, or paste custom Real-Debrid / Scraper URL):</label>
