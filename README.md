@@ -1,4 +1,4 @@
-# ⚔️ NightKnight Cinema — Stremio Addon (v1.9.0)
+# ⚔️ NightKnight Cinema — Stremio Addon (v1.10.0)
 
 > **Created by NightKnight**  
 > The ultimate all-in-one cinema & media hub: Native Multi-Language Subtitles Engine (80+ languages, zero extra addons required), Regional Live TV & TV Guide (EPG), Native DRM-Free Cinema, YouTube in-app playback & global search, BYOA streaming hubs (Netflix, BBC iPlayer, ITVX, Channel 4, Disney+, Prime, Max), Curated Franchises in release order, Verified IMDb & TMDb Ratings, Home Theater Audio/Video tags, intelligent stream speed ranking, real-time community feedback & live telemetry.
@@ -11,7 +11,7 @@
 * 🚀 **Stremio 1-Click Install**: [`stremio://nightknight-cinema.vercel.app/manifest.json`](stremio://nightknight-cinema.vercel.app/manifest.json)
 * 📖 **Step-by-Step User Guide**: [Read Tutorial Below](#-complete-step-by-step-user-guide-how-to-use-everything)
 * 👨‍💻 **Developer Profile & Projects**: [https://github.com/NightKnight24](https://github.com/NightKnight24)
-* 📦 **Official Releases**: [GitHub Releases (v1.9.0)](https://github.com/NightKnight24/nightknight-cinema/releases)
+* 📦 **Official Releases**: [GitHub Releases (v1.10.0)](https://github.com/NightKnight24/nightknight-cinema/releases)
 * 🐳 **Container Packages**: [GitHub Packages (`ghcr.io`)](https://github.com/NightKnight24/nightknight-cinema/pkgs/container/nightknight-cinema)
 * 📊 **Live Anonymized Analytics**: [https://nightknight-cinema.vercel.app/api/stats](https://nightknight-cinema.vercel.app/api/stats)
 * 🐛 **Issue Tracker & Feature Requests**: [GitHub Issues](https://github.com/NightKnight24/nightknight-cinema/issues)
@@ -23,12 +23,12 @@
 
 ### 1. 📺 Regional Live TV & Electronic Program Guide (EPG)
 * **Tailored Channel Lineup**: Automatically serves high-quality, legal, unencrypted Free-to-Air & FAST broadcast channels and 24/7 live music/radio stations based on your chosen region:
-  * 🇬🇧 **United Kingdom**: XITE Hits UK HD (1080p Top 40 Music Videos), Capital FM UK (Live Radio), Heart UK (Live Radio), GB News (1080p), GREAT! Movies (1080p), GREAT! Romance & Drama (1080p), CNBC UK & Europe (1080p), DW English (1080p), Red Bull TV, NASA TV HD.
-  * 🇺🇸 **United States**: California Music Channel (CMC HD 1080p), LiveOne Concerts HD (LIVExLIVE 1080p), ABC News Live (1080p), DW News US (1080p), 30A Classic Movie Channel, NASA TV (Public & Media 1080p), Red Bull TV.
-  * 🇨🇦 **Canada**: Qello Concerts by Stingray HD (1080p Live Arena Tours), Stingray Classic Rock HD (1080p), CBC News Network (1080p), CityNews Toronto (720p), DW English, Red Bull TV, NASA TV.
+  * 🇬🇧 **United Kingdom**: XITE Hits UK HD (1080p Top 40 Music Videos), Capital FM UK (Live Radio), Heart UK (Live Radio), GB News (1080p), GREAT! Movies (1080p), GREAT! Romance & Drama (1080p), CNBC UK & Europe (1080p), DW English (1080p), Red Bull TV, NASA & Space Live HD (ISS 1080p).
+  * 🇺🇸 **United States**: California Music Channel (CMC HD 1080p), LiveOne Concerts HD (LIVExLIVE 1080p), ABC News Live (1080p), DW News US (1080p), 30A Classic Movie Channel, NASA & Space Live HD (ISS 1080p), Red Bull TV.
+  * 🇨🇦 **Canada**: Qello Concerts by Stingray HD (1080p Live Arena Tours), Stingray Classic Rock HD (1080p), CityNews Vancouver & West HD, CityNews Toronto (720p), DW English HD (1080p), Red Bull TV, NASA & Space Live HD (ISS 1080p).
   * 🇦🇺 **Australia**: Qwest TV Australia HD (1080p Jazz/Soul/Funk by Quincy Jones), SBS PopAsia (Live Radio), ABC News Australia (720p), Sky News / News24 Australia (1080p), MovieSphere Australia (1080p), Red Bull TV.
-  * 🇮🇪 **Ireland**: RTÉ 2FM (Live Radio from Dublin), Sky News HD (IE/UK), GREAT! Movies HD, DW English, NASA TV HD.
-  * 🇮🇳 **India**: B4U Music HD (1080p Bollywood Music), 9X Jalwa HD (Forever Bollywood Hits), B4U Movies HD (Bollywood Cinema), NDTV 24x7 HD (English News), NDTV India HD (Hindi News), Aaj Tak HD (National News), Radio Mirchi Bollywood Hits (24/7 Live Radio), Bollywood Classics Radio (Golden Era Melodies). *(Strictly displayed when India is chosen).*
+  * 🇮🇪 **Ireland**: RTÉ 2FM (Live Radio from Dublin), France 24 & Europe News HD (1080p), GREAT! Movies HD, DW English, NASA & Space Live HD (ISS 1080p).
+  * 🇮🇳 **India**: B4U Music HD (1080p Bollywood Music), 9X Jalwa HD (Forever Bollywood Hits), B4U Movies HD (Bollywood Cinema), Shemaroo Bollywood HD (1080p Classic & Hit Films), NDTV 24x7 HD (English News), NDTV India HD (Hindi News), Aaj Tak HD (National News), Radio Mirchi Bollywood Hits (24/7 Live Radio), Bollywood Classics Radio (Golden Era Melodies). *(Strictly displayed when India is chosen).*
 * **Dynamic Hour-by-Hour TV Guide & Reminders**: Opening any channel card displays:
   * **Now Airing**: Current show title, start time, and synopsis calculated dynamically for the current hour.
   * **Coming Up Today**: Next consecutive scheduled programs with airtimes.
@@ -114,7 +114,7 @@
 ### 1. 🚀 How to Install on Any Device
 * **Desktop (Windows, macOS, Linux)**:
   1. Open [https://nightknight-cinema.vercel.app](https://nightknight-cinema.vercel.app) in your browser.
-  2. Select your country region (UK, US, Canada, Australia, Ireland).
+  2. Select your country region (UK, US, Canada, Australia, Ireland, India).
   3. Click **`🚀 Install on Stremio`** — the Stremio app will open and prompt you to install.
 * **Android TV / Fire TV / Smart TVs**:
   1. Install the addon on your computer or phone while logged into your Stremio account.
@@ -177,7 +177,7 @@
 
 Visit the web portal at **[https://nightknight-cinema.vercel.app](https://nightknight-cinema.vercel.app)** to customize your personal addon URL:
 
-* **Regional Streaming Services**: Choose your country (United Kingdom, United States, Canada, Australia, Ireland) to automatically surface your local free catch-up apps and subscription hubs.
+* **Regional Streaming Services**: Choose your country (United Kingdom, United States, Canada, Australia, Ireland, India) to automatically surface your local free catch-up apps, regional Live TV & Radio lineup, and subscription hubs.
 * **Upstream Scraper**: Uses Torrentio (`https://torrentio.strem.fun`) by default, or paste your custom Real-Debrid / AllDebrid / Premiumize / TorBox scraper URL for instant cloud CDN streams.
 * **Auto-Hide High Buffer Risk Streams**: Optional toggle to completely hide large files with low seeders.
 

@@ -6,16 +6,16 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { parse as parseUrl } from 'node:url';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const CONFIG_PATH = path.join(__dirname, 'config.json');
 
 const TMDB_API_KEY = process.env.TMDB_API_KEY || '3157bd6dacbc3a653ae2e5a3b19beb20';
 const PORT = process.env.PORT || 7000;
 const HOST = process.env.HOST || (process.env.PORT ? '0.0.0.0' : '127.0.0.1');
 
-const ADDON_VERSION = '1.9.0';
+const ADDON_VERSION = '1.10.0';
 
 // Load server-wide DEFAULTS (read-only). Per-user settings live in the install URL, never on the server.
 function loadConfig() {
@@ -55,7 +55,7 @@ const REGIONAL_CHANNELS = {
     {
       id: 'tv:gb_gbnews',
       name: 'GB News HD',
-      logo: 'https://upload.wikimedia.org/wikipedia/en/thumb/3/35/GB_News_Logo.svg/512px-GB_News_Logo.svg.png',
+      logo: 'https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/united-kingdom/gb-news-uk.png',
       background: 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=1280&q=80',
       genres: ['News & Info', 'United Kingdom', 'Live TV'],
       streamUrl: 'https://amg01076-lightningintern-gbnewsau-samsungau-et7fz.amagi.tv/playlist/amg01076-lightningintern-gbnewsau-samsungau/playlist.m3u8',
@@ -76,7 +76,7 @@ const REGIONAL_CHANNELS = {
     {
       id: 'tv:gb_great_movies',
       name: 'GREAT! Movies HD',
-      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Great%21_Movies_logo_2021.svg/512px-Great%21_Movies_logo_2021.svg.png',
+      logo: 'https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/united-kingdom/great-movies-uk.png',
       background: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=1280&q=80',
       genres: ['Entertainment', 'Movies & Drama', 'Live TV'],
       streamUrl: 'https://amg01753-narrativeuk-amg01753c3-lg-gb-1833.playouts.now.amagi.tv/playlist/amg01753-narrativeuk-greatmovies-lggb/playlist.m3u8',
@@ -94,7 +94,7 @@ const REGIONAL_CHANNELS = {
     {
       id: 'tv:gb_great_romance',
       name: 'GREAT! Romance & Drama HD',
-      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cf/Great%21_Romance_logo.svg/512px-Great%21_Romance_logo.svg.png',
+      logo: 'https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/united-kingdom/great-romance-uk.png',
       background: 'https://images.unsplash.com/photo-1518199266791-5375a83190b7?w=1280&q=80',
       genres: ['Entertainment', 'Movies & Drama', 'Live TV'],
       streamUrl: 'https://amg01753-narrativeuk-amg01753c2-lg-gb-1832.playouts.now.amagi.tv/playlist/amg01753-narrativeuk-greatchristmas-lggb/playlist.m3u8',
@@ -111,7 +111,7 @@ const REGIONAL_CHANNELS = {
     {
       id: 'tv:gb_cnbc_uk',
       name: 'CNBC UK & Europe HD',
-      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/CNBC_logo.svg/512px-CNBC_logo.svg.png',
+      logo: 'https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/united-states/cnbc-us.png',
       background: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=1280&q=80',
       genres: ['News & Info', 'United Kingdom', 'Live TV'],
       streamUrl: 'https://amg01079-nbcuuk-amg01079c2-samsung-gb-1258.playouts.now.amagi.tv/playlist.m3u8',
@@ -131,7 +131,7 @@ const REGIONAL_CHANNELS = {
     {
       id: 'tv:gb_dw_english',
       name: 'DW English HD',
-      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/Deutsche_Welle_symbol_2012.svg/512px-Deutsche_Welle_symbol_2012.svg.png',
+      logo: 'https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/international/dw-english-int.png',
       background: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=1280&q=80',
       genres: ['News & Info', 'Culture & Docs', 'Live TV'],
       streamUrl: 'https://dwamdstream102.akamaized.net/hls/live/2015525/dwstream102/index.m3u8',
@@ -149,8 +149,8 @@ const REGIONAL_CHANNELS = {
     {
       id: 'tv:gb_redbull',
       name: 'Red Bull TV HD',
-      logo: 'https://upload.wikimedia.org/wikipedia/en/thumb/f/f5/Red_Bull_TV_logo.svg/512px-Red_Bull_TV_logo.svg.png',
-      background: 'https://images.unsplash.com/photo-1517649763962-0c623266ddc0?w=1280&q=80',
+      logo: 'https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/international/red-bull-tv-int.png',
+      background: 'https://images.unsplash.com/photo-1530549387789-4c1017266635?w=1280&q=80',
       genres: ['Sports & Action', 'Culture & Docs', 'Live TV'],
       streamUrl: 'https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8',
       summary: 'Action sports, extreme events, music festivals, live downhill racing, Formula 1 documentaries, and global adventure.',
@@ -165,18 +165,18 @@ const REGIONAL_CHANNELS = {
     },
     {
       id: 'tv:gb_nasa',
-      name: 'NASA TV HD',
-      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/NASA_logo.svg/512px-NASA_logo.svg.png',
+      name: 'NASA & Space Live HD (ISS 1080p)',
+      logo: 'https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/united-states/nasa-tv-globe-logo-us.png',
       background: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1280&q=80',
       genres: ['Culture & Docs', 'FAST & Classic TV', 'Live TV'],
-      streamUrl: 'https://ntv1.akamaized.net/hls/live/2014075/NASA-NTV1-HLS/master.m3u8',
-      summary: 'Live broadcasts from the International Space Station, rocket launches, spacewalks, astronaut interviews, and deep space exploration.',
-      network: 'NASA TV',
+      streamUrl: 'https://linear-1224.frequency.stream/dist/lg-uk/1224/hls/master/playlist.m3u8',
+      summary: 'Live 1080p orbital broadcasts from space cameras aboard the International Space Station, real-time Earth views, rocket launches, and deep space exploration.',
+      network: 'Space Live / ISS',
       guideSchedule: [
         { time: '08:00', title: 'ISS Live Orbit: High Definition Earth Views', desc: 'Streaming real-time HD views of Earth from the space station.' },
         { time: '11:00', title: 'Space Station Crew Operations', desc: 'Astronauts conduct microgravity experiments aboard the ISS.' },
-        { time: '14:00', title: 'NASA ScienceCast & Mission Briefings', desc: 'Discoveries from the James Webb and Hubble Space Telescopes.' },
-        { time: '17:00', title: 'Artemis Moon Mission Update', desc: 'Humanity returns to the Moon: hardware tests and launch countdowns.' },
+        { time: '14:00', title: 'Orbital Sunrise & Telemetry Feed', desc: 'Live orbital tracking across continents and oceans.' },
+        { time: '17:00', title: 'Lunar & Deep Space Mission Update', desc: 'Humanity returns to the Moon: hardware tests and launch highlights.' },
         { time: '20:00', title: 'Cosmic Journeys: Mars & Beyond', desc: 'Robotic exploration across the solar system.' }
       ]
     },
@@ -237,7 +237,7 @@ const REGIONAL_CHANNELS = {
     {
       id: 'tv:us_abc_live',
       name: 'ABC News Live HD',
-      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/ABC_News_Live_logo_2021.svg/512px-ABC_News_Live_logo_2021.svg.png',
+      logo: 'https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/united-states/abc-news-hz-us.png',
       background: 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=1280&q=80',
       genres: ['News & Info', 'United States', 'Live TV'],
       streamUrl: 'https://amg01942-amg01942c6-stirr-us-10178.playouts.now.amagi.tv/playlist.m3u8',
@@ -254,26 +254,26 @@ const REGIONAL_CHANNELS = {
     },
     {
       id: 'tv:us_nasa',
-      name: 'NASA TV HD (Public & Media)',
-      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/NASA_logo.svg/512px-NASA_logo.svg.png',
+      name: 'NASA & Space Live HD (ISS 1080p)',
+      logo: 'https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/united-states/nasa-tv-globe-logo-us.png',
       background: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1280&q=80',
       genres: ['Culture & Docs', 'FAST & Classic TV', 'Live TV'],
-      streamUrl: 'https://ntv1.akamaized.net/hls/live/2014075/NASA-NTV1-HLS/master.m3u8',
-      summary: 'Live astronaut broadcasts from the International Space Station, rocket tests, Artemis moon missions, and astronomical breakthroughs.',
-      network: 'NASA TV',
+      streamUrl: 'https://linear-1224.frequency.stream/dist/lg-uk/1224/hls/master/playlist.m3u8',
+      summary: 'Live 1080p orbital broadcasts from space cameras aboard the International Space Station, real-time Earth views, rocket launches, and deep space exploration.',
+      network: 'Space Live / ISS',
       guideSchedule: [
         { time: '08:00', title: 'ISS Live Orbit: High Definition Earth Views', desc: 'Streaming real-time HD views of Earth from the space station.' },
         { time: '11:00', title: 'Space Station Crew Operations', desc: 'Astronauts conduct microgravity experiments aboard the ISS.' },
-        { time: '14:00', title: 'NASA ScienceCast & Mission Briefings', desc: 'Discoveries from the James Webb and Hubble Space Telescopes.' },
-        { time: '17:00', title: 'Artemis Moon Mission Update', desc: 'Humanity returns to the Moon: hardware tests and launch countdowns.' },
+        { time: '14:00', title: 'Orbital Sunrise & Telemetry Feed', desc: 'Live orbital tracking across continents and oceans.' },
+        { time: '17:00', title: 'Lunar & Deep Space Mission Update', desc: 'Humanity returns to the Moon: hardware tests and launch highlights.' },
         { time: '20:00', title: 'Cosmic Journeys: Mars & Beyond', desc: 'Robotic exploration across the solar system.' }
       ]
     },
     {
       id: 'tv:us_redbull',
       name: 'Red Bull TV HD',
-      logo: 'https://upload.wikimedia.org/wikipedia/en/thumb/f/f5/Red_Bull_TV_logo.svg/512px-Red_Bull_TV_logo.svg.png',
-      background: 'https://images.unsplash.com/photo-1517649763962-0c623266ddc0?w=1280&q=80',
+      logo: 'https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/international/red-bull-tv-int.png',
+      background: 'https://images.unsplash.com/photo-1530549387789-4c1017266635?w=1280&q=80',
       genres: ['Sports & Action', 'Culture & Docs', 'Live TV'],
       streamUrl: 'https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8',
       summary: 'Extreme action sports, live world cup events, motorsports, skateboarding, surfing, and original adventure documentaries.',
@@ -289,7 +289,7 @@ const REGIONAL_CHANNELS = {
     {
       id: 'tv:us_dw',
       name: 'DW News Live US HD',
-      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/Deutsche_Welle_symbol_2012.svg/512px-Deutsche_Welle_symbol_2012.svg.png',
+      logo: 'https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/international/dw-english-int.png',
       background: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=1280&q=80',
       genres: ['News & Info', 'Culture & Docs', 'Live TV'],
       streamUrl: 'https://dwamdstream102.akamaized.net/hls/live/2015525/dwstream102/index.m3u8',
@@ -307,7 +307,7 @@ const REGIONAL_CHANNELS = {
     {
       id: 'tv:us_classic_movies',
       name: '30A Classic Movie Channel',
-      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/Film_strip.svg/512px-Film_strip.svg.png',
+      logo: 'https://cdn-icons-png.flaticon.com/512/2503/2503508.png',
       background: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=1280&q=80',
       genres: ['Entertainment', 'FAST & Classic TV', 'Live TV'],
       streamUrl: 'https://30a-tv.com/feeds/pzaz/30atvmovies.m3u8',
@@ -359,25 +359,26 @@ const REGIONAL_CHANNELS = {
   CA: [
     {
       id: 'tv:ca_cbc_news',
-      name: 'CBC News Network HD',
-      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/CBC_Logo_1992-Present.svg/512px-CBC_Logo_1992-Present.svg.png',
+      name: 'CityNews Vancouver & West HD',
+      logo: 'https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/canada/city-tv-ca.png',
       background: 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=1280&q=80',
       genres: ['News & Info', 'Canada', 'Live TV'],
-      streamUrl: 'https://d2ny9lo79ujali.cloudfront.net/CBC_News_International.m3u8',
-      summary: 'Canada’s premier news source delivering live Canadian news, national politics from Ottawa, and international reporting.',
-      network: 'CBC News',
+      streamUrl: 'https://citynewsregional.akamaized.net/hls/live/1024054/Regional_Live_9/master.m3u8',
+      backupUrl: 'https://citynewsregional.akamaized.net/hls/live/1024053/Regional_Live_8/master.m3u8',
+      summary: 'Live Canadian breaking news, Pacific & Western Canada coverage, national headlines, weather, and community reporting.',
+      network: 'CityNews Canada',
       guideSchedule: [
-        { time: '06:00', title: 'CBC Morning Live', desc: 'Comprehensive Canadian morning news with live coast-to-coast reports.' },
-        { time: '09:00', title: 'CBC News Now', desc: 'Real-time breaking stories, market movements, and weather.' },
-        { time: '13:00', title: 'CBC News Today', desc: 'National discussions on healthcare, economy, and culture.' },
-        { time: '17:00', title: 'Power & Politics', desc: 'Canada’s leading daily political show hosted from Parliament Hill.' },
-        { time: '21:00', title: 'The National', desc: 'CBC flagship nightly newscast with chief correspondent Adrienne Arsenault.' }
+        { time: '06:00', title: 'Breakfast Television West', desc: 'Comprehensive Canadian morning news with coast-to-coast updates.' },
+        { time: '09:00', title: 'CityNews Live Now', desc: 'Real-time breaking stories, market movements, and weather.' },
+        { time: '13:00', title: 'Canadian News Today', desc: 'National discussions on healthcare, economy, and culture.' },
+        { time: '17:00', title: 'CityNews at 5 & 6', desc: 'Flagship evening regional and national news broadcast.' },
+        { time: '21:00', title: 'CityNews Tonight', desc: 'Evening Canadian news wrap, sports, and investigative reports.' }
       ]
     },
     {
       id: 'tv:ca_citynews_toronto',
       name: 'CityNews Toronto HD',
-      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Citytv_logo.svg/512px-Citytv_logo.svg.png',
+      logo: 'https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/canada/city-tv-ca.png',
       background: 'https://images.unsplash.com/photo-1509099836639-18ba1795216d?w=1280&q=80',
       genres: ['News & Info', 'Canada', 'Live TV'],
       streamUrl: 'https://citynewsregional.akamaized.net/hls/live/1024052/Regional_Live_7/master.m3u8',
@@ -392,27 +393,44 @@ const REGIONAL_CHANNELS = {
       ]
     },
     {
+      id: 'tv:ca_dw',
+      name: 'DW English HD',
+      logo: 'https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/international/dw-english-int.png',
+      background: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=1280&q=80',
+      genres: ['News & Info', 'Culture & Docs', 'Live TV'],
+      streamUrl: 'https://dwamdstream102.akamaized.net/hls/live/2015525/dwstream102/index.m3u8',
+      summary: 'International news and documentaries covering global politics, technology, climate, and world affairs.',
+      network: 'DW',
+      guideSchedule: [
+        { time: '07:00', title: 'DW News Global', desc: 'International headlines and live correspondents.' },
+        { time: '10:00', title: 'Global 3000', desc: 'Exploring the impact of globalization on society.' },
+        { time: '13:00', title: 'DW News Live', desc: 'Comprehensive global news and investigative reporting.' },
+        { time: '19:00', title: 'DW News Prime', desc: 'International perspectives on global affairs.' },
+        { time: '21:00', title: 'DW Documentary', desc: 'Award-winning investigative documentaries.' }
+      ]
+    },
+    {
       id: 'tv:ca_nasa',
-      name: 'NASA TV HD',
-      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/NASA_logo.svg/512px-NASA_logo.svg.png',
+      name: 'NASA & Space Live HD (ISS 1080p)',
+      logo: 'https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/united-states/nasa-tv-globe-logo-us.png',
       background: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1280&q=80',
       genres: ['Culture & Docs', 'FAST & Classic TV', 'Live TV'],
-      streamUrl: 'https://ntv1.akamaized.net/hls/live/2014075/NASA-NTV1-HLS/master.m3u8',
-      summary: 'Live astronaut broadcasts from the International Space Station, rocket tests, Artemis moon missions, and astronomical breakthroughs.',
-      network: 'NASA TV',
+      streamUrl: 'https://linear-1224.frequency.stream/dist/lg-uk/1224/hls/master/playlist.m3u8',
+      summary: 'Live 1080p orbital broadcasts from space cameras aboard the International Space Station, real-time Earth views, and astronomical breakthroughs.',
+      network: 'Space Live / ISS',
       guideSchedule: [
         { time: '08:00', title: 'ISS Live Orbit: High Definition Earth Views', desc: 'Streaming real-time HD views of Earth from the space station.' },
         { time: '11:00', title: 'Space Station Crew Operations', desc: 'Astronauts conduct microgravity experiments aboard the ISS.' },
-        { time: '14:00', title: 'NASA ScienceCast & Mission Briefings', desc: 'Discoveries from the James Webb and Hubble Space Telescopes.' },
-        { time: '17:00', title: 'Artemis Moon Mission Update', desc: 'Humanity returns to the Moon: hardware tests and launch countdowns.' },
+        { time: '14:00', title: 'Orbital Sunrise & Telemetry Feed', desc: 'Live orbital tracking across continents and oceans.' },
+        { time: '17:00', title: 'Lunar & Deep Space Mission Update', desc: 'Humanity returns to the Moon: hardware tests and launch highlights.' },
         { time: '20:00', title: 'Cosmic Journeys: Mars & Beyond', desc: 'Robotic exploration across the solar system.' }
       ]
     },
     {
       id: 'tv:ca_redbull',
       name: 'Red Bull TV HD',
-      logo: 'https://upload.wikimedia.org/wikipedia/en/thumb/f/f5/Red_Bull_TV_logo.svg/512px-Red_Bull_TV_logo.svg.png',
-      background: 'https://images.unsplash.com/photo-1517649763962-0c623266ddc0?w=1280&q=80',
+      logo: 'https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/international/red-bull-tv-int.png',
+      background: 'https://images.unsplash.com/photo-1530549387789-4c1017266635?w=1280&q=80',
       genres: ['Sports & Action', 'Culture & Docs', 'Live TV'],
       streamUrl: 'https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8',
       summary: 'Extreme action sports, live world cup events, motorsports, skateboarding, surfing, and original adventure documentaries.',
@@ -464,7 +482,7 @@ const REGIONAL_CHANNELS = {
     {
       id: 'tv:au_abc_news',
       name: 'ABC News Australia HD',
-      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/ABC_News_Australia_logo_2017.svg/512px-ABC_News_Australia_logo_2017.svg.png',
+      logo: 'https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/australia/abc-news-au.png',
       background: 'https://images.unsplash.com/photo-1506973035872-a4ec16b8e8d9?w=1280&q=80',
       genres: ['News & Info', 'Australia', 'Live TV'],
       streamUrl: 'https://abc-news-dmd-streams-1.akamaized.net/out/v1/701126012d044971b3fa89406a440133/index.m3u8',
@@ -482,7 +500,7 @@ const REGIONAL_CHANNELS = {
     {
       id: 'tv:au_news24',
       name: 'Sky News / News24 Australia HD',
-      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Sky_News_Australia_logo_2015.svg/512px-Sky_News_Australia_logo_2015.svg.png',
+      logo: 'https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/australia/sky-news-au.png',
       background: 'https://images.unsplash.com/photo-1523482580672-f109ba8cb9be?w=1280&q=80',
       genres: ['News & Info', 'Australia', 'Live TV'],
       streamUrl: 'https://skynewsau-live-premium.akamaized.net/hls/live/2105299/skynews/live.m3u8',
@@ -499,7 +517,7 @@ const REGIONAL_CHANNELS = {
     {
       id: 'tv:au_moviesphere',
       name: 'MovieSphere Australia HD',
-      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/Film_strip.svg/512px-Film_strip.svg.png',
+      logo: 'https://cdn-icons-png.flaticon.com/512/2503/2503508.png',
       background: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=1280&q=80',
       genres: ['Entertainment', 'Movies & Drama', 'Live TV'],
       streamUrl: 'https://amg00353-lionsgatefilmsi-moviesphereaus-samsungau-7qzhf.amagi.tv/playlist/amg00353-lionsgatefilmsi-moviesphereaus-samsungau/playlist.m3u8',
@@ -516,8 +534,8 @@ const REGIONAL_CHANNELS = {
     {
       id: 'tv:au_redbull',
       name: 'Red Bull TV HD',
-      logo: 'https://upload.wikimedia.org/wikipedia/en/thumb/f/f5/Red_Bull_TV_logo.svg/512px-Red_Bull_TV_logo.svg.png',
-      background: 'https://images.unsplash.com/photo-1517649763962-0c623266ddc0?w=1280&q=80',
+      logo: 'https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/international/red-bull-tv-int.png',
+      background: 'https://images.unsplash.com/photo-1530549387789-4c1017266635?w=1280&q=80',
       genres: ['Sports & Action', 'Culture & Docs', 'Live TV'],
       streamUrl: 'https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8',
       summary: 'Extreme action sports, live world cup events, motorsports, surfing, and original adventure documentaries.',
@@ -568,26 +586,26 @@ const REGIONAL_CHANNELS = {
   IE: [
     {
       id: 'tv:ie_sky_news',
-      name: 'Sky News HD (Ireland & UK)',
-      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d2/Sky_News_2021.svg/512px-Sky_News_2021.svg.png',
+      name: 'France 24 & Europe News HD',
+      logo: 'https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/international/france-24-english-int.png',
       background: 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=1280&q=80',
       genres: ['News & Info', 'Ireland', 'Live TV'],
-      streamUrl: 'https://distro001-gb-hls1-prd.delivery.skycdp.com/easel_cdn/ngrp:weather_loop.stream_all/playlist.m3u8',
-      backupUrl: 'https://amg01076-lightningintern-gbnewsau-samsungau-et7fz.amagi.tv/playlist/amg01076-lightningintern-gbnewsau-samsungau/playlist.m3u8',
-      summary: 'Breaking news, comprehensive Irish, UK and European political coverage, and live world event analysis.',
-      network: 'Sky News',
+      streamUrl: 'https://live.france24.com/hls/live/2037218-b/F24_EN_HI_HLS/master_5000.m3u8',
+      backupUrl: 'https://dash4.antik.sk/live/test_euronews/playlist.m3u8',
+      summary: '24/7 breaking news, comprehensive Irish, European Union, UK and international political coverage, business, and live world event analysis.',
+      network: 'France 24 / Euronews',
       guideSchedule: [
-        { time: '06:00', title: 'Sky News Breakfast', desc: 'Morning news bulletin, European headlines, and weather.' },
-        { time: '10:00', title: 'The News Hour with Mark Austin', desc: 'In-depth analysis of major stories and international reports.' },
-        { time: '14:00', title: 'Live at Five with Sarah-Jane Mee', desc: 'Breaking news updates and panel discussions.' },
-        { time: '19:00', title: 'Sky News at Seven', desc: 'Evening roundup of the day’s most important developments.' },
-        { time: '21:00', title: 'The World with Yalda Hakim', desc: 'Eyewitness accounts and interviews from global hot-spots.' }
+        { time: '06:00', title: 'European Morning News', desc: 'Morning news bulletin, European headlines, and market updates.' },
+        { time: '10:00', title: 'Europe Today Live', desc: 'In-depth analysis of EU, Irish, UK, and international reports.' },
+        { time: '14:00', title: 'The World This Afternoon', desc: 'Breaking news updates and panel discussions.' },
+        { time: '19:00', title: 'Talking Europe & Prime News', desc: 'Evening roundup of the day’s most important European developments.' },
+        { time: '21:00', title: 'The Debate & Global Focus', desc: 'Eyewitness accounts and live interviews from global capitals.' }
       ]
     },
     {
       id: 'tv:ie_great_movies',
       name: 'GREAT! Movies HD',
-      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Great%21_Movies_logo_2021.svg/512px-Great%21_Movies_logo_2021.svg.png',
+      logo: 'https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/united-kingdom/great-movies-uk.png',
       background: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=1280&q=80',
       genres: ['Entertainment', 'Movies & Drama', 'Live TV'],
       streamUrl: 'https://amg01753-narrativeuk-amg01753c3-lg-gb-1833.playouts.now.amagi.tv/playlist/amg01753-narrativeuk-greatmovies-lggb/playlist.m3u8',
@@ -604,7 +622,7 @@ const REGIONAL_CHANNELS = {
     {
       id: 'tv:ie_dw',
       name: 'DW English HD',
-      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/Deutsche_Welle_symbol_2012.svg/512px-Deutsche_Welle_symbol_2012.svg.png',
+      logo: 'https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/international/dw-english-int.png',
       background: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=1280&q=80',
       genres: ['News & Info', 'Culture & Docs', 'Live TV'],
       streamUrl: 'https://dwamdstream102.akamaized.net/hls/live/2015525/dwstream102/index.m3u8',
@@ -620,18 +638,18 @@ const REGIONAL_CHANNELS = {
     },
     {
       id: 'tv:ie_nasa',
-      name: 'NASA TV HD',
-      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/NASA_logo.svg/512px-NASA_logo.svg.png',
+      name: 'NASA & Space Live HD (ISS 1080p)',
+      logo: 'https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/united-states/nasa-tv-globe-logo-us.png',
       background: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1280&q=80',
       genres: ['Culture & Docs', 'FAST & Classic TV', 'Live TV'],
-      streamUrl: 'https://ntv1.akamaized.net/hls/live/2014075/NASA-NTV1-HLS/master.m3u8',
-      summary: 'Live astronaut broadcasts from the International Space Station, rocket tests, and astronomical breakthroughs.',
-      network: 'NASA TV',
+      streamUrl: 'https://linear-1224.frequency.stream/dist/lg-uk/1224/hls/master/playlist.m3u8',
+      summary: 'Live 1080p orbital broadcasts from space cameras aboard the International Space Station, real-time Earth views, and astronomical breakthroughs.',
+      network: 'Space Live / ISS',
       guideSchedule: [
         { time: '08:00', title: 'ISS Live Orbit: High Definition Earth Views', desc: 'Streaming real-time HD views of Earth from the space station.' },
         { time: '11:00', title: 'Space Station Crew Operations', desc: 'Astronauts conduct microgravity experiments aboard the ISS.' },
-        { time: '14:00', title: 'NASA ScienceCast & Mission Briefings', desc: 'Discoveries from the James Webb and Hubble Space Telescopes.' },
-        { time: '17:00', title: 'Artemis Moon Mission Update', desc: 'Humanity returns to the Moon: hardware tests and launch countdowns.' }
+        { time: '14:00', title: 'Orbital Sunrise & Telemetry Feed', desc: 'Live orbital tracking across continents and oceans.' },
+        { time: '17:00', title: 'Lunar & Deep Space Mission Update', desc: 'Humanity returns to the Moon: hardware tests and launch highlights.' }
       ]
     },
     {
@@ -693,10 +711,11 @@ const REGIONAL_CHANNELS = {
     {
       id: 'tv:in_b4u_movies',
       name: 'B4U Movies HD',
-      logo: 'https://i.imgur.com/M9kMFJl.png',
+      logo: 'https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/india/b4u-movies-in.png',
       background: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=1280&q=80',
-      genres: ['Movies & Drama', 'Bollywood', 'Live TV'],
+      genres: ['Movies & Drama', 'Bollywood & Music', 'Live TV'],
       streamUrl: 'https://streams.tangotv.in/B4UMOVIES/ORIGIN/index.m3u8',
+      backupUrl: 'https://cdn-uw2-prod.tsv2.amagi.tv/linear/amg00864-shemarooenterta-shemabollywood-ono/playlist.m3u8',
       summary: 'The ultimate destination for Bollywood cinema, showcasing action blockbusters, romantic dramas, comedies, and family entertainment.',
       network: 'B4U Network',
       guideSchedule: [
@@ -705,6 +724,24 @@ const REGIONAL_CHANNELS = {
         { time: '15:00', title: 'Bollywood Romance Matinee', desc: 'Award-winning romance and family cinema.' },
         { time: '19:00', title: 'Prime Time Mega Movie', desc: 'Star-studded Bollywood blockbuster presentation.' },
         { time: '22:30', title: 'Late Night Thriller Vault', desc: 'High-suspense Hindi crime thriller and mystery cinema.' }
+      ]
+    },
+    {
+      id: 'tv:in_shemaroo_bollywood',
+      name: 'Shemaroo Bollywood HD',
+      logo: 'https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/india/shemaroo-in.png',
+      background: 'https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?w=1280&q=80',
+      genres: ['Movies & Drama', 'Bollywood & Music', 'Live TV'],
+      streamUrl: 'https://cdn-uw2-prod.tsv2.amagi.tv/linear/amg00864-shemarooenterta-shemabollywood-ono/playlist.m3u8',
+      backupUrl: 'https://mumt03.tangotv.in/Dsly5z3HGOLDMINESBOLLYWOOD/index.m3u8',
+      summary: '24/7 1080p Bollywood cinema showcase featuring iconic Hindi blockbusters, golden classics, comedies, and superstars.',
+      network: 'Shemaroo Entertainment',
+      guideSchedule: [
+        { time: '07:30', title: 'Shemaroo Morning Classic', desc: 'Beloved golden-age Hindi cinema and family blockbusters.' },
+        { time: '11:00', title: 'Comedy Tadka Blockbuster', desc: 'Laugh-out-loud Bollywood comedies with iconic stars.' },
+        { time: '15:00', title: 'Superstar Matinee', desc: 'Hit Hindi dramas and musical romances.' },
+        { time: '19:00', title: 'Shemaroo Prime Cinema', desc: 'Full-length 1080p evening Bollywood feature presentation.' },
+        { time: '22:30', title: 'Action & Masala Late Show', desc: 'High-voltage action and suspense cinema.' }
       ]
     },
     {
@@ -767,7 +804,7 @@ const REGIONAL_CHANNELS = {
       name: 'Radio Mirchi Bollywood Hits (Live Radio)',
       logo: 'https://cdn-icons-png.flaticon.com/512/3075/3075908.png',
       background: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=1280&q=80',
-      genres: ['Radio & Music', 'Bollywood', 'Live TV'],
+      genres: ['Radio & Music', 'Bollywood & Music', 'Live TV'],
       streamUrl: 'https://stream.zeno.fm/f3wvbbqmdg8uv',
       summary: 'India’s #1 hit radio station streaming non-stop Bollywood chartbusters, RJ shows, and the latest Mumbai film tracks.',
       network: 'Radio Mirchi',
@@ -784,7 +821,7 @@ const REGIONAL_CHANNELS = {
       name: 'Bollywood Classics Radio (Live Radio)',
       logo: 'https://cdn-icons-png.flaticon.com/512/4430/4430494.png',
       background: 'https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=1280&q=80',
-      genres: ['Radio & Music', 'Bollywood', 'Live TV'],
+      genres: ['Radio & Music', 'Bollywood & Music', 'Live TV'],
       streamUrl: 'https://stream.zeno.fm/0r0xa792kwzuv',
       summary: 'Non-stop golden era Bollywood melodies, vintage film soundtracks, ghazals, and romantic classics from the 60s, 70s, and 80s.',
       network: 'Bollywood Classics',
@@ -816,8 +853,9 @@ const DRM_FREE_MOVIES = [
     poster: 'https://images.metahub.space/poster/medium/tt0063350/img',
     background: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=1280&q=80',
     synopsis: 'A ragtag group of Pennsylvanians barricade themselves in an old farmhouse to remain safe from a bloodthirsty horde of flesh-eating ghouls ravaging the East Coast. A genre-defining horror masterpiece.',
-    streamUrl: 'https://upload.wikimedia.org/wikipedia/commons/2/24/Night_of_the_Living_Dead_%281968%29.webm',
-    sourceUrl: 'https://commons.wikimedia.org/wiki/File:Night_of_the_Living_Dead_(1968).webm'
+    streamUrl: 'https://dn801208.us.archive.org/0/items/Night.Of.The.Living.Dead_1080p/NightOfTheLivingDead.mp4',
+    backupUrl: 'https://upload.wikimedia.org/wikipedia/commons/2/24/Night_of_the_Living_Dead_%281968%29.webm',
+    sourceUrl: 'https://archive.org/details/Night.Of.The.Living.Dead_1080p'
   },
   {
     id: 'drmfree:nosferatu',
@@ -831,8 +869,9 @@ const DRM_FREE_MOVIES = [
     poster: 'https://images.metahub.space/poster/medium/tt0013442/img',
     background: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=1280&q=80',
     synopsis: 'Vampire Count Orlok expresses interest in a new residence and real estate agent Hutter\'s wife in this German Expressionist masterpiece that set the standard for cinematic gothic terror.',
-    streamUrl: 'https://upload.wikimedia.org/wikipedia/commons/7/78/Nosferatu_%281922%29.webm',
-    sourceUrl: 'https://commons.wikimedia.org/wiki/File:Nosferatu_(1922).webm'
+    streamUrl: 'https://dn800304.us.archive.org/0/items/Nosferatu_most_complete_version_93_mins./Nosferatu_1922_Symphony_of_Horror_512kb.mp4',
+    backupUrl: 'https://upload.wikimedia.org/wikipedia/commons/7/78/Nosferatu_%281922%29.webm',
+    sourceUrl: 'https://archive.org/details/Nosferatu_most_complete_version_93_mins.'
   },
   {
     id: 'drmfree:the_general',
@@ -844,10 +883,11 @@ const DRM_FREE_MOVIES = [
     runtime: '79 min',
     imdbRating: '8.1',
     poster: 'https://images.metahub.space/poster/medium/tt0017925/img',
-    background: 'https://images.unsplash.com/photo-1533568024503-45a8df2d0d08?w=1280&q=80',
+    background: 'https://images.unsplash.com/photo-1474487548417-781cb71495f3?w=1280&q=80',
     synopsis: 'When Union spies steal an engineer\'s beloved locomotive with his sweetheart aboard, he single-handedly pursues it through enemy lines. Widely considered one of the greatest films in cinema history.',
-    streamUrl: 'https://upload.wikimedia.org/wikipedia/commons/e/ee/The_General_%281926%29.webm',
-    sourceUrl: 'https://commons.wikimedia.org/wiki/File:The_General_(1926).webm'
+    streamUrl: 'https://dn600304.us.archive.org/0/items/TheGeneral1926/The_General_1926_720p.mp4',
+    backupUrl: 'https://dn800209.us.archive.org/0/items/The_General_Buster_Keaton/The_General.mp4',
+    sourceUrl: 'https://archive.org/details/TheGeneral1926'
   },
   {
     id: 'drmfree:his_girl_friday',
@@ -861,7 +901,7 @@ const DRM_FREE_MOVIES = [
     poster: 'https://images.metahub.space/poster/medium/tt0032599/img',
     background: 'https://images.unsplash.com/photo-1485846234645-a62644f84728?w=1280&q=80',
     synopsis: 'A newspaper editor uses every trick in the book to keep his ace reporter ex-wife from remarrying and leaving the newsroom, embroiling them in a breathless murder scoop. Renowned for its lightning-fast dialogue.',
-    streamUrl: 'https://archive.org/download/his_girl_friday/his_girl_friday.mp4',
+    streamUrl: 'https://dn800306.us.archive.org/0/items/his_girl_friday/his_girl_friday.mp4',
     sourceUrl: 'https://archive.org/details/his_girl_friday'
   },
   {
@@ -876,7 +916,7 @@ const DRM_FREE_MOVIES = [
     poster: 'https://images.metahub.space/poster/medium/tt0051744/img',
     background: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=1280&q=80',
     synopsis: 'An eccentric millionaire offers $10,000 to five guests who agree to be locked overnight in a sinister haunted mansion where horrifying paranormal murders begin to unfold. Starring the legendary Vincent Price.',
-    streamUrl: 'https://archive.org/download/house_on_haunted_hill_ipod/house_on_haunted_hill.mp4',
+    streamUrl: 'https://dn800309.us.archive.org/0/items/house_on_haunted_hill_ipod/house_on_haunted_hill.mp4',
     sourceUrl: 'https://archive.org/details/house_on_haunted_hill_ipod'
   },
   {
@@ -891,7 +931,8 @@ const DRM_FREE_MOVIES = [
     poster: 'https://images.metahub.space/poster/medium/tt0038988/img',
     background: 'https://images.unsplash.com/photo-1478760329108-5c3ed9d495a0?w=1280&q=80',
     synopsis: 'A relentless war crimes investigator tracks a notorious fugitive who has assumed a quiet identity as a prep school professor in Connecticut. A pulse-pounding masterpiece directed by and starring Orson Welles.',
-    streamUrl: 'https://archive.org/download/TheStranger_0/The_Stranger.mp4',
+    streamUrl: 'https://dn800308.us.archive.org/0/items/TheStranger_0/The_Stranger.mp4',
+    backupUrl: 'https://upload.wikimedia.org/wikipedia/commons/2/2b/The_stranger_%281946%29.webm',
     sourceUrl: 'https://archive.org/details/TheStranger_0'
   },
   {
@@ -906,7 +947,7 @@ const DRM_FREE_MOVIES = [
     poster: 'https://images.metahub.space/poster/medium/tt0031397/img',
     background: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=1280&q=80',
     synopsis: 'Lemuel Gulliver washes ashore on the island of Lilliput after a shipwreck, where he finds himself a giant among tiny citizens embroiled in a ridiculous royal feud. A milestone in classic American animation.',
-    streamUrl: 'https://archive.org/download/gullivers_travels1939/gullivers_travels1939.mp4',
+    streamUrl: 'https://dn801204.us.archive.org/0/items/gullivers_travels1939/gullivers_travels1939.mp4',
     sourceUrl: 'https://archive.org/details/gullivers_travels1939'
   },
   {
@@ -921,7 +962,8 @@ const DRM_FREE_MOVIES = [
     poster: 'https://images.metahub.space/poster/medium/tt0063790/img',
     background: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1280&q=80',
     synopsis: 'Astronauts landing on Venus encounter monstrous prehistoric beasts, volcanic eruptions, and a telepathic matriarchal civilization that worships a pterodactyl god. A retro drive-in cult sci-fi wonder.',
-    streamUrl: 'https://archive.org/download/VoyagetothePlanetofPrehistoricWomen/VoyagetothePlanetofPrehistoricWomen.mp4',
+    streamUrl: 'https://dn601206.us.archive.org/0/items/VoyagetothePlanetofPrehistoricWomen/VoyagetothePlanetofPrehistoricWomen.mp4',
+    backupUrl: 'https://dn600205.us.archive.org/0/items/VoyageToThePlanetOfPrehistoricWomen_20130813/Voyage%20to%20the%20Planet%20of%20Prehistoric%20Women.mp4',
     sourceUrl: 'https://archive.org/details/VoyagetothePlanetofPrehistoricWomen'
   },
   {
@@ -936,8 +978,9 @@ const DRM_FREE_MOVIES = [
     poster: 'https://images.metahub.space/poster/medium/tt0038494/img',
     background: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=1280&q=80',
     synopsis: 'Sherlock Holmes and Dr. Watson investigate a string of murders linked to three seemingly ordinary music boxes crafted inside Dartmoor Prison that conceal a secret code to Bank of England engraving plates.',
-    streamUrl: 'https://archive.org/download/dressed_to_kill/dressed_to_kill.mp4',
-    sourceUrl: 'https://archive.org/details/dressed_to_kill'
+    streamUrl: 'https://dn800304.us.archive.org/0/items/DressedToKill1946/DressedToKill.mp4',
+    backupUrl: 'https://dn601209.us.archive.org/0/items/DressedToKill720p1946/DressedToKill720p.mp4',
+    sourceUrl: 'https://archive.org/details/DressedToKill1946'
   },
   {
     id: 'drmfree:suddenly',
@@ -951,7 +994,7 @@ const DRM_FREE_MOVIES = [
     poster: 'https://images.metahub.space/poster/medium/tt0047542/img',
     background: 'https://images.unsplash.com/photo-1478760329108-5c3ed9d495a0?w=1280&q=80',
     synopsis: 'In a sleepy California town, a ruthless assassin and his gang hold a family hostage in their hillside home as they position their sniper rifle to assassinate the President of the United States. Starring Frank Sinatra.',
-    streamUrl: 'https://archive.org/download/suddenly/suddenly.mp4',
+    streamUrl: 'https://dn800303.us.archive.org/0/items/suddenly/suddenly.mp4',
     sourceUrl: 'https://archive.org/details/suddenly'
   }
 ];
@@ -1066,7 +1109,7 @@ const UPSTREAM_HEALTH = { lastStatus: null, lastError: null, lastStreams: null, 
 // Tracks installs & request volume using SHA-256 salted hashes.
 // Zero raw IPs or personal info are ever logged or persisted.
 // -------------------------------------------------------------
-const STATS_PATH = path.join(__dirname, 'stats.json');
+const STATS_PATH = process.env.VERCEL ? '/tmp/stats.json' : path.join(__dirname, 'stats.json');
 const STATS_SALT = crypto.randomBytes(16).toString('hex');
 
 function loadStats() {
@@ -1080,6 +1123,7 @@ function loadStats() {
         catalogRequests: data.catalogRequests || 0,
         metaRequests: data.metaRequests || 0,
         streamRequests: data.streamRequests || 0,
+        subtitleRequests: data.subtitleRequests || 0,
         youtubeSearches: data.youtubeSearches || 0,
         tvGuideRequests: data.tvGuideRequests || 0,
         drmFreeRequests: data.drmFreeRequests || 0,
@@ -1096,6 +1140,7 @@ function loadStats() {
     catalogRequests: 0,
     metaRequests: 0,
     streamRequests: 0,
+    subtitleRequests: 0,
     youtubeSearches: 0,
     tvGuideRequests: 0,
     drmFreeRequests: 0,
@@ -1121,6 +1166,7 @@ function persistStats() {
         catalogRequests: STATS.catalogRequests,
         metaRequests: STATS.metaRequests,
         streamRequests: STATS.streamRequests,
+        subtitleRequests: STATS.subtitleRequests || 0,
         youtubeSearches: STATS.youtubeSearches,
         tvGuideRequests: STATS.tvGuideRequests || 0,
         drmFreeRequests: STATS.drmFreeRequests || 0,
@@ -1187,7 +1233,7 @@ function readJsonBody(req, maxBytes = 32768) {
 // COMMUNITY FEEDBACK & COMMENTS ENGINE
 // Anonymized community discussion & suggestions system.
 // -------------------------------------------------------------
-const FEEDBACK_PATH = path.join(__dirname, 'feedback.json');
+const FEEDBACK_PATH = process.env.VERCEL ? '/tmp/feedback.json' : path.join(__dirname, 'feedback.json');
 function loadFeedback() {
   try {
     if (fs.existsSync(FEEDBACK_PATH)) {
@@ -1275,16 +1321,19 @@ const TV_GENRES = {
   'Western': 37
 };
 
-function getManifest(baseUrl, userConfig = DEFAULT_USER_CONFIG) {
+function getManifest(baseUrl, userConfig = DEFAULT_USER_CONFIG, rootUrl = baseUrl) {
   const regionCode = (userConfig && userConfig.region) || 'GB';
   const regionName = REGIONS[regionCode] || 'United Kingdom';
+  const regionalChannelsList = REGIONAL_CHANNELS[regionCode] || REGIONAL_CHANNELS.GB;
+  const regionalGenres = ['All Channels', ...new Set(regionalChannelsList.flatMap(c => c.genres))];
+  const drmFreeGenres = ['All Titles', ...new Set(DRM_FREE_MOVIES.flatMap(m => m.genres))];
   return {
     id: 'org.stremio.nightknight.cinema',
     version: ADDON_VERSION,
     name: 'NightKnight Cinema',
     description: 'Created by NightKnight (@NightKnight24). Complete cinema hub: Native Multi-Language Subtitles Engine (80+ languages), Regional Live TV & TV Guide (EPG), 24/7 Live Music TV & Radios (UK, US, Canada, Australia, Ireland, India), DRM-Free Cinema playback, YouTube in-app player, streaming hubs (BBC iPlayer, ITVX, Netflix, Disney+, Hotstar), franchise viewing orders & speed engine. See my projects: https://github.com/NightKnight24',
-    logo: `${baseUrl}/icon.png`,
-    background: `${baseUrl}/background.png`,
+    logo: `${rootUrl}/icon.png`,
+    background: `${rootUrl}/background.png`,
     resources: ['catalog', 'meta', 'stream', 'subtitles'],
     types: ['movie', 'series', 'channel'],
     idPrefixes: ['tmdb:', 'tt', 'yt:', 'tv:', 'drmfree:'],
@@ -1350,6 +1399,7 @@ function getManifest(baseUrl, userConfig = DEFAULT_USER_CONFIG) {
               'Film-Noir',
               'History',
               'Horror',
+              ...(regionCode === 'IN' ? ['Bollywood Cinema'] : []),
               'Korean Cinema',
               'Martial Arts',
               'Music',
@@ -1408,6 +1458,7 @@ function getManifest(baseUrl, userConfig = DEFAULT_USER_CONFIG) {
               'Drama',
               'Family',
               'Kids',
+              ...(regionCode === 'IN' ? ['Indian & Hindi TV'] : []),
               'K-Drama',
               'Mystery',
               'News',
@@ -1503,7 +1554,7 @@ function getManifest(baseUrl, userConfig = DEFAULT_USER_CONFIG) {
         extra: [
           {
             name: 'genre',
-            options: ['All Channels', 'Music & Entertainment', 'Radio & Music', 'Bollywood & Music', 'Movies & Drama', 'News & Info', 'Entertainment', 'Culture & Docs', 'FAST & Classic TV', 'Sports & Action'],
+            options: regionalGenres,
             isRequired: false
           },
           { name: 'search', isRequired: false },
@@ -1519,7 +1570,7 @@ function getManifest(baseUrl, userConfig = DEFAULT_USER_CONFIG) {
         extra: [
           {
             name: 'genre',
-            options: ['All Titles', 'Sci-Fi & Cyber', 'Film Noir & Crime', 'Cult Horror & Mystery', 'Cinema Classics', 'Comedy & Drama', 'Animation & Family'],
+            options: drmFreeGenres,
             isRequired: false
           },
           { name: 'search', isRequired: false },
@@ -1821,7 +1872,7 @@ async function handleSearch(type, query, skip = 0) {
 }
 
 // Handle Genre and Catalog Browsing
-async function handleGenreCatalog(type, genre, skip = 0) {
+async function handleGenreCatalog(type, genre, skip = 0, userConfig = DEFAULT_USER_CONFIG) {
   const isMovie = type === 'movie';
   const tmdbPage = Math.floor(skip / 20) + 1;
 
@@ -1868,6 +1919,24 @@ async function handleGenreCatalog(type, genre, skip = 0) {
       page: tmdbPage
     });
     return (res.results || []).map(item => formatMetaPreview(item, type));
+  }
+
+  if (genre === 'Bollywood Cinema' && isMovie) {
+    const res = await fetchTmdb('/discover/movie', {
+      with_original_language: 'hi',
+      sort_by: 'popularity.desc',
+      page: tmdbPage
+    });
+    return (res.results || []).map(item => formatMetaPreview(item, 'movie'));
+  }
+
+  if (genre === 'Indian & Hindi TV' && !isMovie) {
+    const res = await fetchTmdb('/discover/tv', {
+      with_original_language: 'hi',
+      sort_by: 'popularity.desc',
+      page: tmdbPage
+    });
+    return (res.results || []).map(item => formatMetaPreview(item, 'series'));
   }
 
   if (genre === 'Korean Cinema' && isMovie) {
@@ -1943,12 +2012,21 @@ async function handleGenreCatalog(type, genre, skip = 0) {
     'Paramount+': '531'
   };
   if (providerMap[genre]) {
-    const res = await fetchTmdb(`/discover/${isMovie ? 'movie' : 'tv'}`, {
+    const watchRegion = REGIONS[userConfig?.region] ? userConfig.region : 'GB';
+    let res = await fetchTmdb(`/discover/${isMovie ? 'movie' : 'tv'}`, {
       with_watch_providers: providerMap[genre],
-      watch_region: 'US',
+      watch_region: watchRegion,
       sort_by: 'popularity.desc',
       page: tmdbPage
     });
+    if ((!res.results || res.results.length === 0) && watchRegion !== 'US') {
+      res = await fetchTmdb(`/discover/${isMovie ? 'movie' : 'tv'}`, {
+        with_watch_providers: providerMap[genre],
+        watch_region: 'US',
+        sort_by: 'popularity.desc',
+        page: tmdbPage
+      });
+    }
     return (res.results || []).map(item => formatMetaPreview(item, type));
   }
 
@@ -2456,24 +2534,40 @@ function optimizeAndRankStreams(rawStreams, userConfig = DEFAULT_USER_CONFIG) {
     const name = s.name || '';
     const filename = s.behaviorHints?.filename || '';
 
-    // Check for Debrid Cached Streams (Real-Debrid, AllDebrid, TorBox, Premiumize)
+    // Check for Debrid & Usenet Cached Streams (Real-Debrid, AllDebrid, TorBox, Premiumize, EasyDebrid, Debrid-Link, Offcloud, Usenet)
     let debridProvider = '';
-    const debridMatch = (name + ' ' + title).match(/\[(RD|AD|TB|PM)\+?\]/i);
+    const combinedText = `${name} ${title}`;
+    const debridMatch = combinedText.match(/\[(RD|AD|TB|PM|ED|DL|OC|PP|PIO|NZB|USENET)\+?\]/i);
     if (debridMatch) {
       const code = debridMatch[1].toUpperCase();
-      if (code === 'RD') debridProvider = 'Real-Debrid';
-      else if (code === 'AD') debridProvider = 'AllDebrid';
-      else if (code === 'TB') debridProvider = 'TorBox';
-      else if (code === 'PM') debridProvider = 'Premiumize';
+      const codeMap = {
+        RD: 'Real-Debrid',
+        AD: 'AllDebrid',
+        TB: 'TorBox',
+        PM: 'Premiumize',
+        ED: 'EasyDebrid',
+        DL: 'Debrid-Link',
+        OC: 'Offcloud',
+        PP: 'PikPak',
+        PIO: 'Put.io',
+        NZB: 'Usenet Cloud',
+        USENET: 'Usenet Cloud'
+      };
+      debridProvider = codeMap[code] || code;
+    } else if (/\b(Real-Debrid|AllDebrid|TorBox|Premiumize|EasyDebrid|Debrid-Link|Offcloud|Usenet)\b/i.test(combinedText)) {
+      const wordMatch = combinedText.match(/\b(Real-Debrid|AllDebrid|TorBox|Premiumize|EasyDebrid|Debrid-Link|Offcloud|Usenet)\b/i);
+      debridProvider = wordMatch[1];
     }
     const isDebrid = Boolean(debridProvider);
+    const isDirectHttp = Boolean(s.url && /^https?:\/\//i.test(s.url) && !s.infoHash);
 
-    // Parse Seeders
-    const seedMatch = title.match(/👤\s*(\d+)/);
+    // Parse Seeders (supports 👤 emoji or text Seeds:/Seeders:)
+    const seedMatch = title.match(/👤\s*(\d+)/) || title.match(/\b(?:seeds?|seeders?)\s*[:=]\s*(\d+)/i);
+    const hasSeederInfo = Boolean(seedMatch);
     const seeders = seedMatch ? parseInt(seedMatch[1], 10) : 0;
 
     // Parse File Size in GB
-    const sizeMatch = title.match(/💾\s*([\d\.]+)\s*(GB|MB)/i);
+    const sizeMatch = title.match(/💾\s*([\d\.]+)\s*(GB|MB)/i) || title.match(/\b([\d\.]+)\s*(GB|MB)\b/i);
     let sizeGB = 0;
     if (sizeMatch) {
       const val = parseFloat(sizeMatch[1]);
@@ -2510,20 +2604,32 @@ function optimizeAndRankStreams(rawStreams, userConfig = DEFAULT_USER_CONFIG) {
     let speedScore = 0;
     let speedBadge = '';
     let recommendation = '';
+    let isDead = false;
+    let isBufferRisk = false;
 
     if (isDebrid) {
-      speedScore = 100000 + (is4k ? 1000 : 500) + (isDv || isHdr ? 100 : 0) - (sizeGB * 0.1);
+      speedScore = 100000 + (is4k ? 1000 : (is1080p ? 600 : 400)) + (isDv || isHdr ? 100 : 0) - (sizeGB * 0.1);
       speedBadge = '🚀 [INSTANT CDN • 0 BUFFER]';
       recommendation = `⚡ ${debridProvider} High-Speed Cloud Stream`;
+    } else if (isDirectHttp) {
+      speedScore = 80000 + (is4k ? 1000 : (is1080p ? 600 : 400)) + (isDv || isHdr ? 100 : 0) - (sizeGB * 0.1);
+      speedBadge = '🌐 [DIRECT HTTP • INSTANT]';
+      recommendation = 'Direct HTTP/HTTPS stream • Zero P2P swarm required';
+    } else if (!hasSeederInfo) {
+      speedScore = 500 + (is4k ? 200 : (is1080p ? 150 : 100));
+      speedBadge = '🔗 [STREAM READY]';
+      recommendation = 'Direct or unindexed P2P stream';
     } else {
       if (seeders === 0) {
         speedScore = -1000;
         speedBadge = '❌ [DEAD • 0 SEEDERS]';
         recommendation = 'Do not stream (No seeders)';
+        isDead = true;
       } else if (seeders < 10 && sizeGB > 25) {
         speedScore = -500 + seeders;
         speedBadge = `⚠️ [HIGH BUFFER RISK • ${seeders} 👤]`;
         recommendation = 'High buffering risk (Huge file, low seeders)';
+        isBufferRisk = true;
       } else {
         const qualityWeight = is4k ? 1.2 : (is1080p ? 1.0 : (is720p ? 0.8 : 0.7));
         const seederPoints = seeders * 12;
@@ -2548,22 +2654,23 @@ function optimizeAndRankStreams(rawStreams, userConfig = DEFAULT_USER_CONFIG) {
     }
 
     const qualityLabel = [quality, isDv ? 'DV' : '', isHdr && !isDv ? 'HDR' : ''].filter(Boolean).join(' ');
-    const cleanAddonName = s.name.replace(/^Torrentio\n?/i, '').replace(/^\[[^\]]+\]\s*/, '').trim() || qualityLabel || 'Stream';
+    const cleanAddonName = (s.name || '').replace(/^Torrentio\n?/i, '').replace(/^\[[^\]]+\]\s*/, '').trim() || qualityLabel || 'Stream';
 
     parsed.push({
       ...s,
       _speedScore: speedScore,
       _seeders: seeders,
-      _isDead: seeders === 0 && !isDebrid,
-      _isBufferRisk: seeders < 10 && sizeGB > 25,
+      _isDead: isDead,
+      _isBufferRisk: isBufferRisk,
       name: `${speedBadge}\n${cleanAddonName}${cinemaTag}`,
-      title: `${title}\n🎬 Cinema Format: ${cinemaHighlights.join(' | ') || 'Standard Digital'}\n🛡️ NightKnight Buffer Shield: ${recommendation}`
+      title: `${title}${title ? '\n' : ''}🎬 Cinema Format: ${cinemaHighlights.join(' | ') || 'Standard Digital'}\n🛡️ NightKnight Buffer Shield: ${recommendation}`
     });
   }
 
   let activeStreams = parsed.filter(s => !s._isDead);
 
-  if (userConfig.hideRisk) {
+  const shouldHideRisk = typeof userConfig === 'boolean' ? userConfig : Boolean(userConfig && userConfig.hideRisk);
+  if (shouldHideRisk) {
     activeStreams = activeStreams.filter(s => !s._isBufferRisk);
   }
 
@@ -2615,18 +2722,26 @@ async function handleStream(type, id, userConfig = DEFAULT_USER_CONFIG) {
     const foundMovie = DRM_FREE_MOVIES.find(m => m.id === id);
     if (!foundMovie) return [];
 
-    return [
+    const drmStreams = [
       {
         name: `⚡ [NATIVE DRM-FREE]\n${foundMovie.title} (${foundMovie.year})`,
         title: `100% Legal Public Domain Stream • In-App Playback\nFast CDN • High Quality • No buffering risk`,
         url: foundMovie.streamUrl
-      },
-      {
-        name: `🏛️ [OPEN SOURCE ARCHIVE]\nOfficial Repository`,
-        title: `Public Domain repository\n🔗 Opens source portal`,
-        externalUrl: foundMovie.sourceUrl
       }
     ];
+    if (foundMovie.backupUrl) {
+      drmStreams.push({
+        name: `📡 [BACKUP MIRROR]\n${foundMovie.title} (${foundMovie.year})`,
+        title: `100% Legal Public Domain Secondary CDN • In-App Playback`,
+        url: foundMovie.backupUrl
+      });
+    }
+    drmStreams.push({
+      name: `🏛️ [OPEN SOURCE ARCHIVE]\nOfficial Repository`,
+      title: `Public Domain repository\n🔗 Opens source portal`,
+      externalUrl: foundMovie.sourceUrl
+    });
+    return drmStreams;
   }
 
   if (id.startsWith('yt:') || (type === 'channel' && !id.startsWith('tv:'))) {
@@ -2768,30 +2883,37 @@ async function handleSubtitles(type, id, extraStr = '') {
   }
 
   const cleanId = imdbTarget;
-  const upstreamSubUrl = `https://opensubtitles-v3.strem.io/subtitles/${type}/${cleanId}${extraStr ? '/' + extraStr : ''}.json`;
+  const urlsToTry = extraStr
+    ? [
+        `https://opensubtitles-v3.strem.io/subtitles/${type}/${cleanId}/${extraStr}.json`,
+        `https://opensubtitles-v3.strem.io/subtitles/${type}/${cleanId}.json`
+      ]
+    : [`https://opensubtitles-v3.strem.io/subtitles/${type}/${cleanId}.json`];
 
-  try {
-    const res = await fetch(upstreamSubUrl, {
-      headers: { 'User-Agent': 'Stremio/4.4.168' },
-      signal: AbortSignal.timeout(6000)
-    });
+  for (const upstreamSubUrl of urlsToTry) {
+    try {
+      const res = await fetch(upstreamSubUrl, {
+        headers: { 'User-Agent': 'Stremio/4.4.168' },
+        signal: AbortSignal.timeout(6000)
+      });
 
-    if (res.ok) {
-      const data = await res.json();
-      const rawSubs = data.subtitles || [];
+      if (res.ok) {
+        const data = await res.json();
+        const rawSubs = data.subtitles || [];
+        if (rawSubs.length > 0 || urlsToTry.length === 1) {
+          const formatted = rawSubs.map((sub, idx) => ({
+            id: `nk_sub_${cleanId}_${sub.lang || 'eng'}_${idx}`,
+            url: sub.url,
+            lang: sub.lang || 'eng'
+          }));
 
-      // Format subtitles cleanly under NightKnight engine
-      const formatted = rawSubs.map((sub, idx) => ({
-        id: `nk_sub_${cleanId}_${sub.lang || 'eng'}_${idx}`,
-        url: sub.url,
-        lang: sub.lang || 'eng'
-      }));
-
-      setCache(cacheKey, formatted, 1800);
-      return formatted;
+          setCache(cacheKey, formatted, 1800);
+          return formatted;
+        }
+      }
+    } catch (e) {
+      console.error(`Subtitle fetch error for ${type}/${cleanId}:`, e.message);
     }
-  } catch (e) {
-    console.error(`Subtitle fetch error for ${type}/${cleanId}:`, e.message);
   }
 
   return [];
@@ -2802,7 +2924,6 @@ export async function handleRequest(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Cache-Control', 'max-age=3600, public');
 
   if (req.method === 'OPTIONS') {
     res.writeHead(204);
@@ -2810,23 +2931,30 @@ export async function handleRequest(req, res) {
     return;
   }
 
-  const parsedUrl = parseUrl(req.url, true);
+  let parsedUrl;
+  try {
+    parsedUrl = new URL(req.url || '/', 'http://localhost');
+  } catch (e) {
+    parsedUrl = new URL('/', 'http://localhost');
+  }
 
   // Resolve true request path across Vercel, Docker, and Local
   let incomingPath = parsedUrl.pathname || '/';
+  const vpathParam = parsedUrl.searchParams.get('__vpath');
+  const pathParams = parsedUrl.searchParams.getAll('path');
   if (req.headers['x-matched-path']) {
     incomingPath = req.headers['x-matched-path'];
-  } else if (parsedUrl.query && parsedUrl.query.__vpath) {
-    incomingPath = parsedUrl.query.__vpath.startsWith('/') ? parsedUrl.query.__vpath : '/' + parsedUrl.query.__vpath;
-  } else if (parsedUrl.query && parsedUrl.query.path) {
-    const p = Array.isArray(parsedUrl.query.path) ? parsedUrl.query.path.join('/') : parsedUrl.query.path;
+  } else if (vpathParam) {
+    incomingPath = vpathParam.startsWith('/') ? vpathParam : '/' + vpathParam;
+  } else if (pathParams.length > 0) {
+    const p = pathParams.join('/');
     incomingPath = p.startsWith('/') ? p : '/' + p;
   }
 
   // Strip Vercel /api/index.js internal routing prefix if present
   if (incomingPath.startsWith('/api/index.js')) {
     incomingPath = incomingPath.slice('/api/index.js'.length) || '/';
-  } else if (incomingPath.startsWith('/api') && !incomingPath.startsWith('/api/feedback') && !incomingPath.startsWith('/api/stats')) {
+  } else if (incomingPath.startsWith('/api') && !incomingPath.startsWith('/api/feedback') && !incomingPath.startsWith('/api/stats') && !incomingPath.startsWith('/api/health')) {
     incomingPath = incomingPath.slice('/api'.length) || '/';
   }
 
@@ -2847,10 +2975,11 @@ export async function handleRequest(req, res) {
     }
   }
 
-  // Compute dynamic baseUrl from request headers
+  // Compute dynamic rootUrl & baseUrl from request headers
   const proto = req.headers['x-forwarded-proto'] || 'http';
   const host = req.headers.host || `${HOST}:${PORT}`;
-  const baseUrl = configSegment ? `${proto}://${host}/${configSegment}` : `${proto}://${host}`;
+  const rootUrl = `${proto}://${host}`;
+  const baseUrl = configSegment ? `${rootUrl}/${configSegment}` : rootUrl;
 
   try {
     recordClient(req);
@@ -2864,6 +2993,11 @@ export async function handleRequest(req, res) {
         fs.createReadStream(iconPath).pipe(res);
         return;
       }
+      if (configSegment) {
+        res.writeHead(302, { Location: `${rootUrl}/icon.png` });
+        res.end();
+        return;
+      }
     }
 
     if (pathname === '/background.png' || pathname === '/bg.png') {
@@ -2874,11 +3008,17 @@ export async function handleRequest(req, res) {
         fs.createReadStream(bgPath).pipe(res);
         return;
       }
+      if (configSegment) {
+        res.writeHead(302, { Location: `${rootUrl}/background.png` });
+        res.end();
+        return;
+      }
     }
 
-    // Health & diagnostic check (read-only)
+    // Health & diagnostic check (read-only, never cached by CDN)
     if (pathname === '/api/health') {
-      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Cache-Control', 'no-store, max-age=0');
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
       res.end(JSON.stringify({
         version: ADDON_VERSION,
         status: 'online',
@@ -2887,8 +3027,9 @@ export async function handleRequest(req, res) {
       return;
     }
 
-    // Live Stats & Anonymized Install Counter
+    // Live Stats & Anonymized Install Counter (real-time, never cached by CDN)
     if (pathname === '/api/stats') {
+      res.setHeader('Cache-Control', 'no-store, max-age=0');
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
       res.end(JSON.stringify({
         addon: 'NightKnight Cinema',
@@ -2902,6 +3043,7 @@ export async function handleRequest(req, res) {
         totalRequests: STATS.totalRequests,
         catalogRequests: STATS.catalogRequests,
         streamRequests: STATS.streamRequests,
+        subtitleRequests: STATS.subtitleRequests || 0,
         metaRequests: STATS.metaRequests,
         youtubeSearches: STATS.youtubeSearches,
         tvGuideRequests: STATS.tvGuideRequests || 0,
@@ -2912,8 +3054,9 @@ export async function handleRequest(req, res) {
       return;
     }
 
-    // Community Feedback & Comments API
+    // Community Feedback & Comments API (real-time, never cached by CDN)
     if (pathname === '/api/feedback') {
+      res.setHeader('Cache-Control', 'no-store, max-age=0');
       if (req.method === 'GET') {
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
         res.end(JSON.stringify({
@@ -2924,7 +3067,7 @@ export async function handleRequest(req, res) {
 
       if (req.method === 'POST') {
         try {
-          const clientIp = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress || 'unknown';
+          const clientIp = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket?.remoteAddress || 'unknown';
           const ua = req.headers['user-agent'] || 'unknown';
           const clientHash = crypto.createHash('sha256').update(clientIp + ua + STATS_SALT).digest('hex').slice(0, 16);
 
@@ -2996,8 +3139,9 @@ export async function handleRequest(req, res) {
       STATS.manifestRequests++;
       STATS.estimatedInstalls = Math.max(STATS.estimatedInstalls, STATS.uniqueClients.size);
       persistStats();
+      res.setHeader('Cache-Control', 'public, max-age=3600');
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
-      res.end(JSON.stringify(getManifest(baseUrl, userConfig)));
+      res.end(JSON.stringify(getManifest(baseUrl, userConfig, rootUrl)));
       return;
     }
 
@@ -3008,6 +3152,7 @@ export async function handleRequest(req, res) {
       persistStats();
       const [, type, id] = streamMatch;
       const streams = await handleStream(type, id, userConfig);
+      res.setHeader('Cache-Control', 'public, max-age=600');
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
       res.end(JSON.stringify({ streams }));
       return;
@@ -3020,6 +3165,7 @@ export async function handleRequest(req, res) {
       persistStats();
       const [, type, id, extraStr] = subMatch;
       const subtitles = await handleSubtitles(type, id, extraStr);
+      res.setHeader('Cache-Control', 'public, max-age=1800');
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
       res.end(JSON.stringify({ subtitles }));
       return;
@@ -3028,6 +3174,7 @@ export async function handleRequest(req, res) {
     // 3. Catalog: /catalog/:type/:id/:extra?.json
     const catalogMatch = pathname.match(/^\/catalog\/(movie|series|channel)\/([^\/]+)(?:\/(.+))?\.json$/);
     if (catalogMatch) {
+      res.setHeader('Cache-Control', 'public, max-age=1800');
       STATS.catalogRequests++;
       const [, type, catalogId, extraStr] = catalogMatch;
       let extra = {};
@@ -3190,7 +3337,7 @@ export async function handleRequest(req, res) {
       // Handle Dedicated Streaming Hub Catalogs (Netflix, Apple TV+, Max, Disney+, Prime, Paramount+)
       if (catalogId === 'streaming_hub_movies' || catalogId === 'streaming_hub_series') {
         const genre = extra.genre || 'Netflix';
-        const metas = await handleGenreCatalog(type, genre, skip);
+        const metas = await handleGenreCatalog(type, genre, skip, userConfig);
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
         res.end(JSON.stringify({ metas }));
         return;
@@ -3202,7 +3349,7 @@ export async function handleRequest(req, res) {
         metas = await handleSearch(type, extra.search, skip);
       } else {
         const genre = extra.genre || 'Popular';
-        metas = await handleGenreCatalog(type, genre, skip);
+        metas = await handleGenreCatalog(type, genre, skip, userConfig);
       }
 
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -3217,6 +3364,7 @@ export async function handleRequest(req, res) {
       persistStats();
       const [, type, id] = metaMatch;
       const meta = await handleMeta(type, id);
+      res.setHeader('Cache-Control', 'public, max-age=1800');
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
       res.end(JSON.stringify({ meta }));
       return;
@@ -3228,6 +3376,7 @@ export async function handleRequest(req, res) {
       const initialRegion = userConfig.region || 'GB';
       const initialHideRisk = userConfig.hideRisk;
 
+      res.setHeader('Cache-Control', 'public, max-age=60, must-revalidate');
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       res.end(`
 <!DOCTYPE html>
@@ -3787,14 +3936,18 @@ export async function handleRequest(req, res) {
     <img src="/icon.png" alt="NightKnight Logo" class="logo-img">
     <h1>NightKnight Cinema</h1>
     <div class="byline">Crafted by <a href="https://github.com/NightKnight24" target="_blank" class="author-link">NightKnight (@NightKnight24)</a></div>
-    <div class="subtitle">The ultimate media hub: Regional Live TV & TV Guide (EPG), Native DRM-Free Cinema, YouTube in-app playback & search, BYOA streaming hubs (Netflix, BBC iPlayer, ITVX, Channel 4, Disney+, Prime, Max), Curated Franchises & intelligent speed ranking.</div>
+    <div class="subtitle">The ultimate all-in-one cinema & media hub: Native Multi-Language Subtitles (80+ languages), Regional Live TV, 24/7 Music TV & Live Radios, DRM-Free Cinema, YouTube in-app playback, BYOA streaming hubs (Netflix, BBC iPlayer, ITVX, Channel 4, Disney+, Prime, Max, Hotstar), Curated Franchises & intelligent speed ranking.</div>
     
     <a id="install-btn" href="stremio://${host}/manifest.json" class="btn">🚀 Install on Stremio</a>
     
     <div class="features">
       <div class="feature-item">
-        <span class="tag">📺 Regional TV & Guide</span>
-        <span>Free-to-Air & FAST broadcast channels tailored to your region with dynamic hour-by-hour TV Guides (EPG)</span>
+        <span class="tag">💬 80+ Subtitles</span>
+        <span>Built-in multi-language subtitles engine across 80+ languages for movies & TV episodes — zero extra subtitle addons needed</span>
+      </div>
+      <div class="feature-item">
+        <span class="tag">📺 Regional TV & Music</span>
+        <span>Free-to-Air FAST TV, 24/7 Music Video channels & Live Radios tailored to your region (UK, US, CA, AU, IE, IN) with TV Guides</span>
       </div>
       <div class="feature-item">
         <span class="tag">⚡ DRM-Free Cinema</span>
@@ -3806,7 +3959,7 @@ export async function handleRequest(req, res) {
       </div>
       <div class="feature-item">
         <span class="tag">🇬🇧 UK & Global BYOA</span>
-        <span>Instant launch links for BBC iPlayer, ITVX, Channel 4, My5, U/Dave, Sky Go, Prime & Disney+</span>
+        <span>Instant launch links for BBC iPlayer, ITVX, Channel 4, My5, Sky Go, Prime, Disney+ & Hotstar</span>
       </div>
       <div class="feature-item">
         <span class="tag">🎬 Official Trailers</span>
@@ -3825,8 +3978,8 @@ export async function handleRequest(req, res) {
         <span>Automatic Dolby Vision, HDR10+, Dolby Atmos, DTS-HD & IMAX stream tagging</span>
       </div>
       <div class="feature-item">
-        <span class="tag">⚡ Speed Engine</span>
-        <span>Ranks streams by seeders, size & CDN reliability — fastest streams first</span>
+        <span class="tag">⚡ Speed & HTTP/Usenet</span>
+        <span>Ranks Debrid, Usenet, Direct HTTP & P2P streams by speed, seeders & CDN reliability</span>
       </div>
       <div class="feature-item">
         <span class="tag">🎬 Actor Search</span>
@@ -3841,9 +3994,9 @@ export async function handleRequest(req, res) {
         <select id="region-select">
           <option value="GB" ${initialRegion === 'GB' ? 'selected' : ''}>United Kingdom (Free-to-Air, BBC iPlayer, ITVX, Channel 4, My5, Sky Go, NOW)</option>
           <option value="US" ${initialRegion === 'US' ? 'selected' : ''}>United States (US Networks, Hulu, Peacock, Max, Prime, Disney+)</option>
-          <option value="CA" ${initialRegion === 'CA' ? 'selected' : ''}>Canada (CBC, Crave, CBC Gem, Prime, Disney+)</option>
-          <option value="AU" ${initialRegion === 'AU' ? 'selected' : ''}>Australia (ABC News, Stan, ABC iview, Binge, Disney+)</option>
-          <option value="IE" ${initialRegion === 'IE' ? 'selected' : ''}>Ireland (RTÉ Player, Sky News IE, Sky Go, NOW)</option>
+          <option value="CA" ${initialRegion === 'CA' ? 'selected' : ''}>Canada (CityNews, Qello Concerts, Stingray, Crave, Prime, Disney+)</option>
+          <option value="AU" ${initialRegion === 'AU' ? 'selected' : ''}>Australia (ABC News, Sky News AU, Qwest TV, SBS PopAsia, Stan, Disney+)</option>
+          <option value="IE" ${initialRegion === 'IE' ? 'selected' : ''}>Ireland (RTÉ 2FM, France 24 / Europe News, GREAT! Movies, Sky Go, NOW)</option>
           <option value="IN" ${initialRegion === 'IN' ? 'selected' : ''}>India (Bollywood Music, Movies, Live TV & Radios, Hotstar, JioCinema, ZEE5)</option>
         </select>
         <div style="font-size: 11px; color: #94a3b8; margin-top: 6px;">
@@ -3890,7 +4043,7 @@ export async function handleRequest(req, res) {
         <div class="guide-item">
           <div class="guide-num">4</div>
           <div class="guide-text">
-            <strong>Set Broadcast & Release Reminders:</strong> Click <strong>`+` (Add to Library)</strong> on any channel, upcoming movie, or series. Stremio will automatically trigger alerts on your desktop or phone when the show goes live or hits theaters!
+            <strong>Set Broadcast &amp; Release Reminders:</strong> Click <strong>+ (Add to Library)</strong> on any channel, upcoming movie, or series. Stremio will automatically trigger alerts on your desktop or phone when the show goes live or hits theaters!
           </div>
         </div>
         <div class="guide-item">
@@ -4005,8 +4158,8 @@ export async function handleRequest(req, res) {
       let href = 'stremio://' + host + '/manifest.json';
       if (!isDefault) {
         const configJson = JSON.stringify({ upstream, region, hideRisk });
-        // Base64URL encode
-        const b64 = btoa(configJson).replace(/\\+/g, '-').replace(/\\//g, '_').replace(/=+$/, '');
+        // UTF-8 safe Base64URL encode
+        const b64 = btoa(unescape(encodeURIComponent(configJson))).replace(/\\+/g, '-').replace(/\\//g, '_').replace(/=+$/, '');
         href = 'stremio://' + host + '/' + b64 + '/manifest.json';
       }
 
@@ -4135,12 +4288,14 @@ export async function handleRequest(req, res) {
 
 const server = http.createServer(handleRequest);
 
-// Bind to port unless running in serverless environment (e.g. Vercel)
-if (!process.env.VERCEL) {
+// Bind to port only when executed directly (not when imported by Vercel or tests)
+const isMainModule = process.argv[1] && path.resolve(process.argv[1]) === __filename;
+if (!process.env.VERCEL && isMainModule) {
   server.listen(PORT, HOST, () => {
     console.log(`🚀 NightKnight Cinema Addon (v${ADDON_VERSION}) running at http://${HOST}:${PORT}`);
     console.log(`👉 Stremio Install URL: stremio://${HOST}:${PORT}/manifest.json`);
   });
 }
 
+export { REGIONAL_CHANNELS, DRM_FREE_MOVIES, optimizeAndRankStreams, getManifest, ADDON_VERSION, server };
 export default handleRequest;

@@ -20,8 +20,8 @@ A clear and concise description of what you expected to happen.
 ### Environment
 - **Device / OS**: [e.g. Windows 11, macOS, Android TV, Fire TV, iOS Web]
 - **Stremio Version**: [e.g. 4.4.168 / Stremio Web / Android 1.6.12]
-- **Addon Version**: [e.g. 1.5.1]
-- **Your Selected Region**: [e.g. GB, US, CA, AU]
+- **Addon Version**: [e.g. 1.10.0]
+- **Your Selected Region**: [e.g. GB, US, CA, AU, IE, IN]
 
 ### Additional Context
 Add any other context, stream names, or screenshots about the problem here.
