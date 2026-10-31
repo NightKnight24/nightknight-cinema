@@ -1,4 +1,4 @@
-# ⚔️ NightKnight Cinema — Stremio Addon (v1.7.0)
+# ⚔️ NightKnight Cinema — Stremio Addon (v1.8.0)
 
 > **Created by NightKnight**  
 > The ultimate all-in-one cinema & media hub: Native Multi-Language Subtitles Engine (80+ languages, zero extra addons required), Regional Live TV & TV Guide (EPG), Native DRM-Free Cinema, YouTube in-app playback & global search, BYOA streaming hubs (Netflix, BBC iPlayer, ITVX, Channel 4, Disney+, Prime, Max), Curated Franchises in release order, Verified IMDb & TMDb Ratings, Home Theater Audio/Video tags, intelligent stream speed ranking, real-time community feedback & live telemetry.
