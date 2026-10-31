@@ -2826,6 +2826,13 @@ export async function handleRequest(req, res) {
   <title>NightKnight Cinema — Stremio Addon</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" type="image/png" href="/icon.png">
+  <!-- Vercel Web Analytics & Speed Insights -->
+  <script>
+    window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+    window.si = window.si || function () { (window.siq = window.siq || []).push(arguments); };
+  </script>
+  <script defer src="/_vercel/insights/script.js"></script>
+  <script defer src="/_vercel/speed-insights/script.js"></script>
   <style>
     body {
       background: #090d16 url('/background.png') no-repeat center center fixed;
