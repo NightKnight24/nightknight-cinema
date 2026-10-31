@@ -5,6 +5,7 @@ colorFrom: indigo
 colorTo: purple
 sdk: docker
 app_port: 7860
+suggested_hardware: cpu-basic
 ---
 # ⚔️ NightKnight Cinema — Stremio Addon (v1.6.2)
 
