@@ -1,12 +1,3 @@
----
-title: NightKnight Cinema
-emoji: ⚔️
-colorFrom: indigo
-colorTo: purple
-sdk: docker
-app_port: 7860
-suggested_hardware: cpu-basic
----
 # ⚔️ NightKnight Cinema — Stremio Addon (v1.6.2)
 
 > **Created by NightKnight**  
@@ -16,13 +7,13 @@ suggested_hardware: cpu-basic
 
 ## 🚀 Live Addon & Community Links
 
-* 🌐 **Live Web Portal & Configuration**: [https://nightknight-cinema.onrender.com](https://nightknight-cinema.onrender.com)
-* 🚀 **Stremio 1-Click Install**: [`stremio://nightknight-cinema.onrender.com/manifest.json`](stremio://nightknight-cinema.onrender.com/manifest.json)
+* 🌐 **Live Web Portal & Configuration**: [https://nightknight-cinema.vercel.app](https://nightknight-cinema.vercel.app) *(Backup Host: [https://nightknight-cinema.onrender.com](https://nightknight-cinema.onrender.com))*
+* 🚀 **Stremio 1-Click Install**: [`stremio://nightknight-cinema.vercel.app/manifest.json`](stremio://nightknight-cinema.vercel.app/manifest.json)
 * 📖 **Step-by-Step User Guide**: [Read Tutorial Below](#-complete-step-by-step-user-guide-how-to-use-everything)
 * 👨‍💻 **Developer Profile & Projects**: [https://github.com/NightKnight24](https://github.com/NightKnight24)
 * 📦 **Official Releases**: [GitHub Releases (v1.6.2)](https://github.com/NightKnight24/nightknight-cinema/releases)
 * 🐳 **Container Packages**: [GitHub Packages (`ghcr.io`)](https://github.com/NightKnight24/nightknight-cinema/pkgs/container/nightknight-cinema)
-* 📊 **Live Anonymized Analytics**: [https://nightknight-cinema.onrender.com/api/stats](https://nightknight-cinema.onrender.com/api/stats)
+* 📊 **Live Anonymized Analytics**: [https://nightknight-cinema.vercel.app/api/stats](https://nightknight-cinema.vercel.app/api/stats)
 * 🐛 **Issue Tracker & Feature Requests**: [GitHub Issues](https://github.com/NightKnight24/nightknight-cinema/issues)
 * 💬 **Community Discussions**: [GitHub Discussions](https://github.com/NightKnight24/nightknight-cinema/discussions) *(Enabled via Repo Settings $\rightarrow$ Features)*
 
@@ -119,7 +110,7 @@ suggested_hardware: cpu-basic
 
 ### 1. 🚀 How to Install on Any Device
 * **Desktop (Windows, macOS, Linux)**:
-  1. Open [https://nightknight-cinema.onrender.com](https://nightknight-cinema.onrender.com) in your browser.
+  1. Open [https://nightknight-cinema.vercel.app](https://nightknight-cinema.vercel.app) in your browser.
   2. Select your country region (UK, US, Canada, Australia, Ireland).
   3. Click **`🚀 Install on Stremio`** — the Stremio app will open and prompt you to install.
 * **Android TV / Fire TV / Smart TVs**:
@@ -127,7 +118,7 @@ suggested_hardware: cpu-basic
   2. Because Stremio syncs addons across devices, NightKnight Cinema will automatically appear on your TV!
   3. Alternatively, copy your configured install link and paste it into Stremio's Addon search bar on TV.
 * **iOS / Stremio Web (`web.stremio.com`)**:
-  1. Visit [https://nightknight-cinema.onrender.com](https://nightknight-cinema.onrender.com).
+  1. Visit [https://nightknight-cinema.vercel.app](https://nightknight-cinema.vercel.app).
   2. Long-press or right-click the **`🚀 Install on Stremio`** button and select **Copy Link Address**.
   3. In Stremio Web, navigate to **Addons** $\rightarrow$ paste the copied link into the search bar $\rightarrow$ tap **Install**.
 
@@ -172,7 +163,7 @@ suggested_hardware: cpu-basic
 ### 6. 🛡️ How to Enable Real-Debrid for Encrypted Cloud Streaming
 * If you have a Real-Debrid, AllDebrid, Premiumize, or TorBox subscription:
   1. Generate your configured scraper URL from Torrentio (with your API key).
-  2. Visit [https://nightknight-cinema.onrender.com](https://nightknight-cinema.onrender.com).
+  2. Visit [https://nightknight-cinema.vercel.app](https://nightknight-cinema.vercel.app).
   3. Paste that link into the **Upstream Scraper** box.
   4. Click **`🚀 Install on Stremio`**.
   5. All video streams will now download to high-speed Debrid cloud servers and stream to your device over encrypted TLS 1.3 with zero P2P exposure.
@@ -181,7 +172,7 @@ suggested_hardware: cpu-basic
 
 ## ⚙️ Configuration & Custom Scrapers
 
-Visit the web portal at **[https://nightknight-cinema.onrender.com](https://nightknight-cinema.onrender.com)** to customize your personal addon URL:
+Visit the web portal at **[https://nightknight-cinema.vercel.app](https://nightknight-cinema.vercel.app)** to customize your personal addon URL:
 
 * **Regional Streaming Services**: Choose your country (United Kingdom, United States, Canada, Australia, Ireland) to automatically surface your local free catch-up apps and subscription hubs.
 * **Upstream Scraper**: Uses Torrentio (`https://torrentio.strem.fun`) by default, or paste your custom Real-Debrid / AllDebrid / Premiumize / TorBox scraper URL for instant cloud CDN streams.
@@ -237,7 +228,7 @@ NightKnight Cinema fully integrates both **Cinema Theatrical Premieres** and **T
   1. Instead of your home computer connecting to P2P torrent swarms, the high-speed Debrid cloud server downloads the file remotely.
   2. The video is streamed to your Stremio player over an **encrypted HTTPS connection (TLS 1.3)**.
   3. Your ISP only sees encrypted HTTPS traffic to a cloud server, and your home IP is **never exposed** to the BitTorrent swarm.
-* **How to Enable**: When generating your install link on [https://nightknight-cinema.onrender.com](https://nightknight-cinema.onrender.com), paste your Debrid-enabled Torrentio scraper URL into the **Upstream Scraper** box.
+* **How to Enable**: When generating your install link on [https://nightknight-cinema.vercel.app](https://nightknight-cinema.vercel.app), paste your Debrid-enabled Torrentio scraper URL into the **Upstream Scraper** box.
 
 ---
 
@@ -266,7 +257,7 @@ NightKnight Cinema fully integrates both **Cinema Theatrical Premieres** and **T
 
 We welcome community feedback, title suggestions, reviews, and feature requests:
 - **Developer Profile & Projects**: Visit [https://github.com/NightKnight24](https://github.com/NightKnight24) to see all active open-source projects, updates, and upcoming releases.
-- **On the Web Portal**: Use the built-in feedback form at [https://nightknight-cinema.onrender.com](https://nightknight-cinema.onrender.com) to post comments or request platforms.
+- **On the Web Portal**: Use the built-in feedback form at [https://nightknight-cinema.vercel.app](https://nightknight-cinema.vercel.app) to post comments or request platforms.
 - **GitHub Discussions**: Share ideas, movie recommendations, or ask questions on [GitHub Discussions](https://github.com/NightKnight24/nightknight-cinema/discussions).
 - **GitHub Issues**: Report bugs or broken streams via our structured [Issue Templates](https://github.com/NightKnight24/nightknight-cinema/issues/new/choose).
 

@@ -2412,12 +2412,26 @@ export async function handleRequest(req, res) {
   }
 
   const parsedUrl = parseUrl(req.url, true);
-  let rawPathname = decodeURIComponent(parsedUrl.pathname || '/');
+
+  // Resolve true request path across Vercel, Hugging Face, Render, and Local
+  let incomingPath = parsedUrl.pathname || '/';
+  if (req.headers['x-matched-path']) {
+    incomingPath = req.headers['x-matched-path'];
+  } else if (parsedUrl.query && parsedUrl.query.__vpath) {
+    incomingPath = parsedUrl.query.__vpath.startsWith('/') ? parsedUrl.query.__vpath : '/' + parsedUrl.query.__vpath;
+  } else if (parsedUrl.query && parsedUrl.query.path) {
+    const p = Array.isArray(parsedUrl.query.path) ? parsedUrl.query.path.join('/') : parsedUrl.query.path;
+    incomingPath = p.startsWith('/') ? p : '/' + p;
+  }
 
   // Strip Vercel /api/index.js internal routing prefix if present
-  if (rawPathname.startsWith('/api/index.js')) {
-    rawPathname = rawPathname.slice('/api/index.js'.length) || '/';
+  if (incomingPath.startsWith('/api/index.js')) {
+    incomingPath = incomingPath.slice('/api/index.js'.length) || '/';
+  } else if (incomingPath.startsWith('/api') && !incomingPath.startsWith('/api/feedback') && !incomingPath.startsWith('/api/stats')) {
+    incomingPath = incomingPath.slice('/api'.length) || '/';
   }
+
+  let rawPathname = decodeURIComponent(incomingPath);
 
   // Strip optional user config segment from path (Stremio standard: /:config?/...)
   let userConfig = DEFAULT_USER_CONFIG;
