@@ -960,7 +960,7 @@ function getManifest(baseUrl, userConfig = DEFAULT_USER_CONFIG) {
     id: 'org.stremio.nightknight.cinema',
     version: ADDON_VERSION,
     name: 'NightKnight Cinema',
-    description: 'Created by NightKnight (@NightKnight24). Complete cinema hub: Regional Live TV & TV Guide (EPG), DRM-Free Cinema playback, YouTube in-app player, streaming hubs (BBC iPlayer, ITVX, Netflix, Disney+), franchise viewing orders & speed engine. See my projects: https://github.com/NightKnight24',
+    description: 'Created by NightKnight (@NightKnight24). Complete cinema hub: Native Multi-Language Subtitles Engine (80+ languages), Regional Live TV & TV Guide (EPG), DRM-Free Cinema playback, YouTube in-app player, streaming hubs (BBC iPlayer, ITVX, Netflix, Disney+), franchise viewing orders & speed engine. See my projects: https://github.com/NightKnight24',
     logo: `${baseUrl}/icon.png`,
     background: `${baseUrl}/background.png`,
     resources: ['catalog', 'meta', 'stream', 'subtitles'],
@@ -2483,7 +2483,7 @@ export async function handleRequest(req, res) {
 
   const parsedUrl = parseUrl(req.url, true);
 
-  // Resolve true request path across Vercel, Hugging Face, Render, and Local
+  // Resolve true request path across Vercel, Docker, and Local
   let incomingPath = parsedUrl.pathname || '/';
   if (req.headers['x-matched-path']) {
     incomingPath = req.headers['x-matched-path'];

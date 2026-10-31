@@ -7,7 +7,7 @@
 
 ## 🚀 Live Addon & Community Links
 
-* 🌐 **Live Web Portal & Configuration**: [https://nightknight-cinema.vercel.app](https://nightknight-cinema.vercel.app) *(Backup Host: [https://nightknight-cinema.onrender.com](https://nightknight-cinema.onrender.com))*
+* 🌐 **Live Web Portal & Configuration**: [https://nightknight-cinema.vercel.app](https://nightknight-cinema.vercel.app)
 * 🚀 **Stremio 1-Click Install**: [`stremio://nightknight-cinema.vercel.app/manifest.json`](stremio://nightknight-cinema.vercel.app/manifest.json)
 * 📖 **Step-by-Step User Guide**: [Read Tutorial Below](#-complete-step-by-step-user-guide-how-to-use-everything)
 * 👨‍💻 **Developer Profile & Projects**: [https://github.com/NightKnight24](https://github.com/NightKnight24)
