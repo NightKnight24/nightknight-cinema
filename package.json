@@ -1,8 +1,8 @@
 {
   "name": "nightknight-cinema",
-  "version": "1.6.2",
+  "version": "1.7.0",
   "type": "module",
-  "description": "NightKnight Cinema — Regional Live TV & TV Guide (EPG), DRM-Free Cinema & Stream Engine",
+  "description": "NightKnight Cinema — Regional Live TV, TV Guide (EPG), DRM-Free Cinema & Native Multi-Language Subtitles Engine",
   "main": "server.js",
   "author": "NightKnight",
   "license": "MIT",

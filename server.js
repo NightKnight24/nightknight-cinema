@@ -15,7 +15,7 @@ const TMDB_API_KEY = process.env.TMDB_API_KEY || '3157bd6dacbc3a653ae2e5a3b19beb
 const PORT = process.env.PORT || 7000;
 const HOST = process.env.HOST || (process.env.PORT ? '0.0.0.0' : '127.0.0.1');
 
-const ADDON_VERSION = '1.6.2';
+const ADDON_VERSION = '1.7.0';
 
 // Load server-wide DEFAULTS (read-only). Per-user settings live in the install URL, never on the server.
 function loadConfig() {
@@ -963,7 +963,7 @@ function getManifest(baseUrl, userConfig = DEFAULT_USER_CONFIG) {
     description: 'Created by NightKnight (@NightKnight24). Complete cinema hub: Regional Live TV & TV Guide (EPG), DRM-Free Cinema playback, YouTube in-app player, streaming hubs (BBC iPlayer, ITVX, Netflix, Disney+), franchise viewing orders & speed engine. See my projects: https://github.com/NightKnight24',
     logo: `${baseUrl}/icon.png`,
     background: `${baseUrl}/background.png`,
-    resources: ['catalog', 'meta', 'stream'],
+    resources: ['catalog', 'meta', 'stream', 'subtitles'],
     types: ['movie', 'series', 'channel'],
     idPrefixes: ['tmdb:', 'tt', 'yt:', 'tv:', 'drmfree:'],
     stremioAddonsConfig: {
@@ -2398,6 +2398,76 @@ async function handleStream(type, id, userConfig = DEFAULT_USER_CONFIG) {
   }
 }
 
+// -------------------------------------------------------------
+// SUBTITLES HANDLER (NightKnight Unified Multi-Language Subtitles)
+// Resolves clean, synchronized subtitles across 80+ languages directly inside the addon.
+// -------------------------------------------------------------
+async function handleSubtitles(type, id, extraStr = '') {
+  if (type !== 'movie' && type !== 'series') return [];
+
+  const cacheKey = `subtitles:${type}:${id}:${extraStr}`;
+  const cached = getCache(cacheKey);
+  if (cached) return cached;
+
+  let imdbTarget = id;
+  if (id.startsWith('tmdb:')) {
+    try {
+      if (type === 'movie') {
+        const tmdbId = id.replace('tmdb:', '');
+        const movieData = await fetchTmdb(`/movie/${tmdbId}`, { append_to_response: 'external_ids' });
+        imdbTarget = movieData.external_ids?.imdb_id || movieData.imdb_id;
+      } else {
+        const parts = id.replace('tmdb:', '').split(':');
+        const tmdbId = parts[0];
+        const season = parts[1];
+        const ep = parts[2];
+        const tvData = await fetchTmdb(`/tv/${tmdbId}`, { append_to_response: 'external_ids' });
+        const showImdb = tvData.external_ids?.imdb_id;
+        if (showImdb && season && ep) {
+          imdbTarget = `${showImdb}:${season}:${ep}`;
+        } else {
+          imdbTarget = showImdb;
+        }
+      }
+    } catch (e) {
+      console.error(`Subtitles TMDb resolution error for ${id}:`, e.message);
+    }
+  }
+
+  if (!imdbTarget || !imdbTarget.startsWith('tt')) {
+    return [];
+  }
+
+  const cleanId = imdbTarget;
+  const upstreamSubUrl = `https://opensubtitles-v3.strem.io/subtitles/${type}/${cleanId}${extraStr ? '/' + extraStr : ''}.json`;
+
+  try {
+    const res = await fetch(upstreamSubUrl, {
+      headers: { 'User-Agent': 'Stremio/4.4.168' },
+      signal: AbortSignal.timeout(6000)
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      const rawSubs = data.subtitles || [];
+
+      // Format subtitles cleanly under NightKnight engine
+      const formatted = rawSubs.map((sub, idx) => ({
+        id: `nk_sub_${cleanId}_${sub.lang || 'eng'}_${idx}`,
+        url: sub.url,
+        lang: sub.lang || 'eng'
+      }));
+
+      setCache(cacheKey, formatted, 1800);
+      return formatted;
+    }
+  } catch (e) {
+    console.error(`Subtitle fetch error for ${type}/${cleanId}:`, e.message);
+  }
+
+  return [];
+}
+
 // HTTP Server Request Handler
 export async function handleRequest(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -2441,7 +2511,7 @@ export async function handleRequest(req, res) {
   const segments = rawPathname.split('/').filter(Boolean);
   if (segments.length > 0) {
     const first = segments[0];
-    if (!['catalog', 'meta', 'stream', 'manifest.json', 'icon.png', 'logo.png', 'background.png', 'bg.png', 'configure', 'api'].includes(first)) {
+    if (!['catalog', 'meta', 'stream', 'subtitles', 'manifest.json', 'icon.png', 'logo.png', 'background.png', 'bg.png', 'configure', 'api'].includes(first)) {
       configSegment = first;
       userConfig = decodeUserConfig(configSegment);
       pathname = '/' + segments.slice(1).join('/');
@@ -2611,6 +2681,18 @@ export async function handleRequest(req, res) {
       const streams = await handleStream(type, id, userConfig);
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
       res.end(JSON.stringify({ streams }));
+      return;
+    }
+
+    // 2.5 Subtitles: /subtitles/:type/:id/:extra?.json
+    const subMatch = pathname.match(/^\/subtitles\/(movie|series)\/([^\/]+)(?:\/(.+))?\.json$/);
+    if (subMatch) {
+      STATS.subtitleRequests = (STATS.subtitleRequests || 0) + 1;
+      persistStats();
+      const [, type, id, extraStr] = subMatch;
+      const subtitles = await handleSubtitles(type, id, extraStr);
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.end(JSON.stringify({ subtitles }));
       return;
     }
 

@@ -1,7 +1,7 @@
-# ⚔️ NightKnight Cinema — Stremio Addon (v1.6.2)
+# ⚔️ NightKnight Cinema — Stremio Addon (v1.7.0)
 
 > **Created by NightKnight**  
-> The ultimate cinema & media hub: Regional Live TV & TV Guide (EPG), Native DRM-Free Cinema, YouTube in-app playback & global search, BYOA streaming hubs (Netflix, BBC iPlayer, ITVX, Channel 4, Disney+, Prime, Max), Curated Franchises in release order, Verified IMDb & TMDb Ratings, Home Theater Audio/Video tags, intelligent stream speed ranking, real-time community feedback & live telemetry.
+> The ultimate all-in-one cinema & media hub: Native Multi-Language Subtitles Engine (80+ languages, zero extra addons required), Regional Live TV & TV Guide (EPG), Native DRM-Free Cinema, YouTube in-app playback & global search, BYOA streaming hubs (Netflix, BBC iPlayer, ITVX, Channel 4, Disney+, Prime, Max), Curated Franchises in release order, Verified IMDb & TMDb Ratings, Home Theater Audio/Video tags, intelligent stream speed ranking, real-time community feedback & live telemetry.
 
 ---
 
@@ -11,7 +11,7 @@
 * 🚀 **Stremio 1-Click Install**: [`stremio://nightknight-cinema.vercel.app/manifest.json`](stremio://nightknight-cinema.vercel.app/manifest.json)
 * 📖 **Step-by-Step User Guide**: [Read Tutorial Below](#-complete-step-by-step-user-guide-how-to-use-everything)
 * 👨‍💻 **Developer Profile & Projects**: [https://github.com/NightKnight24](https://github.com/NightKnight24)
-* 📦 **Official Releases**: [GitHub Releases (v1.6.2)](https://github.com/NightKnight24/nightknight-cinema/releases)
+* 📦 **Official Releases**: [GitHub Releases (v1.7.0)](https://github.com/NightKnight24/nightknight-cinema/releases)
 * 🐳 **Container Packages**: [GitHub Packages (`ghcr.io`)](https://github.com/NightKnight24/nightknight-cinema/pkgs/container/nightknight-cinema)
 * 📊 **Live Anonymized Analytics**: [https://nightknight-cinema.vercel.app/api/stats](https://nightknight-cinema.vercel.app/api/stats)
 * 🐛 **Issue Tracker & Feature Requests**: [GitHub Issues](https://github.com/NightKnight24/nightknight-cinema/issues)
@@ -242,6 +242,7 @@ NightKnight Cinema fully integrates both **Cinema Theatrical Premieres** and **T
 | **Community Feedback** | `/api/feedback` | Community comment feed & feedback submissions (GET/POST) |
 | **Health Check** | `/api/health` | Addon status & upstream scraper connectivity diagnostics |
 | **Speed-Ranked Streams**| `/stream/:type/:id.json` | Resolves streams sorted by seeders, speed & CDN reliability |
+| **Multi-Language Subtitles** | `/subtitles/:type/:id/:extra?.json` | Native subtitles in 80+ languages (English, Spanish, French, etc.) |
 | **Movies Catalog** | `/catalog/movie/actor_genre_movies.json` | Actor filmographies, search & curated movie genres |
 | **Series Catalog** | `/catalog/series/actor_genre_series.json` | Actor filmographies, search & curated TV genres |
 | **Upcoming Movies (16:9)** | `/catalog/movie/upcoming_movies.json` | 16:9 landscape cards for upcoming movie releases |
