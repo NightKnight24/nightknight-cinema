@@ -1,4 +1,4 @@
-# ⚔️ NightKnight Cinema — Stremio Addon (v1.8.0)
+# ⚔️ NightKnight Cinema — Stremio Addon (v1.9.0)
 
 > **Created by NightKnight**  
 > The ultimate all-in-one cinema & media hub: Native Multi-Language Subtitles Engine (80+ languages, zero extra addons required), Regional Live TV & TV Guide (EPG), Native DRM-Free Cinema, YouTube in-app playback & global search, BYOA streaming hubs (Netflix, BBC iPlayer, ITVX, Channel 4, Disney+, Prime, Max), Curated Franchises in release order, Verified IMDb & TMDb Ratings, Home Theater Audio/Video tags, intelligent stream speed ranking, real-time community feedback & live telemetry.
@@ -11,7 +11,7 @@
 * 🚀 **Stremio 1-Click Install**: [`stremio://nightknight-cinema.vercel.app/manifest.json`](stremio://nightknight-cinema.vercel.app/manifest.json)
 * 📖 **Step-by-Step User Guide**: [Read Tutorial Below](#-complete-step-by-step-user-guide-how-to-use-everything)
 * 👨‍💻 **Developer Profile & Projects**: [https://github.com/NightKnight24](https://github.com/NightKnight24)
-* 📦 **Official Releases**: [GitHub Releases (v1.8.0)](https://github.com/NightKnight24/nightknight-cinema/releases)
+* 📦 **Official Releases**: [GitHub Releases (v1.9.0)](https://github.com/NightKnight24/nightknight-cinema/releases)
 * 🐳 **Container Packages**: [GitHub Packages (`ghcr.io`)](https://github.com/NightKnight24/nightknight-cinema/pkgs/container/nightknight-cinema)
 * 📊 **Live Anonymized Analytics**: [https://nightknight-cinema.vercel.app/api/stats](https://nightknight-cinema.vercel.app/api/stats)
 * 🐛 **Issue Tracker & Feature Requests**: [GitHub Issues](https://github.com/NightKnight24/nightknight-cinema/issues)
@@ -22,13 +22,13 @@
 ## ✨ Core Features & Capabilities
 
 ### 1. 📺 Regional Live TV & Electronic Program Guide (EPG)
-* **Tailored Channel Lineup**: Automatically serves high-quality, legal, unencrypted Free-to-Air & FAST broadcast channels based on your chosen region:
-  * 🇬🇧 **United Kingdom**: GB News (1080p), GREAT! Movies (1080p), GREAT! Romance & Drama (1080p), CNBC UK & Europe (1080p), DW English (1080p), Red Bull TV, NASA TV HD.
-  * 🇺🇸 **United States**: ABC News Live (1080p), DW News US (1080p), 30A Classic Movie Channel, NASA TV (Public & Media 1080p), Red Bull TV.
-  * 🇨🇦 **Canada**: CBC News Network (1080p), CityNews Toronto (720p), DW English, Red Bull TV, NASA TV.
-  * 🇦🇺 **Australia**: ABC News Australia (720p), Sky News / News24 Australia (1080p), MovieSphere Australia (1080p), Red Bull TV.
-  * 🇮🇪 **Ireland**: Sky News HD (IE/UK), GREAT! Movies HD, DW English, NASA TV HD.
-  * 🇮🇳 **India (Bollywood, Music & Live TV)**: B4U Music HD (1080p Bollywood Music), 9X Jalwa HD (Forever Bollywood Hits), B4U Movies HD (Bollywood Cinema), NDTV 24x7 HD (English News), NDTV India HD (Hindi News), Aaj Tak HD (National News), Radio Mirchi Bollywood Hits (24/7 Live Radio), Bollywood Classics Radio (Golden Era Melodies). *(Strictly displayed only when India is chosen as the region).*
+* **Tailored Channel Lineup**: Automatically serves high-quality, legal, unencrypted Free-to-Air & FAST broadcast channels and 24/7 live music/radio stations based on your chosen region:
+  * 🇬🇧 **United Kingdom**: XITE Hits UK HD (1080p Top 40 Music Videos), Capital FM UK (Live Radio), Heart UK (Live Radio), GB News (1080p), GREAT! Movies (1080p), GREAT! Romance & Drama (1080p), CNBC UK & Europe (1080p), DW English (1080p), Red Bull TV, NASA TV HD.
+  * 🇺🇸 **United States**: California Music Channel (CMC HD 1080p), LiveOne Concerts HD (LIVExLIVE 1080p), ABC News Live (1080p), DW News US (1080p), 30A Classic Movie Channel, NASA TV (Public & Media 1080p), Red Bull TV.
+  * 🇨🇦 **Canada**: Qello Concerts by Stingray HD (1080p Live Arena Tours), Stingray Classic Rock HD (1080p), CBC News Network (1080p), CityNews Toronto (720p), DW English, Red Bull TV, NASA TV.
+  * 🇦🇺 **Australia**: Qwest TV Australia HD (1080p Jazz/Soul/Funk by Quincy Jones), SBS PopAsia (Live Radio), ABC News Australia (720p), Sky News / News24 Australia (1080p), MovieSphere Australia (1080p), Red Bull TV.
+  * 🇮🇪 **Ireland**: RTÉ 2FM (Live Radio from Dublin), Sky News HD (IE/UK), GREAT! Movies HD, DW English, NASA TV HD.
+  * 🇮🇳 **India**: B4U Music HD (1080p Bollywood Music), 9X Jalwa HD (Forever Bollywood Hits), B4U Movies HD (Bollywood Cinema), NDTV 24x7 HD (English News), NDTV India HD (Hindi News), Aaj Tak HD (National News), Radio Mirchi Bollywood Hits (24/7 Live Radio), Bollywood Classics Radio (Golden Era Melodies). *(Strictly displayed when India is chosen).*
 * **Dynamic Hour-by-Hour TV Guide & Reminders**: Opening any channel card displays:
   * **Now Airing**: Current show title, start time, and synopsis calculated dynamically for the current hour.
   * **Coming Up Today**: Next consecutive scheduled programs with airtimes.

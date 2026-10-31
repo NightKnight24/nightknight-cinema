@@ -1,6 +1,6 @@
 {
   "name": "nightknight-cinema",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "type": "module",
   "description": "NightKnight Cinema — Regional Live TV, TV Guide (EPG), Bollywood Music & Radios, DRM-Free Cinema & Native Multi-Language Subtitles Engine",
   "main": "server.js",

@@ -15,7 +15,7 @@ const TMDB_API_KEY = process.env.TMDB_API_KEY || '3157bd6dacbc3a653ae2e5a3b19beb
 const PORT = process.env.PORT || 7000;
 const HOST = process.env.HOST || (process.env.PORT ? '0.0.0.0' : '127.0.0.1');
 
-const ADDON_VERSION = '1.8.0';
+const ADDON_VERSION = '1.9.0';
 
 // Load server-wide DEFAULTS (read-only). Per-user settings live in the install URL, never on the server.
 function loadConfig() {
@@ -179,6 +179,58 @@ const REGIONAL_CHANNELS = {
         { time: '17:00', title: 'Artemis Moon Mission Update', desc: 'Humanity returns to the Moon: hardware tests and launch countdowns.' },
         { time: '20:00', title: 'Cosmic Journeys: Mars & Beyond', desc: 'Robotic exploration across the solar system.' }
       ]
+    },
+    {
+      id: 'tv:gb_xite_hits',
+      name: 'XITE Hits UK HD',
+      logo: 'https://cdn-icons-png.flaticon.com/512/3844/3844724.png',
+      background: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=1280&q=80',
+      genres: ['Music & Entertainment', 'United Kingdom', 'Live TV'],
+      streamUrl: 'https://amg01243-xitenetworksint-hitsuk-samsunguk-mvovq.amagi.tv/playlist/amg01243-xitenetworksint-hitsuk-samsunguk/playlist.m3u8',
+      summary: '24/7 non-stop UK Top 40 chart hits, music videos, artist spotlights, and trending pop, urban and electronic tracks.',
+      network: 'XITE Networks',
+      guideSchedule: [
+        { time: '06:00', title: 'Morning Hitlist UK', desc: 'Kickstart your morning with the biggest current UK chart toppers.' },
+        { time: '10:00', title: 'Top 20 Countdown', desc: 'The definitive countdown of the UK’s most streamed songs this week.' },
+        { time: '14:00', title: 'Fresh Finds & Pop Anthems', desc: 'Hot new releases and global superstar video premieres.' },
+        { time: '18:00', title: 'Non-Stop Dance & Urban Hits', desc: 'High energy dancefloor tracks, UK rap, and electronic bangers.' },
+        { time: '22:00', title: 'Late Night Chill & Unplugged', desc: 'Smooth R&B, acoustic live sessions, and midnight grooves.' }
+      ]
+    },
+    {
+      id: 'tv:gb_capital_fm',
+      name: 'Capital FM UK (Live Radio)',
+      logo: 'https://cdn-icons-png.flaticon.com/512/3075/3075908.png',
+      background: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=1280&q=80',
+      genres: ['Radio & Music', 'United Kingdom', 'Live TV'],
+      streamUrl: 'https://media-ssl.musicradio.com/CapitalUK',
+      summary: 'The UK’s No.1 Hit Music Station broadcasting live from Leicester Square, London with the hottest artists and chart countdowns.',
+      network: 'Global Media',
+      guideSchedule: [
+        { time: '06:00', title: 'Capital Breakfast', desc: 'Wake up with the biggest guests, celebrity interviews, and huge hits.' },
+        { time: '10:00', title: 'Capital Midmornings', desc: 'Back-to-back anthems and trending pop chart tracks.' },
+        { time: '13:00', title: 'Capital Workday Hitlist', desc: 'Powering your afternoon with non-stop chart music.' },
+        { time: '16:00', title: 'The Capital Drivetime Show', desc: 'London and UK drive with fresh releases and high-energy music.' },
+        { time: '19:00', title: 'The Official Big Top 40', desc: 'The UK’s most played and streamed countdown.' },
+        { time: '22:00', title: 'The Capital Late Show & Mixes', desc: 'Non-stop DJ mixes, party anthems, and club bangers.' }
+      ]
+    },
+    {
+      id: 'tv:gb_heart_uk',
+      name: 'Heart UK (Live Radio)',
+      logo: 'https://cdn-icons-png.flaticon.com/512/4430/4430494.png',
+      background: 'https://images.unsplash.com/photo-1518199266791-5375a83190b7?w=1280&q=80',
+      genres: ['Radio & Music', 'United Kingdom', 'Live TV'],
+      streamUrl: 'https://media-ssl.musicradio.com/HeartUK',
+      summary: 'Turn up the feel good! The UK’s biggest commercial radio network playing feel-good favorites from the 90s, 00s, and today.',
+      network: 'Global Media',
+      guideSchedule: [
+        { time: '06:30', title: 'Heart Breakfast with Jamie & Amanda', desc: 'Hilarious games, big celebrity guests, and feel-good hits.' },
+        { time: '10:00', title: 'More Music Workday', desc: 'Non-stop feel good favorites while you work.' },
+        { time: '16:00', title: 'Heart Drivetime', desc: 'The easiest way home with uplifting 90s, 00s, and current hits.' },
+        { time: '19:00', title: 'Heart Club Classics', desc: 'The biggest floorfillers, dance anthems, and party tracks of all time.' },
+        { time: '22:00', title: 'Late Night Heart Chill', desc: 'Relaxing love songs and acoustic pop melodies.' }
+      ]
     }
   ],
   US: [
@@ -268,6 +320,40 @@ const REGIONAL_CHANNELS = {
         { time: '20:00', title: 'Prime Classic Hollywood Feature', desc: 'Unforgettable cinema legends in iconic roles.' },
         { time: '23:00', title: 'Creature Feature Midnight Movie', desc: 'Retro monster and sci-fi drive-in classics.' }
       ]
+    },
+    {
+      id: 'tv:us_california_music',
+      name: 'California Music Channel (CMC HD)',
+      logo: 'https://cdn-icons-png.flaticon.com/512/3844/3844724.png',
+      background: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=1280&q=80',
+      genres: ['Music & Entertainment', 'United States', 'Live TV'],
+      streamUrl: 'https://cmc-cmctv-cineverse.amagi.tv/playlist.m3u8',
+      summary: 'America’s premier independent music video network broadcasting Billboard Hot 100 hits, pop, hip-hop, and superstar music videos.',
+      network: 'CMC Broadcasting',
+      guideSchedule: [
+        { time: '07:00', title: 'Morning Music Wake Up', desc: 'Fresh video releases and upbeat American Hot 100 hits.' },
+        { time: '11:00', title: 'Billboard Pop Countdown', desc: 'The hottest charting pop and urban music videos in the US.' },
+        { time: '15:00', title: 'Afternoon Beats & Hip-Hop', desc: 'Premier hip-hop, R&B, and crossover chartbusters.' },
+        { time: '19:00', title: 'Prime Time Video Vault', desc: 'Star-studded video premieres and exclusive artist interviews.' },
+        { time: '22:00', title: 'Late Night Grooves', desc: 'Alternative, electronic, and late-night music cinema.' }
+      ]
+    },
+    {
+      id: 'tv:us_livexlive',
+      name: 'LiveOne Concerts HD (LIVExLIVE)',
+      logo: 'https://cdn-icons-png.flaticon.com/512/2995/2995101.png',
+      background: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=1280&q=80',
+      genres: ['Music & Entertainment', 'United States', 'Live TV'],
+      streamUrl: 'https://livestream.liveone.com/lc1/p1.m3u8',
+      summary: '24/7 global music and live entertainment network featuring live festival broadcasts, stadium concerts, and backstage artist interviews.',
+      network: 'LiveOne',
+      guideSchedule: [
+        { time: '08:00', title: 'Festival Rewind: Summer Stage', desc: 'Epic live music festival performances and crowd highlights.' },
+        { time: '12:00', title: 'LiveOne Artist Spotlight', desc: 'Acoustic sessions, intimate gigs, and career-spanning retrospectives.' },
+        { time: '16:00', title: 'Global Concert Series', desc: 'Full length live arena concerts from world-touring musicians.' },
+        { time: '20:00', title: 'LiveOne Prime Live Showcase', desc: 'Headline festival sets and major arena tour live broadcasts.' },
+        { time: '23:00', title: 'After Hours Electronic & EDM', desc: 'DJ sets, electronic festival stages, and dance music marathons.' }
+      ]
     }
   ],
   CA: [
@@ -337,6 +423,40 @@ const REGIONAL_CHANNELS = {
         { time: '15:00', title: 'F1 & Rally Motorsports Access', desc: 'Behind the scenes with championship racing teams.' },
         { time: '18:00', title: 'Red Bull Rampage: Extreme Freeride', desc: 'Legendary cliffs and desert drops in Utah.' },
         { time: '21:00', title: 'The Way of the Wildcard (Documentary)', desc: 'Inspiring journey of unconventional athletes.' }
+      ]
+    },
+    {
+      id: 'tv:ca_qello_concerts',
+      name: 'Qello Concerts by Stingray HD',
+      logo: 'https://cdn-icons-png.flaticon.com/512/2995/2995101.png',
+      background: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=1280&q=80',
+      genres: ['Music & Entertainment', 'Canada', 'Live TV'],
+      streamUrl: 'https://lotus.stingray.com/manifest/qello-qello001-montreal/samsungtvplus/master.m3u8',
+      summary: 'The world’s largest collection of full-length live concert films and music documentaries spanning rock, pop, jazz, and classical legends.',
+      network: 'Stingray Group',
+      guideSchedule: [
+        { time: '08:00', title: 'Legendary Rock Concerts', desc: 'Iconic arena shows from Queen, The Rolling Stones, and Pink Floyd.' },
+        { time: '12:00', title: 'Pop Icons Live', desc: 'Spectacular live stadium concerts from Beyoncé, Madonna, and Lady Gaga.' },
+        { time: '16:00', title: 'Behind the Music Documentary', desc: 'In-depth music retrospectives and band history films.' },
+        { time: '20:00', title: 'Saturday Night Arena Headliner', desc: 'Full length high-definition world tour concert presentations.' },
+        { time: '23:00', title: 'Acoustic & Unplugged Sessions', desc: 'Intimate acoustic performances and jazz club live recordings.' }
+      ]
+    },
+    {
+      id: 'tv:ca_stingray_rock',
+      name: 'Stingray Classic Rock HD',
+      logo: 'https://cdn-icons-png.flaticon.com/512/2995/2995111.png',
+      background: 'https://images.unsplash.com/photo-1498038432885-c6f3f1b912ee?w=1280&q=80',
+      genres: ['Music & Entertainment', 'Canada', 'Live TV'],
+      streamUrl: 'https://lotus.stingray.com/manifest/ose-101ads-montreal/samsungtvplus/master.m3u8',
+      summary: 'Non-stop classic rock anthems from Canada and around the globe: Rush, The Guess Who, Led Zeppelin, AC/DC, and Fleetwood Mac.',
+      network: 'Stingray Group',
+      guideSchedule: [
+        { time: '07:00', title: 'Morning Rock Anthems', desc: 'High-voltage guitar riffs and legendary rock tracks to start the day.' },
+        { time: '11:00', title: 'Canadian Rock Showcase', desc: 'Classic anthems from Rush, Bryan Adams, The Tragically Hip, and Neil Young.' },
+        { time: '15:00', title: 'Vinyl Legends Block', desc: 'Album-oriented rock, deep cuts, and 70s psychedelic classics.' },
+        { time: '19:00', title: 'Prime Time Rock Stadium Hits', desc: 'The undisputed heavyweights of stadium rock and metal.' },
+        { time: '22:30', title: 'Midnight Psychedelic Vault', desc: 'Progressive rock odysseys and late-night blues riffs.' }
       ]
     }
   ],
@@ -409,6 +529,40 @@ const REGIONAL_CHANNELS = {
         { time: '18:00', title: 'Red Bull Rampage: Extreme Freeride', desc: 'Legendary cliffs and desert drops in Utah.' },
         { time: '21:00', title: 'The Way of the Wildcard (Documentary)', desc: 'Inspiring journey of unconventional athletes.' }
       ]
+    },
+    {
+      id: 'tv:au_qwest_tv',
+      name: 'Qwest TV Australia HD',
+      logo: 'https://cdn-icons-png.flaticon.com/512/3844/3844724.png',
+      background: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=1280&q=80',
+      genres: ['Music & Entertainment', 'Australia', 'Live TV'],
+      streamUrl: 'https://samsungau-qwestjazz-samsungtv-zw2jc.amagi.tv/playlist/samsungau-qwestjazz-samsungtv/playlist.m3u8',
+      summary: 'Co-founded by legendary producer Quincy Jones: the definitive curated music channel for jazz, soul, funk, blues, and world music.',
+      network: 'Qwest TV',
+      guideSchedule: [
+        { time: '08:00', title: 'Morning Jazz Cafe', desc: 'Cool jazz, bebop, and acoustic piano trios.' },
+        { time: '12:00', title: 'Funk & Soul Odyssey', desc: 'Groove-heavy funk, vintage Motown, and modern neo-soul.' },
+        { time: '16:00', title: 'World Music Explorer', desc: 'Afrobeat, Latin rhythms, and global acoustic traditions.' },
+        { time: '20:00', title: 'Quincy Jones Masters Showcase', desc: 'Iconic live jazz festival concerts from Montreux and Newport.' },
+        { time: '23:00', title: 'Midnight Blues & Late Grooves', desc: 'Soul-stirring blues guitar and smoky late-night jazz sessions.' }
+      ]
+    },
+    {
+      id: 'tv:au_sbs_popasia',
+      name: 'SBS PopAsia (Live Radio)',
+      logo: 'https://cdn-icons-png.flaticon.com/512/812/812288.png',
+      background: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=1280&q=80',
+      genres: ['Radio & Music', 'Australia', 'Live TV'],
+      streamUrl: 'https://sbs-ice.streamguys1.com/sbs-popasia',
+      summary: 'Australia’s #1 non-stop hit music station for the hottest Asian pop, K-Pop chart toppers, J-Pop, C-Pop, and fresh music news from SBS.',
+      network: 'SBS Australia',
+      guideSchedule: [
+        { time: '06:00', title: 'PopAsia Morning Kickstart', desc: 'Upbeat K-Pop dance hits and latest entertainment updates.' },
+        { time: '10:00', title: 'Non-Stop Asia Hits', desc: 'Back-to-back trending chart tracks from Seoul, Tokyo, and Taipei.' },
+        { time: '14:00', title: 'PopAsia Top 30 Countdown', desc: 'Australia’s official listener-voted Asian pop countdown.' },
+        { time: '18:00', title: 'Club PopAsia Mashups', desc: 'High-energy dance remixes and EDM party tracks.' },
+        { time: '22:00', title: 'Late Night Ballads & Chill', desc: 'Soothing K-Drama OSTs, acoustic melodies, and R&B.' }
+      ]
     }
   ],
   IE: [
@@ -478,6 +632,24 @@ const REGIONAL_CHANNELS = {
         { time: '11:00', title: 'Space Station Crew Operations', desc: 'Astronauts conduct microgravity experiments aboard the ISS.' },
         { time: '14:00', title: 'NASA ScienceCast & Mission Briefings', desc: 'Discoveries from the James Webb and Hubble Space Telescopes.' },
         { time: '17:00', title: 'Artemis Moon Mission Update', desc: 'Humanity returns to the Moon: hardware tests and launch countdowns.' }
+      ]
+    },
+    {
+      id: 'tv:ie_rte_2fm',
+      name: 'RTÉ 2FM (Live Radio)',
+      logo: 'https://cdn-icons-png.flaticon.com/512/3075/3075908.png',
+      background: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=1280&q=80',
+      genres: ['Radio & Music', 'Ireland', 'Live TV'],
+      streamUrl: 'https://icecast.rte.ie/2fm',
+      summary: 'Ireland’s premier national youth, music, and entertainment radio station broadcasting live from Donnybrook, Dublin with the best modern hits.',
+      network: 'RTÉ Ireland',
+      guideSchedule: [
+        { time: '06:00', title: '2FM Breakfast with Doireann & Friends', desc: 'Upbeat morning comedy, celebrity gossip, and huge music tracks.' },
+        { time: '09:00', title: 'Jennifer Zamparelli Show', desc: 'Listener banter, life stories, and current Irish chart hits.' },
+        { time: '12:00', title: 'Tracy Clifford Show', desc: 'Hot new music discoveries, live studio sessions, and top pop.' },
+        { time: '15:00', title: 'Drive It with The 2 Johnnies', desc: 'Ireland’s favorite comedy duo with wild laughs and huge anthems.' },
+        { time: '18:00', title: 'Game On & Evening Beats', desc: 'National sports updates, electronic dance tracks, and live DJs.' },
+        { time: '22:00', title: 'The Alternative with Dan Hegarty', desc: 'Cutting-edge indie, alternative rock, and Irish music showcases.' }
       ]
     }
   ],
@@ -1110,7 +1282,7 @@ function getManifest(baseUrl, userConfig = DEFAULT_USER_CONFIG) {
     id: 'org.stremio.nightknight.cinema',
     version: ADDON_VERSION,
     name: 'NightKnight Cinema',
-    description: 'Created by NightKnight (@NightKnight24). Complete cinema hub: Native Multi-Language Subtitles Engine (80+ languages), Regional Live TV & TV Guide (EPG), Bollywood Music & Radios, DRM-Free Cinema playback, YouTube in-app player, streaming hubs (BBC iPlayer, ITVX, Netflix, Disney+, Hotstar), franchise viewing orders & speed engine. See my projects: https://github.com/NightKnight24',
+    description: 'Created by NightKnight (@NightKnight24). Complete cinema hub: Native Multi-Language Subtitles Engine (80+ languages), Regional Live TV & TV Guide (EPG), 24/7 Live Music TV & Radios (UK, US, Canada, Australia, Ireland, India), DRM-Free Cinema playback, YouTube in-app player, streaming hubs (BBC iPlayer, ITVX, Netflix, Disney+, Hotstar), franchise viewing orders & speed engine. See my projects: https://github.com/NightKnight24',
     logo: `${baseUrl}/icon.png`,
     background: `${baseUrl}/background.png`,
     resources: ['catalog', 'meta', 'stream', 'subtitles'],
@@ -1331,7 +1503,7 @@ function getManifest(baseUrl, userConfig = DEFAULT_USER_CONFIG) {
         extra: [
           {
             name: 'genre',
-            options: ['All Channels', 'Bollywood & Music', 'Movies & Drama', 'Radio & Music', 'News & Info', 'Entertainment', 'Culture & Docs', 'FAST & Classic TV', 'Sports & Action'],
+            options: ['All Channels', 'Music & Entertainment', 'Radio & Music', 'Bollywood & Music', 'Movies & Drama', 'News & Info', 'Entertainment', 'Culture & Docs', 'FAST & Classic TV', 'Sports & Action'],
             isRequired: false
           },
           { name: 'search', isRequired: false },
