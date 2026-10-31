@@ -11,7 +11,7 @@
 * 🚀 **Stremio 1-Click Install**: [`stremio://nightknight-cinema.vercel.app/manifest.json`](stremio://nightknight-cinema.vercel.app/manifest.json)
 * 📖 **Step-by-Step User Guide**: [Read Tutorial Below](#-complete-step-by-step-user-guide-how-to-use-everything)
 * 👨‍💻 **Developer Profile & Projects**: [https://github.com/NightKnight24](https://github.com/NightKnight24)
-* 📦 **Official Releases**: [GitHub Releases (v1.7.0)](https://github.com/NightKnight24/nightknight-cinema/releases)
+* 📦 **Official Releases**: [GitHub Releases (v1.8.0)](https://github.com/NightKnight24/nightknight-cinema/releases)
 * 🐳 **Container Packages**: [GitHub Packages (`ghcr.io`)](https://github.com/NightKnight24/nightknight-cinema/pkgs/container/nightknight-cinema)
 * 📊 **Live Anonymized Analytics**: [https://nightknight-cinema.vercel.app/api/stats](https://nightknight-cinema.vercel.app/api/stats)
 * 🐛 **Issue Tracker & Feature Requests**: [GitHub Issues](https://github.com/NightKnight24/nightknight-cinema/issues)
@@ -28,6 +28,7 @@
   * 🇨🇦 **Canada**: CBC News Network (1080p), CityNews Toronto (720p), DW English, Red Bull TV, NASA TV.
   * 🇦🇺 **Australia**: ABC News Australia (720p), Sky News / News24 Australia (1080p), MovieSphere Australia (1080p), Red Bull TV.
   * 🇮🇪 **Ireland**: Sky News HD (IE/UK), GREAT! Movies HD, DW English, NASA TV HD.
+  * 🇮🇳 **India (Bollywood, Music & Live TV)**: B4U Music HD (1080p Bollywood Music), 9X Jalwa HD (Forever Bollywood Hits), B4U Movies HD (Bollywood Cinema), NDTV 24x7 HD (English News), NDTV India HD (Hindi News), Aaj Tak HD (National News), Radio Mirchi Bollywood Hits (24/7 Live Radio), Bollywood Classics Radio (Golden Era Melodies). *(Strictly displayed only when India is chosen as the region).*
 * **Dynamic Hour-by-Hour TV Guide & Reminders**: Opening any channel card displays:
   * **Now Airing**: Current show title, start time, and synopsis calculated dynamically for the current hour.
   * **Coming Up Today**: Next consecutive scheduled programs with airtimes.
@@ -54,10 +55,11 @@
 * **Dual BYOA Action**: Also provides a **`[YOUTUBE • BYOA]`** option to hand off seamlessly to the official YouTube app/website under your personal Google account.
 * **Rich Metadata**: Automatically resolves authentic titles, channel creators, video durations, and high-resolution thumbnails via YouTube oEmbed.
 
-### 4. 🇬🇧 UK & Global BYOA (Bring Your Own Account) Streaming Hubs
+### 4. 🇬🇧 UK, Global & 🇮🇳 India BYOA (Bring Your Own Account) Streaming Hubs
 * Automatically detects legal streaming availability with 100% provider ID accuracy:
   * **UK Free Catch-Up**: **BBC iPlayer**, **ITVX**, **Channel 4**, **My5**, **STV Player**, **S4C Clic**, and **U (Dave / UKTV Play)**.
-  * **UK & Global Subscriptions**: **Sky Go**, **NOW**, **BritBox**, **Amazon Prime Video**, **Disney+**, **Netflix**, **Paramount+**, **Apple TV+**, **Max (HBO)**, **Discovery+**, **Crunchyroll**, **MUBI**, **BFI Player**, and **Hayu**.
+  * **India Streaming Hubs**: **Disney+ Hotstar**, **JioCinema**, **ZEE5**, **Sony LIV**, **Sun NXT**, and **aha**.
+  * **Global Subscriptions**: **Sky Go**, **NOW**, **BritBox**, **Amazon Prime Video**, **Disney+**, **Netflix**, **Paramount+**, **Apple TV+**, **Max (HBO)**, **Discovery+**, **Crunchyroll**, **MUBI**, **BFI Player**, and **Hayu**.
 * **Zero-Knowledge Privacy**: 1-click deep-link buttons hand off securely to your official app or web browser where you are already signed in. Zero passwords, tokens, or credentials ever pass through the addon.
 
 ### 5. 🎬 Official Studio Trailers In-App
@@ -90,6 +92,7 @@
 ### 10. ⚡ Intelligent Stream Speed Ranking & Buffer Shield
 * **Speed Optimizer**: Places instant cloud CDN streams (`🚀 [INSTANT CDN • 0 BUFFER]`) and high-seeder torrents (`⚡ [FASTEST • 600+ 👤]`) at the very top.
 * **Buffer Shield**: Warns against dangerous, massive files with low seeders (`⚠️ [HIGH BUFFER RISK]`) and filters out dead streams (0 seeders).
+* **Direct HTTP Streams & Usenet/Debrid**: 100% compatible with direct HTTP/HLS streams (FAST channels, web streams, direct MP4/MKV) and Usenet/Debrid links (Real-Debrid, TorBox, Premiumize, EasyDebrid). Usenet NZB downloads cached on Debrid providers stream instantly as high-speed HTTP streams directly into Stremio.
 
 ### 11. 🎬 Complete Actor & Director Filmographies
 * Search any actor or director in Stremio's search bar to immediately browse their complete filmography ranked by popularity and vote count.

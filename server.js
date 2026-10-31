@@ -15,7 +15,7 @@ const TMDB_API_KEY = process.env.TMDB_API_KEY || '3157bd6dacbc3a653ae2e5a3b19beb
 const PORT = process.env.PORT || 7000;
 const HOST = process.env.HOST || (process.env.PORT ? '0.0.0.0' : '127.0.0.1');
 
-const ADDON_VERSION = '1.7.0';
+const ADDON_VERSION = '1.8.0';
 
 // Load server-wide DEFAULTS (read-only). Per-user settings live in the install URL, never on the server.
 function loadConfig() {
@@ -42,7 +42,8 @@ const REGIONS = {
   US: 'United States',
   IE: 'Ireland',
   CA: 'Canada',
-  AU: 'Australia'
+  AU: 'Australia',
+  IN: 'India'
 };
 
 // -------------------------------------------------------------
@@ -479,6 +480,150 @@ const REGIONAL_CHANNELS = {
         { time: '17:00', title: 'Artemis Moon Mission Update', desc: 'Humanity returns to the Moon: hardware tests and launch countdowns.' }
       ]
     }
+  ],
+  IN: [
+    {
+      id: 'tv:in_b4u_music',
+      name: 'B4U Music HD',
+      logo: 'https://dtil.tmsimg.com/assets/s158141_ld_h15_aa.png?lock=720x540',
+      background: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=1280&q=80',
+      genres: ['Bollywood & Music', 'Live TV', 'India'],
+      streamUrl: 'https://amg01408-amg01408c5-amgplt0747.playout.now3.amagi.tv/b4um001/playlist.m3u8',
+      summary: 'India’s premier 24/7 Bollywood music and lifestyle channel showcasing Bollywood top charts, hit music videos, and celebrity interviews.',
+      network: 'B4U Network',
+      guideSchedule: [
+        { time: '06:00', title: 'Morning Melodies', desc: 'Soothing Hindi hits and devotional start to the morning.' },
+        { time: '09:00', title: 'Bollywood Top 20 Countdown', desc: 'The biggest Bollywood chartbusters ruling the Indian box office.' },
+        { time: '12:00', title: 'Solid Hits', desc: 'Non-stop high-energy Bollywood dance tracks and pop hits.' },
+        { time: '15:00', title: 'Star Stop & Celebrity Buzz', desc: 'Interviews with Bollywood megastars, film previews, and gossip.' },
+        { time: '18:00', title: 'Party Mashup Live', desc: 'Electrifying Bollywood club remixes, Punjabi beats, and dance numbers.' },
+        { time: '21:00', title: 'B4U Hitlist Prime', desc: 'Blockbuster film songs from the latest cinema releases.' },
+        { time: '23:00', title: 'Night Melodies & Ghazals', desc: 'Soulful ballads, unplugged sessions, and romantic cinema classics.' }
+      ]
+    },
+    {
+      id: 'tv:in_9x_jalwa',
+      name: '9X Jalwa HD',
+      logo: 'https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_9X_JALWA/images/LOGO_HD/image.png',
+      background: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=1280&q=80',
+      genres: ['Bollywood & Music', 'Live TV', 'India'],
+      streamUrl: 'https://wiselp.wiseplayout.com/9X_Jalwa/master.m3u8',
+      summary: 'Forever Bollywood Hits — 24/7 golden era music, 90s nostalgia, and contemporary all-time Hindi blockbusters.',
+      network: '9X Media',
+      guideSchedule: [
+        { time: '07:00', title: 'Evergreen Jalwa', desc: 'Golden era Bollywood classics from Kishore Kumar, Lata Mangeshkar & RD Burman.' },
+        { time: '11:00', title: '90s Nostalgia Express', desc: 'The iconic 1990s and 2000s romantic and dance anthems.' },
+        { time: '15:00', title: 'Jalwa Superhits', desc: 'Unstoppable back-to-back Hindi movie soundtracks.' },
+        { time: '19:00', title: 'Prime Time Chartbusters', desc: 'The most requested timeless Bollywood songs.' },
+        { time: '22:00', title: 'Romantic Nights', desc: 'Soul-stirring romantic Bollywood melodies for late night relaxation.' }
+      ]
+    },
+    {
+      id: 'tv:in_b4u_movies',
+      name: 'B4U Movies HD',
+      logo: 'https://i.imgur.com/M9kMFJl.png',
+      background: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=1280&q=80',
+      genres: ['Movies & Drama', 'Bollywood', 'Live TV'],
+      streamUrl: 'https://streams.tangotv.in/B4UMOVIES/ORIGIN/index.m3u8',
+      summary: 'The ultimate destination for Bollywood cinema, showcasing action blockbusters, romantic dramas, comedies, and family entertainment.',
+      network: 'B4U Network',
+      guideSchedule: [
+        { time: '08:00', title: 'Morning Cinema Matinee', desc: 'Family drama and classic comedy feature presentation.' },
+        { time: '11:30', title: 'Action Superhit Showcase', desc: 'Adrenaline-packed Bollywood action blockbuster.' },
+        { time: '15:00', title: 'Bollywood Romance Matinee', desc: 'Award-winning romance and family cinema.' },
+        { time: '19:00', title: 'Prime Time Mega Movie', desc: 'Star-studded Bollywood blockbuster presentation.' },
+        { time: '22:30', title: 'Late Night Thriller Vault', desc: 'High-suspense Hindi crime thriller and mystery cinema.' }
+      ]
+    },
+    {
+      id: 'tv:in_ndtv_24x7',
+      name: 'NDTV 24x7 HD',
+      logo: 'https://jiotvimages.cdn.jio.com/dare_images/images/NDTV_24x7.png',
+      background: 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=1280&q=80',
+      genres: ['News & Info', 'India', 'Live TV'],
+      streamUrl: 'https://ndtv24x7elemarchana.akamaized.net/hls/live/2003678/ndtv24x7/master.m3u8',
+      summary: 'India’s most trusted 24-hour English news channel delivering breaking news, national politics, economy, and global updates.',
+      network: 'NDTV',
+      guideSchedule: [
+        { time: '06:00', title: 'Morning News Bulletins', desc: 'Overnight developments and national morning updates.' },
+        { time: '09:00', title: 'Breakfast Show & Markets Desk', desc: 'Market opening bell, economic analysis, and headlines.' },
+        { time: '13:00', title: 'The World This Hour', desc: 'Global diplomacy, geopolitical analysis, and live interviews.' },
+        { time: '17:00', title: 'The Big Fight', desc: 'Spirited debate on national controversies with key policymakers.' },
+        { time: '20:00', title: 'Left, Right & Centre', desc: 'Deep dive political analysis and prime time discussion.' },
+        { time: '21:00', title: 'The News Reality Check', desc: 'Fact-checking claims and breaking down complex national headlines.' },
+        { time: '22:00', title: 'NDTV Tonight', desc: 'Wrap up of the day’s most influential news stories.' }
+      ]
+    },
+    {
+      id: 'tv:in_ndtv_india',
+      name: 'NDTV India HD',
+      logo: 'https://jiotvimages.cdn.jio.com/dare_images/images/NDTV_India.png',
+      background: 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=1280&q=80',
+      genres: ['News & Info', 'India', 'Live TV'],
+      streamUrl: 'https://ndtvindiaelemarchana.akamaized.net/hls/live/2003679/ndtvindia/master.m3u8',
+      summary: 'Premier 24-hour Hindi news channel offering incisive reporting, ground reports, and prime time debate from New Delhi.',
+      network: 'NDTV',
+      guideSchedule: [
+        { time: '07:00', title: 'Namaste Bharat', desc: 'Morning news bulletin, weather, and national headlines.' },
+        { time: '10:00', title: 'Desh Ka Mood', desc: 'Public interest reporting, social issues, and ground realities.' },
+        { time: '14:00', title: 'Khabar Dopahar', desc: 'Afternoon breaking news coverage across Indian states.' },
+        { time: '18:00', title: 'Delhi Se Seedha', desc: 'Political developments and parliamentary scrutiny.' },
+        { time: '21:00', title: 'Prime Time with NDTV India', desc: 'In-depth investigative journalism on issues affecting citizens.' },
+        { time: '22:30', title: 'Desh Ki Baat', desc: 'Late evening national review and expert panel.' }
+      ]
+    },
+    {
+      id: 'tv:in_aaj_tak',
+      name: 'Aaj Tak HD',
+      logo: 'https://jiotvimages.cdn.jio.com/dare_images/images/Aaj_Tak.png',
+      background: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=1280&q=80',
+      genres: ['News & Info', 'India', 'Live TV'],
+      streamUrl: 'https://feeds.intoday.in/aajtak/api/aajtakhd/master.m3u8',
+      summary: 'India’s most watched Hindi news channel, famous for fast-paced breaking news, investigative sting operations, and live debates.',
+      network: 'India Today Group',
+      guideSchedule: [
+        { time: '06:00', title: 'Dilli Aaj Tak Morning', desc: 'Fast morning news recap and daily astrological forecasts.' },
+        { time: '09:00', title: 'Desh Tak', desc: 'State-by-state news updates and ground reports.' },
+        { time: '13:00', title: 'Dangal', desc: 'Fierce debate on national politics and social challenges.' },
+        { time: '17:00', title: 'Halla Bol', desc: 'Anchor-led panel debate confronting politicians on accountability.' },
+        { time: '20:00', title: 'Khabardar', desc: 'Special investigative reports and strategic geopolitical analysis.' },
+        { time: '21:00', title: 'Black & White', desc: 'Editorial deep dive into history, geopolitics, and current affairs.' }
+      ]
+    },
+    {
+      id: 'tv:in_radio_mirchi',
+      name: 'Radio Mirchi Bollywood Hits (Live Radio)',
+      logo: 'https://cdn-icons-png.flaticon.com/512/3075/3075908.png',
+      background: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=1280&q=80',
+      genres: ['Radio & Music', 'Bollywood', 'Live TV'],
+      streamUrl: 'https://stream.zeno.fm/f3wvbbqmdg8uv',
+      summary: 'India’s #1 hit radio station streaming non-stop Bollywood chartbusters, RJ shows, and the latest Mumbai film tracks.',
+      network: 'Radio Mirchi',
+      guideSchedule: [
+        { time: '06:00', title: 'Mirchi Morning Kickstart', desc: 'Upbeat morning Hindi songs, horoscope, and RJ banter.' },
+        { time: '11:00', title: 'Total Bollywood Masala', desc: 'Non-stop trending party numbers and fresh film releases.' },
+        { time: '16:00', title: 'Mirchi Top 20 Countdown', desc: 'The definitive weekly countdown of India’s most played songs.' },
+        { time: '19:00', title: 'Club Mirchi Mashups', desc: 'High energy DJ sets, remix tracks, and dance party anthems.' },
+        { time: '22:00', title: 'Purani Jeans (Retro Classics)', desc: 'Golden retro classics and nostalgic storytelling with the RJ.' }
+      ]
+    },
+    {
+      id: 'tv:in_bollywood_hits_radio',
+      name: 'Bollywood Classics Radio (Live Radio)',
+      logo: 'https://cdn-icons-png.flaticon.com/512/4430/4430494.png',
+      background: 'https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=1280&q=80',
+      genres: ['Radio & Music', 'Bollywood', 'Live TV'],
+      streamUrl: 'https://stream.zeno.fm/0r0xa792kwzuv',
+      summary: 'Non-stop golden era Bollywood melodies, vintage film soundtracks, ghazals, and romantic classics from the 60s, 70s, and 80s.',
+      network: 'Bollywood Classics',
+      guideSchedule: [
+        { time: '06:00', title: 'Subah Ke Sur (Melodious Dawn)', desc: 'Peaceful acoustic and orchestral golden oldies.' },
+        { time: '10:00', title: 'Kishore & Rafi Special', desc: 'Legendary duets and solos from the golden voices of Indian cinema.' },
+        { time: '14:00', title: 'RD Burman Magic Hour', desc: 'Innovative rhythms and memorable melodies composed by Pancham Da.' },
+        { time: '18:00', title: 'Sunset Ghazals & Soft Melodies', desc: 'Poetic ghazals and soulful romantic film songs.' },
+        { time: '22:00', title: 'Chhaya Geet (Late Night Nostalgia)', desc: 'Timeless romantic melodies to end the evening in tranquility.' }
+      ]
+    }
   ]
 };
 
@@ -713,6 +858,11 @@ const DEFAULT_USER_CONFIG = {
 function decodeUserConfig(segment) {
   const cfg = { ...DEFAULT_USER_CONFIG };
   if (!segment) return cfg;
+  const upper = segment.toUpperCase();
+  if (REGIONS[upper]) {
+    cfg.region = upper;
+    return cfg;
+  }
   try {
     const json = JSON.parse(Buffer.from(segment, 'base64url').toString('utf-8'));
     if (json && typeof json === 'object') {
@@ -813,7 +963,7 @@ function persistStats() {
 }
 
 function recordClient(req) {
-  const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress || 'unknown';
+  const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket?.remoteAddress || 'unknown';
   const ua = req.headers['user-agent'] || 'unknown';
   const hash = crypto.createHash('sha256').update(ip + ua + STATS_SALT).digest('hex').slice(0, 16);
   STATS.uniqueClients.add(hash);
@@ -960,7 +1110,7 @@ function getManifest(baseUrl, userConfig = DEFAULT_USER_CONFIG) {
     id: 'org.stremio.nightknight.cinema',
     version: ADDON_VERSION,
     name: 'NightKnight Cinema',
-    description: 'Created by NightKnight (@NightKnight24). Complete cinema hub: Native Multi-Language Subtitles Engine (80+ languages), Regional Live TV & TV Guide (EPG), DRM-Free Cinema playback, YouTube in-app player, streaming hubs (BBC iPlayer, ITVX, Netflix, Disney+), franchise viewing orders & speed engine. See my projects: https://github.com/NightKnight24',
+    description: 'Created by NightKnight (@NightKnight24). Complete cinema hub: Native Multi-Language Subtitles Engine (80+ languages), Regional Live TV & TV Guide (EPG), Bollywood Music & Radios, DRM-Free Cinema playback, YouTube in-app player, streaming hubs (BBC iPlayer, ITVX, Netflix, Disney+, Hotstar), franchise viewing orders & speed engine. See my projects: https://github.com/NightKnight24',
     logo: `${baseUrl}/icon.png`,
     background: `${baseUrl}/background.png`,
     resources: ['catalog', 'meta', 'stream', 'subtitles'],
@@ -1181,7 +1331,7 @@ function getManifest(baseUrl, userConfig = DEFAULT_USER_CONFIG) {
         extra: [
           {
             name: 'genre',
-            options: ['All Channels', 'News & Info', 'Entertainment', 'Movies & Drama', 'Culture & Docs', 'FAST & Classic TV', 'Sports & Action'],
+            options: ['All Channels', 'Bollywood & Music', 'Movies & Drama', 'Radio & Music', 'News & Info', 'Entertainment', 'Culture & Docs', 'FAST & Classic TV', 'Sports & Action'],
             isRequired: false
           },
           { name: 'search', isRequired: false },
@@ -1371,7 +1521,14 @@ const PROVIDER_METADATA = {
   34: { name: 'MGM+', tag: '🦁 [MGM+ • BYOA]', url: () => `https://www.mgmplus.com/` },
   538: { name: 'Plex', tag: '⚡ [PLEX • FREE]', url: q => `https://watch.plex.tv/search?q=${encodeURIComponent(q)}` },
   73: { name: 'Tubi', tag: '📺 [TUBI • FREE]', url: q => `https://tubitv.com/search/${encodeURIComponent(q)}` },
-  300: { name: 'Pluto TV', tag: '🪐 [PLUTO TV • FREE]', url: () => `https://pluto.tv/` }
+  300: { name: 'Pluto TV', tag: '🪐 [PLUTO TV • FREE]', url: () => `https://pluto.tv/` },
+  // India & Regional Streaming Hubs
+  122: { name: 'Disney+ Hotstar', tag: '🏏 [HOTSTAR • BYOA]', url: q => `https://www.hotstar.com/in/explore?search_query=${encodeURIComponent(q)}` },
+  220: { name: 'JioCinema', tag: '🔴 [JIOCINEMA • FREE/BYOA]', url: q => `https://www.jiocinema.com/search/${encodeURIComponent(q)}` },
+  232: { name: 'ZEE5', tag: '✨ [ZEE5 • BYOA]', url: q => `https://www.zee5.com/search?q=${encodeURIComponent(q)}` },
+  237: { name: 'Sony LIV', tag: '📺 [SONY LIV • BYOA]', url: q => `https://www.sonyliv.com/search/${encodeURIComponent(q)}` },
+  309: { name: 'Sun NXT', tag: '☀️ [SUN NXT • BYOA]', url: q => `https://www.sunnxt.com/search?q=${encodeURIComponent(q)}` },
+  532: { name: 'aha', tag: '🧡 [AHA • BYOA]', url: () => `https://www.aha.video/` }
 };
 
 // Fetch BYOA Streaming Platform Deep-Links & Official Trailer
@@ -3515,9 +3672,10 @@ export async function handleRequest(req, res) {
           <option value="CA" ${initialRegion === 'CA' ? 'selected' : ''}>Canada (CBC, Crave, CBC Gem, Prime, Disney+)</option>
           <option value="AU" ${initialRegion === 'AU' ? 'selected' : ''}>Australia (ABC News, Stan, ABC iview, Binge, Disney+)</option>
           <option value="IE" ${initialRegion === 'IE' ? 'selected' : ''}>Ireland (RTÉ Player, Sky News IE, Sky Go, NOW)</option>
+          <option value="IN" ${initialRegion === 'IN' ? 'selected' : ''}>India (Bollywood Music, Movies, Live TV & Radios, Hotstar, JioCinema, ZEE5)</option>
         </select>
         <div style="font-size: 11px; color: #94a3b8; margin-top: 6px;">
-          📍 Automatically configures your local <strong>Live TV & Guide</strong> channel lineup (e.g. UK Free-to-Air, US Networks, Australia ABC) and regional BYOA streaming hubs.
+          📍 Automatically configures your local <strong>Live TV & Guide</strong> channel lineup (e.g. UK Free-to-Air, US Networks, Australia ABC, India Bollywood & FAST TV) and regional BYOA streaming hubs.
         </div>
       </div>
       <div class="input-group">
@@ -3542,7 +3700,7 @@ export async function handleRequest(req, res) {
         <div class="guide-item">
           <div class="guide-num">1</div>
           <div class="guide-text">
-            <strong>Choose Your Region:</strong> Select your country (UK, US, Canada, Australia, Ireland) above. This tailors your <em>Live TV & Guide</em> channels and local catch-up hubs (BBC iPlayer, ITVX, Channel 4, CBC, ABC).
+            <strong>Choose Your Region:</strong> Select your country (UK, US, Canada, Australia, Ireland, India) above. This tailors your <em>Live TV & Guide</em> channels and local catch-up hubs (BBC iPlayer, ITVX, Channel 4, CBC, ABC, Hotstar, JioCinema).
           </div>
         </div>
         <div class="guide-item">
