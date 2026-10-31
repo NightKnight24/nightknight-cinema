@@ -12,19 +12,12 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Remove reserved Hugging Face Space icon file
-        run: |
-          git config user.name "GitHub Actions"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          if [ -f public/icon.png ]; then
-            rm -f public/icon.png
-            git add -A
-            git commit -m "Remove incompatible Hugging Face Space icon" || true
-          fi
-
       - name: Push to Hugging Face Space
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
+          if [ -z "$HF_TOKEN" ]; then
+            echo "::warning ::HF_TOKEN is not configured in GitHub repository secrets. Add HF_TOKEN under Settings -> Secrets and variables -> Actions to enable Hugging Face sync."
+            exit 0
+          fi
           git push --force https://jordanca3011:$HF_TOKEN@huggingface.co/spaces/jordanca3011/NightKnight_Cinema HEAD:main

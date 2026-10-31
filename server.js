@@ -2398,8 +2398,8 @@ async function handleStream(type, id, userConfig = DEFAULT_USER_CONFIG) {
   }
 }
 
-// HTTP Server
-const server = http.createServer(async (req, res) => {
+// HTTP Server Request Handler
+export async function handleRequest(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -2412,7 +2412,12 @@ const server = http.createServer(async (req, res) => {
   }
 
   const parsedUrl = parseUrl(req.url, true);
-  const rawPathname = decodeURIComponent(parsedUrl.pathname || '/');
+  let rawPathname = decodeURIComponent(parsedUrl.pathname || '/');
+
+  // Strip Vercel /api/index.js internal routing prefix if present
+  if (rawPathname.startsWith('/api/index.js')) {
+    rawPathname = rawPathname.slice('/api/index.js'.length) || '/';
+  }
 
   // Strip optional user config segment from path (Stremio standard: /:config?/...)
   let userConfig = DEFAULT_USER_CONFIG;
@@ -3693,9 +3698,16 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(500, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: err.message }));
   }
-});
+}
 
-server.listen(PORT, HOST, () => {
-  console.log(`🚀 NightKnight Cinema Addon (v${ADDON_VERSION}) running at http://${HOST}:${PORT}`);
-  console.log(`👉 Stremio Install URL: stremio://${HOST}:${PORT}/manifest.json`);
-});
+const server = http.createServer(handleRequest);
+
+// Bind to port unless running in serverless environment (e.g. Vercel)
+if (!process.env.VERCEL) {
+  server.listen(PORT, HOST, () => {
+    console.log(`🚀 NightKnight Cinema Addon (v${ADDON_VERSION}) running at http://${HOST}:${PORT}`);
+    console.log(`👉 Stremio Install URL: stremio://${HOST}:${PORT}/manifest.json`);
+  });
+}
+
+export default handleRequest;
