@@ -3527,28 +3527,42 @@ export async function handleRequest(req, res) {
       box-shadow: 0 15px 30px -5px rgba(99, 102, 241, 0.6);
     }
     .features {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px 10px;
       text-align: left;
-      margin-top: 30px;
-      padding-top: 24px;
+      margin-top: 20px;
+      padding-top: 18px;
       border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    @media (max-width: 600px) {
+      .features {
+        grid-template-columns: 1fr;
+        gap: 6px;
+      }
     }
     .feature-item {
       display: flex;
       align-items: center;
-      gap: 12px;
-      margin-bottom: 12px;
-      font-size: 13.5px;
+      gap: 8px;
+      font-size: 11.5px;
       color: #cbd5e1;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      padding: 6px 10px;
+      border-radius: 8px;
+      line-height: 1.3;
     }
     .tag {
       background: rgba(56, 189, 248, 0.15);
       color: #7dd3fc;
       border: 1px solid rgba(56, 189, 248, 0.3);
-      padding: 3px 8px;
+      padding: 2px 7px;
       border-radius: 6px;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 600;
       white-space: nowrap;
+      flex-shrink: 0;
     }
     .config-box {
       margin-top: 28px;
@@ -3989,55 +4003,38 @@ export async function handleRequest(req, res) {
     <div class="byline">Crafted by <a href="https://github.com/NightKnight24" target="_blank" class="author-link">NightKnight (@NightKnight24)</a></div>
     <div class="subtitle">The ultimate all-in-one cinema & media hub: Native Multi-Language Subtitles (80+ languages), Regional Live TV, 24/7 Music TV & Live Radios, DRM-Free Cinema, YouTube in-app playback, BYOA streaming hubs (Netflix, BBC iPlayer, ITVX, Channel 4, Disney+, Prime, Max, Hotstar), Curated Franchises & intelligent speed ranking.</div>
     
-    <div style="display: flex; gap: 10px; margin-bottom: 24px; flex-wrap: wrap;">
-      <a id="install-btn" href="stremio://${host}/manifest.json" class="btn" style="flex: 1; min-width: 200px; margin-bottom: 0;">🚀 Install on Stremio</a>
-      <button id="copy-manifest-btn" type="button" class="btn" style="flex: 1; min-width: 200px; margin-bottom: 0; background: linear-gradient(135deg, #334155, #1e293b); border: 1px solid rgba(255,255,255,0.15); box-shadow: none;">📋 Copy Manifest Link</button>
-    </div>
-    
     <div class="features">
       <div class="feature-item">
+        <span class="tag">⚡ Real-Debrid</span>
+        <span>Instant cached cloud streams & 0-buffer 4K</span>
+      </div>
+      <div class="feature-item">
         <span class="tag">💬 80+ Subtitles</span>
-        <span>Built-in multi-language subtitles engine across 80+ languages for movies & TV episodes — zero extra subtitle addons needed</span>
+        <span>Built-in multi-language subtitles for any title</span>
       </div>
       <div class="feature-item">
-        <span class="tag">📺 Regional TV & Music</span>
-        <span>Free-to-Air FAST TV, 24/7 Music Video channels & Live Radios tailored to your region (UK, US, CA, AU, IE, IN) with TV Guides</span>
+        <span class="tag">🛡️ Speed Shield</span>
+        <span>Smart speed scoring & buffer risk filters</span>
       </div>
       <div class="feature-item">
-        <span class="tag">⚡ DRM-Free Cinema</span>
-        <span>Watch public domain masterpieces (horror, sci-fi, film noir) & live TV 100% directly inside Stremio's native player</span>
+        <span class="tag">📺 Live TV & Guides</span>
+        <span>Regional Free-to-Air TV & 24/7 live music</span>
       </div>
       <div class="feature-item">
-        <span class="tag">▶️ YouTube In-App</span>
-        <span>Search & stream YouTube videos directly inside Stremio player (DRM-Free) + BYOA app links</span>
+        <span class="tag">🍿 Universes</span>
+        <span>Marvel, Star Wars & Bond in viewing order</span>
       </div>
       <div class="feature-item">
-        <span class="tag">🇬🇧 UK & Global BYOA</span>
-        <span>Instant launch links for BBC iPlayer, ITVX, Channel 4, My5, Sky Go, Prime, Disney+ & Hotstar</span>
+        <span class="tag">🇬🇧 Streaming Hubs</span>
+        <span>Launch BBC iPlayer, Netflix, Disney+ & Prime</span>
       </div>
       <div class="feature-item">
-        <span class="tag">🎬 Official Trailers</span>
-        <span>Watch official studio trailers directly inside Stremio before picking a title</span>
+        <span class="tag">🎬 Trailers & DRM-Free</span>
+        <span>Official studio trailers & public domain classics</span>
       </div>
       <div class="feature-item">
-        <span class="tag">🍿 Curated Universes</span>
-        <span>Marvel MCU, Star Wars, Harry Potter, LOTR, James Bond 007 & Studio Ghibli in viewing order</span>
-      </div>
-      <div class="feature-item">
-        <span class="tag">⭐ Verified Ratings</span>
-        <span>Real IMDb scores, TMDb ratings, and award / Oscar recognitions</span>
-      </div>
-      <div class="feature-item">
-        <span class="tag">🔊 Home Cinema Tags</span>
-        <span>Automatic Dolby Vision, HDR10+, Dolby Atmos, DTS-HD & IMAX stream tagging</span>
-      </div>
-      <div class="feature-item">
-        <span class="tag">⚡ Speed & HTTP/Usenet</span>
-        <span>Ranks Debrid, Usenet, Direct HTTP & P2P streams by speed, seeders & CDN reliability</span>
-      </div>
-      <div class="feature-item">
-        <span class="tag">🎬 Actor Search</span>
-        <span>Search any actor or director in Stremio for their complete filmography</span>
+        <span class="tag">🔊 Cinema Audio</span>
+        <span>Dolby Vision, Atmos, HDR10+ & IMAX detection</span>
       </div>
     </div>
 
@@ -4078,6 +4075,11 @@ export async function handleRequest(req, res) {
         <input type="checkbox" id="filter-buffer-risk" ${initialHideRisk ? 'checked' : ''}>
         <label for="filter-buffer-risk">Auto-hide high buffer risk streams (&lt; 10 seeders on huge files)</label>
       </div>
+    </div>
+
+    <div style="display: flex; gap: 12px; margin-top: 18px; margin-bottom: 24px; flex-wrap: wrap;">
+      <a id="install-btn" href="stremio://${host}/manifest.json" class="btn" style="flex: 1.3; min-width: 200px; margin-bottom: 0;">🚀 Install on Stremio</a>
+      <button id="copy-manifest-btn" type="button" class="btn" style="flex: 1; min-width: 180px; margin-bottom: 0; background: linear-gradient(135deg, #334155, #1e293b); border: 1px solid rgba(255,255,255,0.15); box-shadow: none;">📋 Copy Manifest Link</button>
     </div>
 
     <div class="guide-box">
