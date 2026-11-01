@@ -1345,7 +1345,7 @@ function getManifest(baseUrl, userConfig = DEFAULT_USER_CONFIG, rootUrl = baseUr
   const drmFreeGenres = ['All Titles', ...new Set(DRM_FREE_MOVIES.flatMap(m => m.genres))];
   const hasRd = Boolean(userConfig && userConfig.realDebrid);
 
-  return {
+  const manifest = {
     id: 'org.stremio.nightknight.cinema',
     version: ADDON_VERSION,
     name: hasRd ? 'NightKnight Cinema ⚡ RD' : 'NightKnight Cinema',
@@ -1355,10 +1355,6 @@ function getManifest(baseUrl, userConfig = DEFAULT_USER_CONFIG, rootUrl = baseUr
     resources: ['catalog', 'meta', 'stream', 'subtitles'],
     types: ['movie', 'series', 'channel'],
     idPrefixes: ['tmdb:', 'tt', 'yt:', 'tv:', 'drmfree:'],
-    stremioAddonsConfig: {
-      issuer: 'https://stremio-addons.net',
-      signature: 'eyJhbGciOiJkaXIiLCJlbmMiOiJBMTI4Q0JDLUhTMjU2In0..2WJ_2NQTQSHSfNK_4IS1sw.RiScIFZ2EmUgKhl-2CULyOClQ7eM8l1SuGwwz06YV7zTFeR8ZEVRjH72xF_iMMrfZoH9uulfwHqoph43zmhRjTNPMoI6efBylq_GUkpqhP1ktUkMU3WUh5H1fIsT-vya.nkY6rvIwMG-N3yT8_jeOtA'
-    },
     behaviorHints: {
       configurable: true,
       configurationRequired: false
@@ -1612,6 +1608,15 @@ function getManifest(baseUrl, userConfig = DEFAULT_USER_CONFIG, rootUrl = baseUr
       }
     ]
   };
+
+  if (!hasRd && baseUrl === rootUrl) {
+    manifest.stremioAddonsConfig = {
+      issuer: 'https://stremio-addons.net',
+      signature: 'eyJhbGciOiJkaXIiLCJlbmMiOiJBMTI4Q0JDLUhTMjU2In0..2WJ_2NQTQSHSfNK_4IS1sw.RiScIFZ2EmUgKhl-2CULyOClQ7eM8l1SuGwwz06YV7zTFeR8ZEVRjH72xF_iMMrfZoH9uulfwHqoph43zmhRjTNPMoI6efBylq_GUkpqhP1ktUkMU3WUh5H1fIsT-vya.nkY6rvIwMG-N3yT8_jeOtA'
+    };
+  }
+
+  return manifest;
 }
 
 // Helper: fetch TMDb JSON
