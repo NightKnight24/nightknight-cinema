@@ -441,23 +441,21 @@
       gap: 12px;
     }
 
-    /* Genuine Brand Logo Box */
-    .service-logo-box {
-      width: 54px;
-      height: 54px;
+    /* Genuine App Store Logo Box */
+    .service-app-icon {
+      width: 58px;
+      height: 58px;
       border-radius: 14px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.45);
+      object-fit: cover;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+      border: 1px solid rgba(255, 255, 255, 0.12);
       flex-shrink: 0;
-      overflow: hidden;
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    .service-logo-box svg {
-      width: 34px;
-      height: 34px;
+    .service-card:hover .service-app-icon, .service-card.focused .service-app-icon {
+      transform: scale(1.08);
+      box-shadow: 0 8px 24px rgba(245, 158, 11, 0.45);
     }
 
     .service-regions {
@@ -1149,14 +1147,13 @@
       pluto: `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="38" fill="#000"/><circle cx="50" cy="50" r="22" fill="none" stroke="#FFD166" stroke-width="5"/><circle cx="65" cy="42" r="5" fill="#FFD166"/></svg>`
     };
 
-    // Master Catalog of 30+ Streaming Services
+    // Master Catalog of 30+ Streaming Services with Official App Store Assets
     const services = [
       {
         id: "stremio-web",
         name: "Stremio Cinema",
         desc: "Stream your add-ons & Real-Debrid directly inside this window.",
-        logoSvg: brandLogos.stremio,
-        bgGradient: "linear-gradient(135deg, #1f1135, #0d0718)",
+        appIcon: "assets/icons/stremio.png",
         url: "https://web.stremio.com",
         regions: ["all", "uk", "us", "ca", "au", "ie", "in"],
         tags: ["Real-Debrid", "No DRM", "Ambient Ready"],
@@ -1166,8 +1163,7 @@
         id: "stremio-native",
         name: "Stremio 4K AI Player",
         desc: "Native Stremio hooked to our Apple Metal 4K AI Neural Upscaler.",
-        logoSvg: brandLogos.stremio,
-        bgGradient: "linear-gradient(135deg, #0f2744, #081220)",
+        appIcon: "assets/icons/stremio.jpg",
         action: "launchStremio",
         regions: ["all", "uk", "us", "ca", "au", "ie", "in"],
         tags: ["Metal AI 4K", "SSimSuperRes", "Hardware Metal"],
@@ -1177,19 +1173,27 @@
         id: "skygo",
         name: "Sky Go / NOW TV",
         desc: "Watch Sky Atlantic, Sky Cinema, Sky Sports, and Premier League live.",
-        logoSvg: brandLogos.skygo,
-        bgGradient: "linear-gradient(135deg, #2b1219, #14070a)",
+        appIcon: "assets/icons/skygo.jpg",
         url: "https://www.nowtv.com/watch",
         regions: ["uk", "ie"],
         tags: ["Sky Sports", "Cinema", "Live TV"],
         highlightTag: "Sky & NOW"
       },
       {
+        id: "nowtv",
+        name: "NOW TV",
+        desc: "Sky Cinema, Sky Atlantic, Sky Sports, and Entertainment pass.",
+        appIcon: "assets/icons/nowtv.jpg",
+        url: "https://www.nowtv.com/watch",
+        regions: ["uk", "ie"],
+        tags: ["Sky Channels", "Entertainment", "Live Sports"],
+        highlightTag: "NOW Sports"
+      },
+      {
         id: "bbciplayer",
         name: "BBC iPlayer",
         desc: "Stream BBC One, Two, Three, Four, and extensive box sets in HD & UHD.",
-        logoSvg: brandLogos.bbciplayer,
-        bgGradient: "linear-gradient(135deg, #2b0c15, #140509)",
+        appIcon: "assets/icons/bbciplayer.jpg",
         url: "https://www.bbc.co.uk/iplayer",
         regions: ["uk"],
         tags: ["BBC UHD", "Catch Up", "Live Channels"],
@@ -1199,8 +1203,7 @@
         id: "itvx",
         name: "ITVX",
         desc: "British drama, blockbuster movies, reality series, and live ITV channels.",
-        logoSvg: brandLogos.itvx,
-        bgGradient: "linear-gradient(135deg, #0d261e, #05120e)",
+        appIcon: "assets/icons/itvx.jpg",
         url: "https://www.itv.com",
         regions: ["uk"],
         tags: ["Live TV", "ITV Drama", "Free-to-Air"],
@@ -1210,8 +1213,7 @@
         id: "channel4",
         name: "Channel 4",
         desc: "Stream all Channel 4 box sets, Film4 movies, and E4 comedy series.",
-        logoSvg: brandLogos.channel4,
-        bgGradient: "linear-gradient(135deg, #16242c, #0a1115)",
+        appIcon: "assets/icons/channel4.jpg",
         url: "https://www.channel4.com",
         regions: ["uk"],
         tags: ["Film4", "Series", "Box Sets"],
@@ -1221,8 +1223,7 @@
         id: "my5",
         name: "My5 (Channel 5)",
         desc: "Popular British documentaries, dramas, soaps, and live Channel 5.",
-        logoSvg: brandLogos.my5,
-        bgGradient: "linear-gradient(135deg, #2c0e1e, #14060d)",
+        appIcon: "assets/icons/my5.jpg",
         url: "https://www.channel5.com",
         regions: ["uk"],
         tags: ["Channel 5", "Documentaries"],
@@ -1232,8 +1233,7 @@
         id: "discovery-uk",
         name: "Discovery+ (TNT Sports)",
         desc: "Home of TNT Sports, UEFA Champions League, Olympics, & nature docs.",
-        logoSvg: brandLogos.discovery,
-        bgGradient: "linear-gradient(135deg, #0d1e2b, #050d14)",
+        appIcon: "assets/icons/discovery-uk.jpg",
         url: "https://www.discoveryplus.com/gb",
         regions: ["uk"],
         tags: ["TNT Sports", "Champions League", "Nature"],
@@ -1241,12 +1241,11 @@
       },
       {
         id: "paramount-uk",
-        name: "Paramount+ (UK)",
+        name: "Paramount+",
         desc: "Yellowstone, Star Trek, South Park, Halo, and Paramount blockbuster films.",
-        logoSvg: brandLogos.paramount,
-        bgGradient: "linear-gradient(135deg, #0c1c2b, #050d14)",
-        url: "https://www.paramountplus.com/gb/",
-        regions: ["uk"],
+        appIcon: "assets/icons/paramount.jpg",
+        url: "https://www.paramountplus.com",
+        regions: ["uk", "us", "ca", "au", "ie"],
         tags: ["Yellowstone", "Star Trek", "Blockbusters"],
         highlightTag: "Paramount+"
       },
@@ -1254,8 +1253,7 @@
         id: "max",
         name: "Max (HBO Max)",
         desc: "Home of HBO, Warner Bros., DC Universe, House of the Dragon, and Discovery.",
-        logoSvg: brandLogos.max,
-        bgGradient: "linear-gradient(135deg, #0a1936, #040c1a)",
+        appIcon: "assets/icons/max.jpg",
         url: "https://play.max.com",
         regions: ["us"],
         tags: ["HBO Originals", "4K HDR", "Warner Bros."],
@@ -1265,8 +1263,7 @@
         id: "hulu",
         name: "Hulu",
         desc: "Next-day network TV episodes, FX originals, Hulu original series, and movies.",
-        logoSvg: brandLogos.hulu,
-        bgGradient: "linear-gradient(135deg, #0d281a, #05130b)",
+        appIcon: "assets/icons/hulu.jpg",
         url: "https://www.hulu.com",
         regions: ["us"],
         tags: ["FX on Hulu", "Next-Day TV", "Drama"],
@@ -1276,52 +1273,37 @@
         id: "peacock",
         name: "Peacock TV",
         desc: "Universal Pictures, NBC classics, Premier League soccer, and WWE live.",
-        logoSvg: brandLogos.peacock,
-        bgGradient: "linear-gradient(135deg, #2b1f0d, #140e05)",
+        appIcon: "assets/icons/peacock.jpg",
         url: "https://www.peacocktv.com",
         regions: ["us"],
         tags: ["Premier League", "WWE Live", "Universal"],
         highlightTag: "Peacock"
       },
       {
-        id: "paramount-us",
-        name: "Paramount+ (US)",
-        desc: "NFL on CBS live, Champions League, Taylor Sheridan universe, and Star Trek.",
-        logoSvg: brandLogos.paramount,
-        bgGradient: "linear-gradient(135deg, #0c1c2b, #050d14)",
-        url: "https://www.paramountplus.com",
-        regions: ["us"],
-        tags: ["NFL on CBS", "Paramount 4K", "Live TV"],
-        highlightTag: "Paramount+ US"
-      },
-      {
-        id: "discovery-us",
-        name: "Discovery+ (US)",
-        desc: "Shark Week, TLC, Food Network, HGTV, Investigation Discovery, and Magnolia.",
-        logoSvg: brandLogos.discovery,
-        bgGradient: "linear-gradient(135deg, #0d1e2b, #050d14)",
-        url: "https://www.discoveryplus.com",
-        regions: ["us"],
-        tags: ["HGTV", "Food Network", "TLC"],
-        highlightTag: "Discovery+"
-      },
-      {
         id: "tubi",
         name: "Tubi TV",
         desc: "Thousands of free movies, classic television series, and live streaming channels.",
-        logoSvg: brandLogos.tubi,
-        bgGradient: "linear-gradient(135deg, #2b0e25, #140510)",
+        appIcon: "assets/icons/tubi.jpg",
         url: "https://tubitv.com",
         regions: ["us", "ca", "au"],
         tags: ["Free Streaming", "No Sub Required", "Classics"],
         highlightTag: "Free TV"
       },
       {
+        id: "pluto",
+        name: "Pluto TV",
+        desc: "Hundreds of free live channels, movies, and binge-worthy box sets.",
+        appIcon: "assets/icons/pluto.jpg",
+        url: "https://pluto.tv",
+        regions: ["us", "ca", "uk"],
+        tags: ["Free Live TV", "No Sign In", "Channels"],
+        highlightTag: "Pluto TV"
+      },
+      {
         id: "netflix",
         name: "Netflix",
         desc: "Stream Stranger Things, Wednesday, original films, and global hits.",
-        logoSvg: brandLogos.netflix,
-        bgGradient: "linear-gradient(135deg, #2b0c10, #140507)",
+        appIcon: "assets/icons/netflix.jpg",
         url: "https://www.netflix.com",
         regions: ["all", "uk", "us", "ca", "au", "ie", "in"],
         tags: ["4K HDR", "Originals", "Spatial Audio"],
@@ -1331,8 +1313,7 @@
         id: "primevideo",
         name: "Amazon Prime Video",
         desc: "The Boys, Rings of Power, Fallout, Thursday Night Football, and Prime Cinema.",
-        logoSvg: brandLogos.primevideo,
-        bgGradient: "linear-gradient(135deg, #0d2332, #051017)",
+        appIcon: "assets/icons/primevideo.jpg",
         url: "https://www.primevideo.com",
         regions: ["all", "uk", "us", "ca", "au", "ie", "in"],
         tags: ["The Boys", "Prime 4K", "X-Ray"],
@@ -1342,8 +1323,7 @@
         id: "disneyplus",
         name: "Disney+",
         desc: "Disney, Pixar, Marvel Cinematic Universe, Star Wars, and National Geographic.",
-        logoSvg: brandLogos.disneyplus,
-        bgGradient: "linear-gradient(135deg, #0d1936, #050b18)",
+        appIcon: "assets/icons/disneyplus.jpg",
         url: "https://www.disneyplus.com",
         regions: ["all", "uk", "us", "ca", "au", "ie", "in"],
         tags: ["IMAX Enhanced", "Marvel", "Star Wars"],
@@ -1353,8 +1333,7 @@
         id: "appletv",
         name: "Apple TV+",
         desc: "Ted Lasso, Severance, Foundation, Morning Show, and high-bitrate 4K HDR masters.",
-        logoSvg: brandLogos.appletv,
-        bgGradient: "linear-gradient(135deg, #1e2024, #0b0c0e)",
+        appIcon: "assets/icons/appletv.jpg",
         url: "https://tv.apple.com",
         regions: ["all", "uk", "us", "ca", "au", "ie", "in"],
         tags: ["Apple Master 4K", "Dolby Vision", "Award Winning"],
@@ -1364,8 +1343,7 @@
         id: "crave",
         name: "Crave",
         desc: "Canada's exclusive home of HBO, Max Originals, Showtime, and French content.",
-        logoSvg: brandLogos.crave,
-        bgGradient: "linear-gradient(135deg, #141f2d, #090e15)",
+        appIcon: "assets/icons/crave.jpg",
         url: "https://www.crave.ca",
         regions: ["ca"],
         tags: ["HBO in Canada", "Showtime", "French & English"],
@@ -1375,8 +1353,7 @@
         id: "binge",
         name: "Binge",
         desc: "Australia's top entertainment service for HBO, Warner, and binge-worthy series.",
-        logoSvg: brandLogos.binge,
-        bgGradient: "linear-gradient(135deg, #2b0b18, #14040a)",
+        appIcon: "assets/icons/binge.jpg",
         url: "https://binge.com.au",
         regions: ["au"],
         tags: ["HBO Australia", "Warner", "4K HDR"],
@@ -1386,8 +1363,7 @@
         id: "foxtelnow",
         name: "Foxtel Now",
         desc: "Live Sky Channels, Fox Sports Australia, HBO drama, and Foxtel exclusives.",
-        logoSvg: brandLogos.foxtel,
-        bgGradient: "linear-gradient(135deg, #2b170c, #140a04)",
+        appIcon: "assets/icons/foxtel.jpg",
         url: "https://www.foxtel.com.au/now/",
         regions: ["au"],
         tags: ["Live Sky AU", "Fox Sports", "Drama"],
@@ -1397,8 +1373,7 @@
         id: "stan",
         name: "Stan",
         desc: "Iconic Australian originals, Stan Sport (Champions League & Rugby), and movies.",
-        logoSvg: brandLogos.stan,
-        bgGradient: "linear-gradient(135deg, #0d1e2b, #050d14)",
+        appIcon: "assets/icons/stan.jpg",
         url: "https://www.stan.com.au",
         regions: ["au"],
         tags: ["Stan Sport", "AU Originals", "4K Cinema"],
@@ -1408,8 +1383,7 @@
         id: "kayosports",
         name: "Kayo Sports",
         desc: "Over 50 sports live and on demand: AFL, NRL, Cricket, F1, and MotoGP.",
-        logoSvg: brandLogos.kayo,
-        bgGradient: "linear-gradient(135deg, #0a260a, #041204)",
+        appIcon: "assets/icons/kayo.jpg",
         url: "https://kayosports.com.au",
         regions: ["au"],
         tags: ["AFL / NRL", "Formula 1", "50+ Sports"],
@@ -1419,8 +1393,7 @@
         id: "rteplayer",
         name: "RTÉ Player",
         desc: "Irish national television: The Late Late Show, GAA sports, and RTÉ News live.",
-        logoSvg: brandLogos.rte,
-        bgGradient: "linear-gradient(135deg, #0e241b, #05120c)",
+        appIcon: "assets/icons/rte.jpg",
         url: "https://www.rte.ie/player",
         regions: ["ie"],
         tags: ["RTÉ One & Two", "GAA Sports", "Irish Drama"],
@@ -1430,8 +1403,7 @@
         id: "virginmediaplay",
         name: "Virgin Media Play",
         desc: "Live Virgin Media One, Two, Three, Four, Champions League & reality hits in Ireland.",
-        logoSvg: brandLogos.virgin,
-        bgGradient: "linear-gradient(135deg, #2b0c0c, #140505)",
+        appIcon: "assets/icons/virgin.jpg",
         url: "https://www.virginmediatelevision.ie/player",
         regions: ["ie"],
         tags: ["Live TV", "Champions League", "Irish TV"],
@@ -1441,8 +1413,7 @@
         id: "tg4",
         name: "TG4 Player",
         desc: "Irish language television, traditional music, cultural series, and live club GAA.",
-        logoSvg: brandLogos.tg4,
-        bgGradient: "linear-gradient(135deg, #0e241b, #05120c)",
+        appIcon: "assets/icons/tg4.jpg",
         url: "https://www.tg4.ie/en/player/",
         regions: ["ie"],
         tags: ["Gaelic", "Club GAA", "Traditional"],
@@ -1452,8 +1423,7 @@
         id: "jiocinema",
         name: "JioCinema",
         desc: "Home of HBO, Max, IPL Cricket, Bigg Boss, and blockbuster Indian cinema.",
-        logoSvg: brandLogos.jio,
-        bgGradient: "linear-gradient(135deg, #2b0b1c, #14040c)",
+        appIcon: "assets/icons/jiocinema.jpg",
         url: "https://www.jiocinema.com",
         regions: ["in"],
         tags: ["HBO in India", "IPL Live", "4K Movies"],
@@ -1463,8 +1433,7 @@
         id: "hotstar",
         name: "Disney+ Hotstar",
         desc: "Disney+, Marvel, Star Wars, ICC Cricket tournaments, and premier Indian serials.",
-        logoSvg: brandLogos.hotstar,
-        bgGradient: "linear-gradient(135deg, #0a1632, #040915)",
+        appIcon: "assets/icons/hotstar.jpg",
         url: "https://www.hotstar.com/in",
         regions: ["in"],
         tags: ["ICC Cricket", "Disney+", "Star Plus"],
@@ -1474,8 +1443,7 @@
         id: "sonyliv",
         name: "SonyLIV",
         desc: "UEFA Champions League, Sony entertainment shows, Shark Tank India, and movies.",
-        logoSvg: brandLogos.sonyliv,
-        bgGradient: "linear-gradient(135deg, #181924, #0a0b0f)",
+        appIcon: "assets/icons/sonyliv.jpg",
         url: "https://www.sonyliv.com",
         regions: ["in"],
         tags: ["Champions League", "Shark Tank", "Sony TV"],
@@ -1485,8 +1453,7 @@
         id: "zee5",
         name: "Zee5",
         desc: "Vast collection of Hindi, Tamil, Telugu, and regional language cinema and originals.",
-        logoSvg: brandLogos.zee5,
-        bgGradient: "linear-gradient(135deg, #1f1032, #0b0513)",
+        appIcon: "assets/icons/zee5.jpg",
         url: "https://www.zee5.com",
         regions: ["in"],
         tags: ["Regional Indian", "Zee Classics", "Originals"],
@@ -1496,8 +1463,7 @@
         id: "youtube",
         name: "YouTube 4K Cinema",
         desc: "Trailers, 4K documentary showcases, live event broadcasts, and music video mixes.",
-        logoSvg: brandLogos.youtube,
-        bgGradient: "linear-gradient(135deg, #2b0c0c, #140505)",
+        appIcon: "assets/icons/youtube.jpg",
         url: "https://www.youtube.com",
         regions: ["all", "uk", "us", "ca", "au", "ie", "in"],
         tags: ["4K 60FPS", "Trailers", "Global Live"],
@@ -1507,8 +1473,7 @@
         id: "crunchyroll",
         name: "Crunchyroll",
         desc: "World's largest anime library: Demon Slayer, Jujutsu Kaisen, One Piece, and Attack on Titan.",
-        logoSvg: brandLogos.crunchyroll,
-        bgGradient: "linear-gradient(135deg, #2b180a, #140a04)",
+        appIcon: "assets/icons/crunchyroll.jpg",
         url: "https://www.crunchyroll.com",
         regions: ["all", "uk", "us", "ca", "au", "ie"],
         tags: ["Anime Simulcasts", "Japanese Audio", "HD"],
@@ -1518,8 +1483,7 @@
         id: "plex",
         name: "Plex",
         desc: "Personal media server, free streaming movies, live channels, and media organization.",
-        logoSvg: brandLogos.plex,
-        bgGradient: "linear-gradient(135deg, #241c0e, #0e0a05)",
+        appIcon: "assets/icons/plex.jpg",
         url: "https://app.plex.tv",
         regions: ["all", "uk", "us", "ca", "au", "ie", "in"],
         tags: ["Personal Media", "Free Movies", "Live Guide"],
@@ -1664,7 +1628,7 @@
         card.innerHTML = `
           <div>
             <div class="card-top">
-              <div class="service-logo-box" style="background: ${s.bgGradient};">${s.logoSvg}</div>
+              <img src="${s.appIcon}" class="service-app-icon" alt="${s.name}">
               <div class="service-regions">${flagBadges}</div>
             </div>
             <div class="service-meta" style="margin-top: 14px;">
