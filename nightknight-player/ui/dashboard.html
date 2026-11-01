@@ -6,17 +6,18 @@
   <title>NightKnight's Cinema Experience</title>
   <style>
     :root {
-      --bg: #0b0d13;
-      --card-bg: rgba(22, 27, 34, 0.75);
-      --card-border: rgba(255, 255, 255, 0.08);
-      --card-hover-border: rgba(0, 212, 255, 0.6);
-      --accent-cyan: #00d4ff;
-      --accent-purple: #9d4edd;
-      --accent-gold: #ffb703;
-      --accent-green: #06d6a0;
-      --text-main: #f0f6fc;
-      --text-muted: #8b949e;
-      --focus-glow: 0 0 25px rgba(0, 212, 255, 0.7);
+      --bg: #060709;
+      --card-bg: rgba(18, 20, 26, 0.75);
+      --card-border: rgba(255, 255, 255, 0.07);
+      --card-hover-border: rgba(245, 158, 11, 0.6);
+      --accent-gold: #f59e0b;
+      --accent-amber: #d97706;
+      --accent-warm: #fbbf24;
+      --accent-emerald: #10b981;
+      --accent-ruby: #e11d48;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --focus-glow: 0 0 28px rgba(245, 158, 11, 0.65);
       --font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
     }
 
@@ -30,9 +31,9 @@
     body {
       background-color: var(--bg);
       background-image: 
-        radial-gradient(circle at 15% 10%, rgba(157, 78, 221, 0.15) 0%, transparent 40%),
-        radial-gradient(circle at 85% 20%, rgba(0, 212, 255, 0.12) 0%, transparent 45%),
-        radial-gradient(circle at 50% 90%, rgba(255, 183, 3, 0.08) 0%, transparent 50%);
+        radial-gradient(circle at 50% 0%, rgba(217, 119, 6, 0.12) 0%, transparent 55%),
+        radial-gradient(circle at 10% 40%, rgba(245, 158, 11, 0.05) 0%, transparent 45%),
+        radial-gradient(circle at 90% 70%, rgba(225, 29, 72, 0.04) 0%, transparent 50%);
       color: var(--text-main);
       font-family: var(--font);
       min-height: 100vh;
@@ -49,46 +50,82 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 14px 36px;
-      background: rgba(11, 13, 19, 0.88);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
+      padding: 14px 40px;
+      background: rgba(6, 7, 9, 0.92);
+      backdrop-filter: blur(25px);
+      -webkit-backdrop-filter: blur(25px);
       border-bottom: 1px solid var(--card-border);
     }
 
     .brand {
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: 15px;
     }
 
     .brand-icon {
       width: 44px;
       height: 44px;
       border-radius: 12px;
-      background: linear-gradient(135deg, #00d4ff, #9d4edd);
+      background: linear-gradient(135deg, #f59e0b, #b45309);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 24px;
-      box-shadow: 0 0 20px rgba(0, 212, 255, 0.4);
+      font-size: 22px;
+      box-shadow: 0 0 20px rgba(245, 158, 11, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.15);
     }
 
     .brand-title {
       font-size: 20px;
       font-weight: 700;
       letter-spacing: -0.5px;
-      background: linear-gradient(90deg, #fff, #c9d1d9);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
+      color: #fff;
     }
 
     .brand-tagline {
       font-size: 11px;
       text-transform: uppercase;
-      letter-spacing: 1.5px;
-      color: var(--accent-cyan);
+      letter-spacing: 1.8px;
+      color: var(--accent-gold);
       font-weight: 600;
+    }
+
+    /* Top Main Modes Navigation */
+    .top-nav-modes {
+      display: flex;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.04);
+      padding: 4px;
+      border-radius: 14px;
+      border: 1px solid var(--card-border);
+    }
+
+    .nav-mode-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      padding: 8px 16px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      transition: all 0.2s;
+    }
+
+    .nav-mode-btn:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .nav-mode-btn.active {
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.22), rgba(217, 119, 6, 0.18));
+      color: #fff;
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
     }
 
     .header-controls {
@@ -102,7 +139,7 @@
       display: flex;
       align-items: center;
       gap: 10px;
-      background: rgba(255, 255, 255, 0.05);
+      background: rgba(255, 255, 255, 0.04);
       border: 1px solid var(--card-border);
       border-radius: 30px;
       padding: 6px 14px;
@@ -113,21 +150,21 @@
       width: 9px;
       height: 9px;
       border-radius: 50%;
-      background: var(--accent-green);
-      box-shadow: 0 0 10px var(--accent-green);
-      animation: pulse 2s infinite;
+      background: var(--accent-emerald);
+      box-shadow: 0 0 10px var(--accent-emerald);
+      animation: pulse 2.5s infinite;
     }
 
     @keyframes pulse {
       0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.6; transform: scale(1.15); }
+      50% { opacity: 0.55; transform: scale(1.15); }
     }
 
     /* White Tone Selector */
     .tone-buttons {
       display: flex;
       gap: 4px;
-      background: rgba(0, 0, 0, 0.35);
+      background: rgba(0, 0, 0, 0.4);
       border-radius: 20px;
       padding: 3px;
       border: 1px solid var(--card-border);
@@ -145,10 +182,7 @@
       transition: all 0.2s ease;
     }
 
-    .tone-btn:hover {
-      color: var(--text-main);
-    }
-
+    .tone-btn:hover { color: var(--text-main); }
     .tone-btn.active {
       background: rgba(255, 255, 255, 0.15);
       color: #fff;
@@ -159,10 +193,10 @@
       display: flex;
       align-items: center;
       gap: 7px;
-      background: rgba(255, 255, 255, 0.06);
+      background: rgba(255, 255, 255, 0.05);
       border: 1px solid var(--card-border);
       color: var(--text-main);
-      padding: 8px 13px;
+      padding: 8px 14px;
       border-radius: 10px;
       font-size: 12px;
       font-weight: 600;
@@ -176,37 +210,32 @@
       transform: translateY(-1px);
     }
 
-    .header-btn.controller-btn {
-      background: rgba(0, 212, 255, 0.08);
-      border-color: rgba(0, 212, 255, 0.25);
-    }
-
     .header-btn.controller-btn.connected {
-      background: rgba(6, 214, 160, 0.12);
-      border-color: rgba(6, 214, 160, 0.4);
-      color: var(--accent-green);
+      background: rgba(16, 185, 129, 0.12);
+      border-color: rgba(16, 185, 129, 0.35);
+      color: var(--accent-emerald);
     }
 
     /* Main Container */
     main {
       flex: 1;
       padding: 24px 40px 60px 40px;
-      max-width: 1440px;
+      max-width: 1480px;
       margin: 0 auto;
       width: 100%;
     }
 
-    /* Hero Banner */
+    /* Hero Lounge Bar */
     .hero-banner {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background: linear-gradient(135deg, rgba(22, 27, 34, 0.9), rgba(13, 17, 23, 0.95));
+      background: linear-gradient(135deg, rgba(20, 22, 30, 0.85), rgba(12, 13, 18, 0.95));
       border: 1px solid var(--card-border);
       border-radius: 20px;
       padding: 24px 32px;
       margin-bottom: 24px;
-      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
       position: relative;
       overflow: hidden;
     }
@@ -218,13 +247,14 @@
       left: 0;
       right: 0;
       height: 2px;
-      background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple), var(--accent-gold));
+      background: linear-gradient(90deg, #f59e0b, #fbbf24, #d97706);
     }
 
     .hero-info h1 {
       font-size: 26px;
       font-weight: 700;
       margin-bottom: 6px;
+      letter-spacing: -0.3px;
     }
 
     .hero-info p {
@@ -244,9 +274,9 @@
       font-size: 11px;
       padding: 4px 10px;
       border-radius: 6px;
-      background: rgba(0, 212, 255, 0.12);
-      color: var(--accent-cyan);
-      border: 1px solid rgba(0, 212, 255, 0.25);
+      background: rgba(245, 158, 11, 0.1);
+      color: var(--accent-gold);
+      border: 1px solid rgba(245, 158, 11, 0.25);
       font-weight: 600;
       display: flex;
       align-items: center;
@@ -254,15 +284,9 @@
     }
 
     .hero-badge.green {
-      background: rgba(6, 214, 160, 0.12);
-      color: var(--accent-green);
-      border-color: rgba(6, 214, 160, 0.25);
-    }
-
-    .hero-badge.purple {
-      background: rgba(157, 78, 221, 0.12);
-      color: var(--accent-purple);
-      border-color: rgba(157, 78, 221, 0.25);
+      background: rgba(16, 185, 129, 0.1);
+      color: var(--accent-emerald);
+      border-color: rgba(16, 185, 129, 0.25);
     }
 
     .hero-actions {
@@ -270,11 +294,11 @@
       gap: 12px;
     }
 
-    .btn-primary {
-      background: linear-gradient(135deg, #00d4ff, #0096c7);
-      color: #050a14;
+    .btn-gold {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: #050608;
       border: none;
-      padding: 12px 22px;
+      padding: 12px 24px;
       border-radius: 12px;
       font-size: 14px;
       font-weight: 700;
@@ -282,13 +306,13 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      box-shadow: 0 6px 20px rgba(0, 212, 255, 0.35);
+      box-shadow: 0 6px 20px rgba(245, 158, 11, 0.35);
       transition: all 0.2s;
     }
 
-    .btn-primary:hover {
+    .btn-gold:hover {
       transform: translateY(-2px);
-      box-shadow: 0 8px 25px rgba(0, 212, 255, 0.5);
+      box-shadow: 0 8px 25px rgba(245, 158, 11, 0.5);
     }
 
     /* Controls Bar: Regions & Search */
@@ -304,7 +328,7 @@
     .region-tabs {
       display: flex;
       gap: 8px;
-      background: rgba(22, 27, 34, 0.6);
+      background: rgba(18, 20, 26, 0.6);
       padding: 5px;
       border-radius: 14px;
       border: 1px solid var(--card-border);
@@ -333,19 +357,19 @@
     }
 
     .region-tab.active {
-      background: linear-gradient(135deg, rgba(0, 212, 255, 0.2), rgba(157, 78, 221, 0.2));
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(217, 119, 6, 0.2));
       color: #fff;
-      border: 1px solid rgba(0, 212, 255, 0.4);
+      border: 1px solid rgba(245, 158, 11, 0.45);
     }
 
     .search-box {
       position: relative;
-      width: 280px;
+      width: 290px;
     }
 
     .search-input {
       width: 100%;
-      background: rgba(22, 27, 34, 0.7);
+      background: rgba(18, 20, 26, 0.75);
       border: 1px solid var(--card-border);
       border-radius: 12px;
       padding: 10px 14px 10px 38px;
@@ -357,8 +381,8 @@
     }
 
     .search-input:focus {
-      border-color: var(--accent-cyan);
-      box-shadow: 0 0 12px rgba(0, 212, 255, 0.25);
+      border-color: var(--accent-gold);
+      box-shadow: 0 0 12px rgba(245, 158, 11, 0.3);
     }
 
     .search-icon {
@@ -374,16 +398,16 @@
     /* Grid of Services */
     .services-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(265px, 1fr));
       gap: 20px;
     }
 
     .service-card {
       background: var(--card-bg);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
       border: 1px solid var(--card-border);
-      border-radius: 16px;
+      border-radius: 18px;
       padding: 22px;
       display: flex;
       flex-direction: column;
@@ -392,21 +416,21 @@
       cursor: pointer;
       position: relative;
       overflow: hidden;
-      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
     .service-card:hover, .service-card.focused {
       transform: translateY(-4px) scale(1.02);
-      border-color: var(--accent-cyan);
-      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5), var(--focus-glow);
+      border-color: var(--card-hover-border);
+      box-shadow: 0 14px 35px rgba(0, 0, 0, 0.55), var(--focus-glow);
     }
 
     .service-card.focused::after {
       content: '';
       position: absolute;
       inset: 0;
-      border: 2px solid var(--accent-cyan);
-      border-radius: 16px;
+      border: 2px solid var(--accent-gold);
+      border-radius: 18px;
       pointer-events: none;
     }
 
@@ -417,18 +441,23 @@
       gap: 12px;
     }
 
-    .service-logo {
-      width: 52px;
-      height: 52px;
+    /* Genuine Brand Logo Box */
+    .service-logo-box {
+      width: 54px;
+      height: 54px;
       border-radius: 14px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 26px;
-      font-weight: 800;
-      color: #fff;
-      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.45);
       flex-shrink: 0;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .service-logo-box svg {
+      width: 34px;
+      height: 34px;
     }
 
     .service-regions {
@@ -438,17 +467,18 @@
     }
 
     .flag-badge {
-      font-size: 13px;
-      background: rgba(255, 255, 255, 0.08);
+      font-size: 12px;
+      background: rgba(255, 255, 255, 0.06);
       padding: 3px 6px;
       border-radius: 6px;
-      border: 1px solid rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.05);
     }
 
     .service-meta h3 {
       font-size: 17px;
       font-weight: 700;
       margin-bottom: 4px;
+      color: #fff;
     }
 
     .service-meta p {
@@ -474,10 +504,10 @@
       color: var(--text-muted);
     }
 
-    .card-tag.highlight {
-      background: rgba(0, 212, 255, 0.15);
-      color: var(--accent-cyan);
-      border: 1px solid rgba(0, 212, 255, 0.3);
+    .card-tag.gold {
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--accent-gold);
+      border: 1px solid rgba(245, 158, 11, 0.35);
     }
 
     .card-bottom {
@@ -485,22 +515,151 @@
       align-items: center;
       justify-content: space-between;
       border-top: 1px solid rgba(255, 255, 255, 0.05);
-      padding-top: 12px;
+      padding-top: 14px;
     }
 
-    .play-btn-mini {
+    /* "Select App" Button */
+    .select-app-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--accent-gold);
+      background: rgba(245, 158, 11, 0.1);
+      border: 1px solid rgba(245, 158, 11, 0.25);
+      padding: 6px 14px;
+      border-radius: 8px;
+      transition: all 0.2s;
+    }
+
+    .service-card:hover .select-app-btn, .service-card.focused .select-app-btn {
+      background: var(--accent-gold);
+      color: #050608;
+      box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+      transform: translateX(2px);
+    }
+
+    /* Program & Live TV Tracker Section */
+    .tracker-section {
+      display: none;
+    }
+
+    .tracker-section.active {
+      display: block;
+    }
+
+    .tracker-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .tracker-title h2 {
+      font-size: 22px;
+      font-weight: 700;
       display: flex;
       align-items: center;
-      gap: 6px;
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--accent-cyan);
-      transition: gap 0.2s;
+      gap: 10px;
     }
 
-    .service-card:hover .play-btn-mini, .service-card.focused .play-btn-mini {
+    .tracker-title p {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .quick-track-shelf {
+      margin-bottom: 30px;
+    }
+
+    .shelf-title {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 14px;
+      color: var(--accent-gold);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .shelf-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+      gap: 16px;
+    }
+
+    .event-card {
+      background: rgba(18, 20, 26, 0.85);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 14px;
+      position: relative;
+    }
+
+    .event-card::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 14px;
+      bottom: 14px;
+      width: 3px;
+      border-radius: 2px;
+      background: var(--accent-gold);
+    }
+
+    .event-card.live::before {
+      background: var(--accent-ruby);
+    }
+
+    .event-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
       gap: 10px;
-      color: #fff;
+    }
+
+    .event-badge {
+      font-size: 10px;
+      text-transform: uppercase;
+      font-weight: 700;
+      padding: 3px 7px;
+      border-radius: 5px;
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--accent-gold);
+    }
+
+    .event-badge.live {
+      background: rgba(225, 29, 72, 0.2);
+      color: #ff4d6d;
+      animation: pulse 2s infinite;
+    }
+
+    .event-title {
+      font-size: 15px;
+      font-weight: 700;
+      margin-top: 6px;
+    }
+
+    .event-meta {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .event-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      padding-top: 12px;
     }
 
     /* Controller Bottom HUD Bar */
@@ -509,9 +668,9 @@
       bottom: 0;
       left: 0;
       right: 0;
-      background: rgba(11, 13, 19, 0.95);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
+      background: rgba(6, 7, 9, 0.95);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
       border-top: 1px solid var(--card-border);
       padding: 10px 40px;
       display: flex;
@@ -545,7 +704,6 @@
       color: #fff;
       font-weight: 800;
       font-size: 10px;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.4);
     }
 
     .btn-badge.a { background: #10b981; }
@@ -561,9 +719,9 @@
       left: 0;
       right: 0;
       bottom: 0;
-      background: rgba(0, 0, 0, 0.8);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
+      background: rgba(0, 0, 0, 0.82);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
       z-index: 1000;
       display: flex;
       align-items: center;
@@ -579,15 +737,15 @@
     }
 
     .modal-card {
-      background: #161b22;
-      border: 1px solid var(--card-border);
+      background: #111319;
+      border: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: 20px;
-      max-width: 640px;
+      max-width: 620px;
       width: 90%;
       max-height: 90vh;
       overflow-y: auto;
       padding: 30px;
-      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6);
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7);
       transform: scale(0.95);
       transition: transform 0.25s ease;
     }
@@ -621,133 +779,39 @@
       line-height: 1;
     }
 
-    .modal-close:hover {
-      color: #fff;
+    .modal-close:hover { color: #fff; }
+
+    .form-group {
+      margin-bottom: 16px;
     }
 
-    .modal-body {
-      font-size: 14px;
-      color: var(--text-muted);
-      line-height: 1.6;
-    }
-
-    /* Calibration Box */
-    .calibration-box {
-      background: rgba(0, 0, 0, 0.35);
-      border: 1px solid var(--card-border);
-      border-radius: 14px;
-      padding: 20px;
-      margin: 16px 0;
-    }
-
-    .stick-grid {
-      display: flex;
-      justify-content: space-around;
-      align-items: center;
-      margin: 16px 0;
-    }
-
-    .stick-view {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .stick-circle {
-      width: 100px;
-      height: 100px;
-      border-radius: 50%;
-      background: rgba(255, 255, 255, 0.04);
-      border: 2px dashed rgba(255, 255, 255, 0.2);
-      position: relative;
-    }
-
-    .stick-dot {
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      background: var(--accent-cyan);
-      box-shadow: 0 0 10px var(--accent-cyan);
-      position: absolute;
-      top: 41px;
-      left: 41px;
-      transition: transform 0.05s linear;
-    }
-
-    .deadzone-ring {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      border-radius: 50%;
-      border: 1px solid rgba(255, 183, 3, 0.4);
-      pointer-events: none;
-    }
-
-    .slider-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      margin-top: 14px;
-    }
-
-    .slider-row input[type="range"] {
-      flex: 1;
-      accent-color: var(--accent-cyan);
-    }
-
-    .buttons-tester {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin-top: 14px;
-    }
-
-    .test-btn-indicator {
-      padding: 6px 12px;
-      border-radius: 8px;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid var(--card-border);
-      font-size: 11px;
-      font-weight: 700;
-      color: var(--text-muted);
-      transition: all 0.1s;
-    }
-
-    .test-btn-indicator.active {
-      background: var(--accent-green);
-      border-color: var(--accent-green);
-      color: #050a14;
-      box-shadow: 0 0 12px var(--accent-green);
-      transform: scale(1.08);
-    }
-
-    .cast-option {
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid var(--card-border);
-      border-radius: 12px;
-      padding: 16px;
-      margin-top: 14px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-    }
-
-    .cast-info h4 {
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 6px;
       color: var(--text-main);
-      font-size: 15px;
-      margin-bottom: 4px;
     }
 
-    .cast-info p {
-      font-size: 12px;
+    .form-input, .form-select {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 10px 14px;
+      color: #fff;
+      font-size: 14px;
+      font-family: inherit;
+      outline: none;
+    }
+
+    .form-input:focus, .form-select:focus {
+      border-color: var(--accent-gold);
+      box-shadow: 0 0 10px rgba(245, 158, 11, 0.3);
     }
 
     .btn-secondary {
-      background: rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.08);
       border: 1px solid var(--card-border);
       color: #fff;
       padding: 8px 16px;
@@ -760,7 +824,7 @@
     }
 
     .btn-secondary:hover {
-      background: rgba(255, 255, 255, 0.2);
+      background: rgba(255, 255, 255, 0.16);
     }
 
     /* Footer info */
@@ -771,7 +835,7 @@
       font-size: 12px;
       color: var(--text-muted);
       border-top: 1px solid var(--card-border);
-      background: rgba(11, 13, 19, 0.5);
+      background: rgba(6, 7, 9, 0.5);
     }
   </style>
 </head>
@@ -783,12 +847,22 @@
       <div class="brand-icon">🎬</div>
       <div>
         <div class="brand-title">NightKnight's Cinema Experience</div>
-        <div class="brand-tagline">All-in-One Cinema Hub & AI Super-Resolution</div>
+        <div class="brand-tagline">Dolby Cinema Lounge & 4K AI Super-Resolution</div>
       </div>
     </div>
 
+    <!-- Mode Switcher Tabs -->
+    <div class="top-nav-modes">
+      <button class="nav-mode-btn active" id="nav-mode-apps" onclick="switchMainTab('apps')">
+        <span>🎬</span> Streaming Apps & TV
+      </button>
+      <button class="nav-mode-btn" id="nav-mode-tracker" onclick="switchMainTab('tracker')">
+        <span>⭐</span> Program & Live Tracker
+      </button>
+    </div>
+
     <div class="header-controls">
-      <!-- Ambient Lighting Status & White Tone -->
+      <!-- Ambient Lighting Pill -->
       <div class="ambient-pill">
         <div class="status-dot"></div>
         <span>Ambient Sync</span>
@@ -801,11 +875,11 @@
 
       <!-- Controller / Remote Indicator Button -->
       <button class="header-btn controller-btn" id="controller-header-btn" onclick="openControllerModal()">
-        <span id="controller-icon">🎮</span>
-        <span id="controller-status-text">Controller: Auto-Ready</span>
+        <span>🎮</span>
+        <span id="controller-status-text">Controller Ready</span>
       </button>
 
-      <!-- Auto-Updater Status Button -->
+      <!-- Auto-Updater Status -->
       <button class="header-btn" onclick="checkUpdatesNow()">
         <span>🔄</span> Core: v1.5.0
       </button>
@@ -813,11 +887,6 @@
       <!-- Cast Button -->
       <button class="header-btn" onclick="openCastModal()">
         <span>📡</span> Cast to TV
-      </button>
-
-      <!-- Hardware Wizard -->
-      <button class="header-btn" onclick="runWizard()">
-        <span>⚙️</span> Lights Setup
       </button>
 
       <!-- Credits -->
@@ -829,53 +898,87 @@
 
   <!-- Main Content -->
   <main>
-    <!-- Hero / Stremio 4K Showcase -->
-    <div class="hero-banner">
-      <div class="hero-info">
-        <h1>NightKnight Cinema Hub</h1>
-        <p>Stream any service internally with live screen-edge ambient lighting sync. Full gamepad, remote, and Wi-Fi app compatibility active.</p>
-        <div class="hero-badges">
-          <div class="hero-badge">⚡ Apple Metal Hardware</div>
-          <div class="hero-badge green">🌈 Universal Ambient Sync (Active)</div>
-          <div class="hero-badge purple">🎮 PS5 / Xbox / Switch / Remotes Auto-Connect</div>
-          <div class="hero-badge">🔒 100% In-App Playback</div>
+    <!-- TAB 1: Streaming Services & Channels -->
+    <div id="section-apps">
+      <!-- Hero Banner -->
+      <div class="hero-banner">
+        <div class="hero-info">
+          <h1>Dolby Cinema Lounge</h1>
+          <p>Stream your favorite platforms internally with real-time ambient lighting sync. Press <b>Esc</b> or <b>(B)</b> on your controller at any time to return home.</p>
+          <div class="hero-badges">
+            <div class="hero-badge">⚡ Apple Metal Hardware</div>
+            <div class="hero-badge green">🌈 Universal Ambient Sync (Active)</div>
+            <div class="hero-badge">🎮 Gamepads & Remotes Calibrated</div>
+            <div class="hero-badge">🔒 100% In-App Playback</div>
+          </div>
+        </div>
+        <div class="hero-actions">
+          <button class="btn-gold" onclick="launchStremio4K()">
+            <span>🚀</span> Open Stremio 4K AI
+          </button>
         </div>
       </div>
-      <div class="hero-actions">
-        <button class="btn-primary" onclick="launchStremio4K()">
-          <span>🚀</span> Open Stremio 4K AI
+
+      <!-- Controls: Regions & Search -->
+      <div class="controls-bar">
+        <div class="region-tabs" id="region-tabs">
+          <button class="region-tab active" data-region="all" onclick="filterRegion('all')">🌍 All Platforms</button>
+          <button class="region-tab" data-region="uk" onclick="filterRegion('uk')">🇬🇧 United Kingdom</button>
+          <button class="region-tab" data-region="us" onclick="filterRegion('us')">🇺🇸 United States</button>
+          <button class="region-tab" data-region="ca" onclick="filterRegion('ca')">🇨🇦 Canada</button>
+          <button class="region-tab" data-region="au" onclick="filterRegion('au')">🇦🇺 Australia</button>
+          <button class="region-tab" data-region="ie" onclick="filterRegion('ie')">🇮🇪 Ireland</button>
+          <button class="region-tab" data-region="in" onclick="filterRegion('in')">🇮🇳 India</button>
+        </div>
+
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="service-search" class="search-input" placeholder="Search services..." oninput="filterSearch()">
+        </div>
+      </div>
+
+      <!-- Grid of Services -->
+      <div class="services-grid" id="services-grid">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+
+    <!-- TAB 2: Program, Movie & Live TV Tracker -->
+    <div id="section-tracker" class="tracker-section">
+      <div class="tracker-header-row">
+        <div class="tracker-title">
+          <h2><span>⭐</span> Tracked Programs, Movies & Live TV</h2>
+          <p>Get notified when your live broadcasts, matches, or series episodes are about to start or be available to stream.</p>
+        </div>
+        <button class="btn-gold" onclick="openAddTrackModal()">
+          <span>➕</span> Track New Show or Match
         </button>
       </div>
-    </div>
 
-    <!-- Controls: Regions & Search -->
-    <div class="controls-bar">
-      <div class="region-tabs" id="region-tabs">
-        <button class="region-tab active" data-region="all" onclick="filterRegion('all')">🌍 All Platforms</button>
-        <button class="region-tab" data-region="uk" onclick="filterRegion('uk')">🇬🇧 United Kingdom</button>
-        <button class="region-tab" data-region="us" onclick="filterRegion('us')">🇺🇸 United States</button>
-        <button class="region-tab" data-region="ca" onclick="filterRegion('ca')">🇨🇦 Canada</button>
-        <button class="region-tab" data-region="au" onclick="filterRegion('au')">🇦🇺 Australia</button>
-        <button class="region-tab" data-region="ie" onclick="filterRegion('ie')">🇮🇪 Ireland</button>
-        <button class="region-tab" data-region="in" onclick="filterRegion('in')">🇮🇳 India</button>
+      <!-- Quick Add Shelf: Major Upcoming Live Broadcasts & Premieres -->
+      <div class="quick-track-shelf">
+        <div class="shelf-title">
+          <span>🔥</span> Upcoming Live Broadcasts & Premieres (1-Click Track):
+        </div>
+        <div class="shelf-cards" id="featured-track-cards">
+          <!-- Populated dynamically -->
+        </div>
       </div>
 
-      <div class="search-box">
-        <span class="search-icon">🔍</span>
-        <input type="text" id="service-search" class="search-input" placeholder="Search services (or use controller)..." oninput="filterSearch()">
+      <!-- User Tracked List -->
+      <div class="shelf-title">
+        <span>📋</span> Your Active Tracked Schedule:
       </div>
-    </div>
-
-    <!-- Grid of Streaming Services -->
-    <div class="services-grid" id="services-grid">
-      <!-- Cards dynamically rendered here -->
+      <div class="shelf-cards" id="user-watchlist-cards">
+        <!-- Populated from ~/.nightknight_watchlist.json -->
+      </div>
     </div>
   </main>
 
   <!-- Controller Bottom Guide Bar -->
   <div class="controller-hud">
     <div class="hud-controls">
-      <div class="hud-item"><span class="btn-badge a">A</span> <span>Select</span></div>
+      <div class="hud-item"><span class="btn-badge a">A</span> <span>Select App</span></div>
       <div class="hud-item"><span class="btn-badge b">B</span> <span>Home / Back</span></div>
       <div class="hud-item"><span class="btn-badge x">X</span> <span>Fullscreen</span></div>
       <div class="hud-item"><span class="btn-badge y">Y</span> <span>Cast to TV</span></div>
@@ -887,79 +990,68 @@
     </div>
   </div>
 
-  <!-- Controller Calibration & Remotes Modal -->
-  <div class="modal-overlay" id="controller-modal">
+  <!-- Modal: Track New Program / Live Event -->
+  <div class="modal-overlay" id="add-track-modal">
     <div class="modal-card">
       <div class="modal-header">
-        <h2><span>🎮</span> Controller & Remote Control Center</h2>
-        <button class="modal-close" onclick="closeModal('controller-modal')">&times;</button>
+        <h2><span>🔔</span> Track Program, Movie or Live Event</h2>
+        <button class="modal-close" onclick="closeModal('add-track-modal')">&times;</button>
       </div>
       <div class="modal-body">
-        <p><b>Connected Device:</b> <span id="modal-gamepad-title" style="color: var(--accent-cyan); font-weight: 700;">Scanning for Controllers & Remotes...</span></p>
-        <p style="font-size: 12px; margin-top: 4px;">Supports PS5 DualSense, PS4, Xbox Series/One, Switch Pro, Bluetooth Remotes, and iOS/Android Wi-Fi Remote Apps.</p>
-
-        <!-- Live Stick Calibration -->
-        <div class="calibration-box">
-          <h4 style="color: var(--text-main); margin-bottom: 6px;">🎯 Thumbstick Auto-Calibration & Deadzones</h4>
-          <p style="font-size: 12px;">Auto-zeroes center points on connect to eliminate stick drift and phantom scrolling.</p>
-
-          <div class="stick-grid">
-            <div class="stick-view">
-              <span style="font-size: 11px; font-weight: 600;">Left Stick (Navigate)</span>
-              <div class="stick-circle">
-                <div class="deadzone-ring" id="left-deadzone-ring" style="width: 30px; height: 30px;"></div>
-                <div class="stick-dot" id="left-stick-dot"></div>
-              </div>
-              <span id="left-stick-coords" style="font-size: 10px; font-family: monospace;">X: 0.00 Y: 0.00</span>
-            </div>
-
-            <div class="stick-view">
-              <span style="font-size: 11px; font-weight: 600;">Right Stick (Scroll)</span>
-              <div class="stick-circle">
-                <div class="deadzone-ring" id="right-deadzone-ring" style="width: 30px; height: 30px;"></div>
-                <div class="stick-dot" id="right-stick-dot"></div>
-              </div>
-              <span id="right-stick-coords" style="font-size: 10px; font-family: monospace;">X: 0.00 Y: 0.00</span>
-            </div>
-          </div>
-
-          <div class="slider-row">
-            <label for="deadzone-slider" style="font-size: 12px; font-weight: 600;">Anti-Drift Deadzone:</label>
-            <input type="range" id="deadzone-slider" min="5" max="40" value="18" oninput="updateDeadzone(this.value)">
-            <span id="deadzone-val" style="font-size: 12px; font-weight: 700; width: 45px;">18%</span>
-          </div>
-
-          <div style="display: flex; gap: 10px; margin-top: 14px;">
-            <button class="btn-secondary" onclick="autoCalibrateCenter()">🎯 Re-Calibrate Center Zero</button>
-            <button class="btn-secondary" onclick="testHaptics()">📳 Test Rumble / Haptics</button>
-          </div>
+        <div class="form-group">
+          <label>Program or Event Title:</label>
+          <input type="text" id="track-input-title" class="form-input" placeholder="e.g. Premier League: Arsenal vs Chelsea, Yellowstone S5">
         </div>
 
-        <!-- Live Buttons Tester -->
-        <div class="calibration-box">
-          <h4 style="color: var(--text-main); margin-bottom: 6px;">🔘 Live Button / Key Press Tester</h4>
-          <div class="buttons-tester" id="button-tester-grid">
-            <div class="test-btn-indicator" id="test-btn-0">A / Cross</div>
-            <div class="test-btn-indicator" id="test-btn-1">B / Circle</div>
-            <div class="test-btn-indicator" id="test-btn-2">X / Square</div>
-            <div class="test-btn-indicator" id="test-btn-3">Y / Triangle</div>
-            <div class="test-btn-indicator" id="test-btn-4">LB / L1</div>
-            <div class="test-btn-indicator" id="test-btn-5">RB / R1</div>
-            <div class="test-btn-indicator" id="test-btn-12">D-Up</div>
-            <div class="test-btn-indicator" id="test-btn-13">D-Down</div>
-            <div class="test-btn-indicator" id="test-btn-14">D-Left</div>
-            <div class="test-btn-indicator" id="test-btn-15">D-Right</div>
-            <div class="test-btn-indicator" id="test-btn-9">Start / Menu</div>
-          </div>
+        <div class="form-group">
+          <label>Streaming App / Service:</label>
+          <select id="track-input-service" class="form-select">
+            <option value="skygo">Sky Go / NOW TV</option>
+            <option value="bbciplayer">BBC iPlayer</option>
+            <option value="max">Max (HBO)</option>
+            <option value="netflix">Netflix</option>
+            <option value="primevideo">Amazon Prime Video</option>
+            <option value="disneyplus">Disney+</option>
+            <option value="discovery-uk">Discovery+ (TNT Sports)</option>
+            <option value="paramount-uk">Paramount+</option>
+            <option value="stremio-web">Stremio 4K</option>
+            <option value="itvx">ITVX</option>
+            <option value="channel4">Channel 4</option>
+            <option value="kayosports">Kayo Sports</option>
+            <option value="rteplayer">RTÉ Player</option>
+            <option value="jiocinema">JioCinema</option>
+          </select>
         </div>
 
-        <!-- BT Remotes & Wi-Fi Apps Guide -->
-        <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--card-border); border-radius: 12px; padding: 16px;">
-          <h4 style="color: var(--text-main); margin-bottom: 6px;">📱 How to Use Bluetooth Remotes & Wi-Fi Phone Apps:</h4>
-          <ul style="padding-left: 20px; font-size: 12px; line-height: 1.6;">
-            <li><b>Bluetooth Remotes (Satechi, Apple Siri Remote, Firestick):</b> Pair via macOS Bluetooth Settings. D-Pad arrows navigate tiles, Select launches, Back/Home returns home!</li>
-            <li><b>Wi-Fi Phone Apps (Unified Remote, Remote Mouse, Mobile Mouse):</b> Connect over Wi-Fi. Arrow keys and Enter/Return directly control the Cinema interface with zero configuration.</li>
-          </ul>
+        <div class="form-group">
+          <label>Event Type:</label>
+          <select id="track-input-type" class="form-select">
+            <option value="Live Sports">Live Sports Broadcast</option>
+            <option value="Live TV">Live TV Show</option>
+            <option value="Series Premiere">Series / Episode Premiere</option>
+            <option value="Movie Premiere">Movie Release</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Air Time / Date:</label>
+          <input type="text" id="track-input-time" class="form-input" placeholder="e.g. Tonight • 8:00 PM, Tomorrow • 7:30 PM">
+        </div>
+
+        <div class="form-group">
+          <label>Reminder Alarm:</label>
+          <select id="track-input-reminder" class="form-select">
+            <option value="15">15 Minutes Before Start</option>
+            <option value="30">30 Minutes Before Start</option>
+            <option value="0">At Exact Start Time</option>
+            <option value="60">1 Hour Before Start</option>
+            <option value="1440">1 Day Before</option>
+          </select>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+          <button class="btn-secondary" onclick="closeModal('add-track-modal')">Cancel</button>
+          <button class="btn-gold" onclick="saveNewTrackedItem()"><span>🔔</span> Set Reminder & Track</button>
         </div>
       </div>
     </div>
@@ -974,19 +1066,17 @@
       </div>
       <div class="modal-body">
         <p>Cast your movies, live channels, and sports streams directly to any external smart TV or streaming box:</p>
-        
-        <div class="cast-option">
-          <div class="cast-info">
-            <h4>📺 Apple AirPlay 2 (Recommended)</h4>
-            <p>Compatible with Apple TV, Samsung Tizen, LG webOS, Sony Bravia, Roku, and Amazon Fire TV.</p>
+        <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid var(--card-border); border-radius: 12px; padding: 16px; margin-top: 14px; display: flex; align-items: center; justify-content: space-between;">
+          <div>
+            <h4 style="color: #fff; font-size: 15px;">📺 Apple AirPlay 2</h4>
+            <p style="font-size: 12px;">Compatible with Apple TV, Samsung Tizen, LG webOS, Sony Bravia, Roku, and Fire TV.</p>
           </div>
           <button class="btn-secondary" onclick="triggerAirPlay()">Connect AirPlay</button>
         </div>
-
-        <div class="cast-option">
-          <div class="cast-info">
-            <h4>📡 Google Cast / Chromecast / DLNA</h4>
-            <p>Cast from video players supporting WebRTC/DIAL or mirror your Mac display with macOS Screen Mirroring.</p>
+        <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid var(--card-border); border-radius: 12px; padding: 16px; margin-top: 14px; display: flex; align-items: center; justify-content: space-between;">
+          <div>
+            <h4 style="color: #fff; font-size: 15px;">📡 Google Cast / Display Mirroring</h4>
+            <p style="font-size: 12px;">Cast or mirror your Mac display to any Chromecast, Google TV, or DLNA screen.</p>
           </div>
           <button class="btn-secondary" onclick="triggerScreenMirroring()">Display Mirror</button>
         </div>
@@ -1023,41 +1113,73 @@
   </footer>
 
   <script>
-    // Master streaming service catalog
+    // Authentic Vector Brand Logos (SVGs)
+    const brandLogos = {
+      netflix: `<svg viewBox="0 0 111 200"><path fill="#E50914" d="M0 0h37v200H0z"/><path fill="#B81D24" d="M74 0h37v200H74z"/><path fill="#E50914" d="M0 0h37l37 200H37z"/></svg>`,
+      disneyplus: `<svg viewBox="0 0 100 100"><path fill="#FFFFFF" d="M50 15C30 15 15 35 15 60c0 15 10 25 25 25s25-10 25-25c0-18-10-32-25-32-10 0-16 8-16 18 0 8 5 14 13 14 6 0 10-4 10-10 0-5-3-8-7-8-3 0-5 2-5 5 0 2 1 3 3 3s2-1 2-2c0-1-1-1-1-1"/><path fill="#FFFFFF" d="M70 45h6v12h-6v-12zm-3 6h12v-2H67v2z"/></svg>`,
+      primevideo: `<svg viewBox="0 0 100 100"><path fill="#00A8E1" d="M15 35h16c8 0 14 4 14 12s-6 12-14 12H24v16H15V35zm9 17h6c4 0 7-2 7-5s-3-5-7-5h-6v10z"/><path fill="#FFA726" d="M20 78c20 8 45 4 60-10-2-1-6-2-8-2-12 10-32 13-48 7-2 1-3 3-4 5z"/></svg>`,
+      max: `<svg viewBox="0 0 100 100"><path fill="#FFFFFF" d="M15 30h14l12 25 12-25h14v40H54V50l-11 20h-6L26 50v20H15V30zm57 0h14l12 40H85l-2-8H71l-2 8H57l15-40zm3 24h6l-3-12-3 12z"/></svg>`,
+      stremio: `<svg viewBox="0 0 100 100"><polygon points="30,20 80,50 30,80" fill="#00D4FF"/><polygon points="20,15 65,50 20,85" fill="#7B2CBF"/></svg>`,
+      skygo: `<svg viewBox="0 0 100 100"><path fill="#FF385C" d="M15 40c0-10 8-18 18-18 6 0 12 3 15 8l-8 5c-2-3-4-4-7-4-5 0-9 4-9 9s4 9 9 9c3 0 5-1 7-4l8 5c-3 5-9 8-15 8-10 0-18-8-18-18z"/><path fill="#FFB800" d="M52 24h10v22l15-22h12L73 44l17 22H77L62 45v21H52V24z"/></svg>`,
+      bbciplayer: `<svg viewBox="0 0 100 100"><rect x="15" y="30" width="18" height="40" rx="3" fill="#FF0055"/><polygon points="20,40 28,50 20,60" fill="#FFF"/><rect x="41" y="20" width="18" height="60" rx="3" fill="#FF0055"/><polygon points="46,40 54,50 46,60" fill="#FFF"/><rect x="67" y="30" width="18" height="40" rx="3" fill="#FF0055"/><polygon points="72,40 80,50 72,60" fill="#FFF"/></svg>`,
+      itvx: `<svg viewBox="0 0 100 100"><rect x="10" y="30" width="16" height="40" rx="4" fill="#06D6A0"/><path fill="#FFD166" d="M35 30h16v10H46v30H35V30z"/><path fill="#06D6A0" d="M60 30h14l14 40H74l-6-18-6 18H48l12-40z"/></svg>`,
+      channel4: `<svg viewBox="0 0 100 100"><rect x="25" y="20" width="14" height="60" fill="#FFF"/><rect x="45" y="45" width="35" height="14" fill="#FFF"/><rect x="65" y="20" width="14" height="40" fill="#FFF"/><rect x="65" y="65" width="14" height="15" fill="#FFF"/></svg>`,
+      my5: `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="38" fill="#FF006E"/><path fill="#FFF" d="M35 32h28v10H45v10c2-1 5-2 9-2 8 0 14 5 14 13s-6 13-14 13c-7 0-13-4-14-10l10-3c1 3 3 4 5 4 3 0 5-2 5-5s-2-5-5-5c-4 0-7 2-9 4l-7-2V32z"/></svg>`,
+      discovery: `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="36" fill="#0077B6"/><path fill="#FFF" d="M36 30h16c12 0 20 8 20 20s-8 20-20 20H36V30zm13 28h3c6 0 10-3 10-8s-4-8-10-8h-3v16z"/><circle cx="58" cy="50" r="8" fill="#FFB703"/></svg>`,
+      paramount: `<svg viewBox="0 0 100 100"><polygon points="50,22 25,78 75,78" fill="#006494"/><polygon points="50,35 36,70 64,70" fill="#FFF"/><circle cx="50" cy="18" r="3" fill="#FFB703"/><circle cx="36" cy="24" r="3" fill="#FFB703"/><circle cx="64" cy="24" r="3" fill="#FFB703"/><circle cx="26" cy="34" r="3" fill="#FFB703"/><circle cx="74" cy="34" r="3" fill="#FFB703"/></svg>`,
+      appletv: `<svg viewBox="0 0 100 100"><path fill="#FFF" d="M42 35c2-3 4-5 7-5 0 3-1 6-3 8-2 2-5 3-7 3 0-3 1-5 3-6zm-1 9c2 0 4-1 6-1 2 0 4 1 6 1 4-1 7-4 9-8-4-2-6-7-4-11 2-4 5-6 8-6-2-3-5-5-9-5-4 0-7 2-9 2s-5-2-8-2c-5 0-10 3-13 8-5 9-1 23 4 30 2 4 5 8 9 8 3 0 4-2 7-2s5 2 7 2z"/><path fill="#FFF" d="M68 40h12v6H76v24h-6V46h-2v-6z"/><path fill="#FFF" d="M82 46h5l4 15 4-15h5l-7 24h-4l-7-24z"/></svg>`,
+      hulu: `<svg viewBox="0 0 100 100"><path fill="#1CE783" d="M20 30h12v14c2-3 6-5 10-5 8 0 13 5 13 13v18H43V53c0-4-2-6-6-6s-5 2-5 6v17H20V30zm42 10h12v19c0 4 2 6 6 6s5-2 5-6V40h12v30H85V56c-2 3-6 5-10 5-8 0-13-5-13-13V40z"/></svg>`,
+      peacock: `<svg viewBox="0 0 100 100"><circle cx="30" cy="40" r="8" fill="#F72585"/><circle cx="42" cy="28" r="8" fill="#7209B7"/><circle cx="58" cy="28" r="8" fill="#3A0CA3"/><circle cx="70" cy="40" r="8" fill="#4361EE"/><circle cx="64" cy="55" r="8" fill="#4CC9F0"/><circle cx="36" cy="55" r="8" fill="#06D6A0"/><path fill="#FFF" d="M48 42h4v35h-4z"/></svg>`,
+      crave: `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="38" fill="#003049"/><path fill="#D62828" d="M30 40c0-8 6-14 15-14 6 0 11 3 13 7l-7 4c-1-2-3-3-6-3-4 0-7 3-7 6s3 6 7 6c3 0 5-1 6-3l7 4c-2 4-7 7-13 7-9 0-15-6-15-14z"/><text x="44" y="65" font-family="Arial" font-weight="900" font-size="14" fill="#FFF">CRAVE</text></svg>`,
+      binge: `<svg viewBox="0 0 100 100"><rect x="15" y="25" width="70" height="50" rx="10" fill="#FF0054"/><text x="22" y="58" font-family="Impact, sans-serif" font-size="26" fill="#FFF" letter-spacing="1">BINGE</text></svg>`,
+      foxtel: `<svg viewBox="0 0 100 100"><rect x="15" y="25" width="70" height="50" rx="10" fill="#FF5400"/><text x="20" y="56" font-family="Arial Black" font-weight="900" font-size="20" fill="#FFF">foxtel</text></svg>`,
+      stan: `<svg viewBox="0 0 100 100"><rect x="15" y="25" width="70" height="50" rx="10" fill="#0077B6"/><text x="24" y="58" font-family="Arial Black" font-weight="900" font-size="24" fill="#FFF">Stan.</text></svg>`,
+      kayo: `<svg viewBox="0 0 100 100"><rect x="15" y="25" width="70" height="50" rx="10" fill="#007200"/><text x="22" y="58" font-family="Impact" font-size="26" fill="#38B000">KAYO</text></svg>`,
+      rte: `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="38" fill="#1B4332"/><text x="24" y="58" font-family="Arial Black" font-size="22" fill="#FFF">RTÉ</text></svg>`,
+      virgin: `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="38" fill="#D00000"/><path fill="#FFF" d="M32 45c3-6 8-9 14-9s10 3 13 8l-6 4c-2-3-4-4-7-4s-5 2-7 5l-7-4z"/></svg>`,
+      tg4: `<svg viewBox="0 0 100 100"><rect x="15" y="25" width="70" height="50" rx="10" fill="#2D6A4F"/><text x="26" y="58" font-family="Impact" font-size="24" fill="#FFF">TG4</text></svg>`,
+      jio: `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="38" fill="#E60067"/><text x="26" y="58" font-family="Arial Black" font-size="24" fill="#FFF">Jio</text></svg>`,
+      hotstar: `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="38" fill="#001E6C"/><polygon points="50,22 56,38 72,40 60,52 64,68 50,58 36,68 40,52 28,40 44,38" fill="#FFD166"/></svg>`,
+      sonyliv: `<svg viewBox="0 0 100 100"><rect x="15" y="25" width="70" height="50" rx="10" fill="#2B2D42"/><text x="22" y="56" font-family="Arial Black" font-size="18" fill="#FFF">SONY</text></svg>`,
+      zee5: `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="38" fill="#8338EC"/><text x="26" y="58" font-family="Arial Black" font-size="20" fill="#FFF">ZEE5</text></svg>`,
+      youtube: `<svg viewBox="0 0 100 100"><rect x="15" y="26" width="70" height="48" rx="12" fill="#FF0000"/><polygon points="42,38 65,50 42,62" fill="#FFF"/></svg>`,
+      crunchyroll: `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="38" fill="#F77F00"/><ellipse cx="58" cy="48" rx="14" ry="18" fill="#FFF"/><ellipse cx="61" cy="48" rx="8" ry="12" fill="#F77F00"/></svg>`,
+      plex: `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="38" fill="#1E232A"/><polygon points="38,28 62,50 38,72" fill="#E5A00D"/></svg>`,
+      tubi: `<svg viewBox="0 0 100 100"><rect x="15" y="25" width="70" height="50" rx="10" fill="#7209B7"/><text x="22" y="58" font-family="Impact" font-size="26" fill="#F72585">tubi</text></svg>`,
+      pluto: `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="38" fill="#000"/><circle cx="50" cy="50" r="22" fill="none" stroke="#FFD166" stroke-width="5"/><circle cx="65" cy="42" r="5" fill="#FFD166"/></svg>`
+    };
+
+    // Master Catalog of 30+ Streaming Services
     const services = [
-      // Core Stremio
       {
         id: "stremio-web",
-        name: "Stremio (Internal Web)",
+        name: "Stremio Cinema",
         desc: "Stream your add-ons & Real-Debrid directly inside this window.",
-        logo: "🟣",
-        logoBg: "linear-gradient(135deg, #7b2cbf, #3c096c)",
+        logoSvg: brandLogos.stremio,
+        bgGradient: "linear-gradient(135deg, #1f1135, #0d0718)",
         url: "https://web.stremio.com",
         regions: ["all", "uk", "us", "ca", "au", "ie", "in"],
-        tags: ["Debrid Fast", "No DRM", "Ambient Sync"],
-        highlightTag: "Real-Debrid Ready"
+        tags: ["Real-Debrid", "No DRM", "Ambient Ready"],
+        highlightTag: "Debrid Fast"
       },
       {
         id: "stremio-native",
         name: "Stremio 4K AI Player",
-        desc: "Launches native Stremio hooked to our Apple Metal 4K AI Neural Upscaler.",
-        logo: "🚀",
-        logoBg: "linear-gradient(135deg, #00d4ff, #0077b6)",
+        desc: "Native Stremio hooked to our Apple Metal 4K AI Neural Upscaler.",
+        logoSvg: brandLogos.stremio,
+        bgGradient: "linear-gradient(135deg, #0f2744, #081220)",
         action: "launchStremio",
         regions: ["all", "uk", "us", "ca", "au", "ie", "in"],
         tags: ["Metal AI 4K", "SSimSuperRes", "Hardware Metal"],
         highlightTag: "4K AI Neural"
       },
-
-      // UK Specific & Shared
       {
         id: "skygo",
         name: "Sky Go / NOW TV",
         desc: "Watch Sky Atlantic, Sky Cinema, Sky Sports, and Premier League live.",
-        logo: "🔴",
-        logoBg: "linear-gradient(135deg, #e63946, #b7094c)",
+        logoSvg: brandLogos.skygo,
+        bgGradient: "linear-gradient(135deg, #2b1219, #14070a)",
         url: "https://www.nowtv.com/watch",
-        launchApp: "skygo",
         regions: ["uk", "ie"],
         tags: ["Sky Sports", "Cinema", "Live TV"],
         highlightTag: "Sky & NOW"
@@ -1066,8 +1188,8 @@
         id: "bbciplayer",
         name: "BBC iPlayer",
         desc: "Stream BBC One, Two, Three, Four, and extensive box sets in HD & UHD.",
-        logo: "🟥",
-        logoBg: "linear-gradient(135deg, #e50914, #9a031e)",
+        logoSvg: brandLogos.bbciplayer,
+        bgGradient: "linear-gradient(135deg, #2b0c15, #140509)",
         url: "https://www.bbc.co.uk/iplayer",
         regions: ["uk"],
         tags: ["BBC UHD", "Catch Up", "Live Channels"],
@@ -1077,8 +1199,8 @@
         id: "itvx",
         name: "ITVX",
         desc: "British drama, blockbuster movies, reality series, and live ITV channels.",
-        logo: "🟩",
-        logoBg: "linear-gradient(135deg, #06d6a0, #0077b6)",
+        logoSvg: brandLogos.itvx,
+        bgGradient: "linear-gradient(135deg, #0d261e, #05120e)",
         url: "https://www.itv.com",
         regions: ["uk"],
         tags: ["Live TV", "ITV Drama", "Free-to-Air"],
@@ -1088,8 +1210,8 @@
         id: "channel4",
         name: "Channel 4",
         desc: "Stream all Channel 4 box sets, Film4 movies, and E4 comedy series.",
-        logo: "🟦",
-        logoBg: "linear-gradient(135deg, #118ab2, #073b4c)",
+        logoSvg: brandLogos.channel4,
+        bgGradient: "linear-gradient(135deg, #16242c, #0a1115)",
         url: "https://www.channel4.com",
         regions: ["uk"],
         tags: ["Film4", "Series", "Box Sets"],
@@ -1099,8 +1221,8 @@
         id: "my5",
         name: "My5 (Channel 5)",
         desc: "Popular British documentaries, dramas, soaps, and live Channel 5.",
-        logo: "5️⃣",
-        logoBg: "linear-gradient(135deg, #ff006e, #8338ec)",
+        logoSvg: brandLogos.my5,
+        bgGradient: "linear-gradient(135deg, #2c0e1e, #14060d)",
         url: "https://www.channel5.com",
         regions: ["uk"],
         tags: ["Channel 5", "Documentaries"],
@@ -1108,10 +1230,10 @@
       },
       {
         id: "discovery-uk",
-        name: "Discovery+ (UK & TNT Sports)",
+        name: "Discovery+ (TNT Sports)",
         desc: "Home of TNT Sports, UEFA Champions League, Olympics, & nature docs.",
-        logo: "🧭",
-        logoBg: "linear-gradient(135deg, #0077b6, #0096c7)",
+        logoSvg: brandLogos.discovery,
+        bgGradient: "linear-gradient(135deg, #0d1e2b, #050d14)",
         url: "https://www.discoveryplus.com/gb",
         regions: ["uk"],
         tags: ["TNT Sports", "Champions League", "Nature"],
@@ -1121,21 +1243,19 @@
         id: "paramount-uk",
         name: "Paramount+ (UK)",
         desc: "Yellowstone, Star Trek, South Park, Halo, and Paramount blockbuster films.",
-        logo: "⛰️",
-        logoBg: "linear-gradient(135deg, #006494, #0582ca)",
+        logoSvg: brandLogos.paramount,
+        bgGradient: "linear-gradient(135deg, #0c1c2b, #050d14)",
         url: "https://www.paramountplus.com/gb/",
         regions: ["uk"],
         tags: ["Yellowstone", "Star Trek", "Blockbusters"],
         highlightTag: "Paramount+"
       },
-
-      // USA Specific & Major Brands
       {
         id: "max",
         name: "Max (HBO Max)",
         desc: "Home of HBO, Warner Bros., DC Universe, House of the Dragon, and Discovery.",
-        logo: "Ⓜ️",
-        logoBg: "linear-gradient(135deg, #002699, #001244)",
+        logoSvg: brandLogos.max,
+        bgGradient: "linear-gradient(135deg, #0a1936, #040c1a)",
         url: "https://play.max.com",
         regions: ["us"],
         tags: ["HBO Originals", "4K HDR", "Warner Bros."],
@@ -1145,8 +1265,8 @@
         id: "hulu",
         name: "Hulu",
         desc: "Next-day network TV episodes, FX originals, Hulu original series, and movies.",
-        logo: "🟢",
-        logoBg: "linear-gradient(135deg, #1ce783, #00b368)",
+        logoSvg: brandLogos.hulu,
+        bgGradient: "linear-gradient(135deg, #0d281a, #05130b)",
         url: "https://www.hulu.com",
         regions: ["us"],
         tags: ["FX on Hulu", "Next-Day TV", "Drama"],
@@ -1156,8 +1276,8 @@
         id: "peacock",
         name: "Peacock TV",
         desc: "Universal Pictures, NBC classics, Premier League soccer, and WWE live.",
-        logo: "🦚",
-        logoBg: "linear-gradient(135deg, #ffb703, #fb8500)",
+        logoSvg: brandLogos.peacock,
+        bgGradient: "linear-gradient(135deg, #2b1f0d, #140e05)",
         url: "https://www.peacocktv.com",
         regions: ["us"],
         tags: ["Premier League", "WWE Live", "Universal"],
@@ -1167,8 +1287,8 @@
         id: "paramount-us",
         name: "Paramount+ (US)",
         desc: "NFL on CBS live, Champions League, Taylor Sheridan universe, and Star Trek.",
-        logo: "⭐",
-        logoBg: "linear-gradient(135deg, #006494, #003554)",
+        logoSvg: brandLogos.paramount,
+        bgGradient: "linear-gradient(135deg, #0c1c2b, #050d14)",
         url: "https://www.paramountplus.com",
         regions: ["us"],
         tags: ["NFL on CBS", "Paramount 4K", "Live TV"],
@@ -1178,8 +1298,8 @@
         id: "discovery-us",
         name: "Discovery+ (US)",
         desc: "Shark Week, TLC, Food Network, HGTV, Investigation Discovery, and Magnolia.",
-        logo: "🌍",
-        logoBg: "linear-gradient(135deg, #023e8a, #0077b6)",
+        logoSvg: brandLogos.discovery,
+        bgGradient: "linear-gradient(135deg, #0d1e2b, #050d14)",
         url: "https://www.discoveryplus.com",
         regions: ["us"],
         tags: ["HGTV", "Food Network", "TLC"],
@@ -1189,21 +1309,19 @@
         id: "tubi",
         name: "Tubi TV",
         desc: "Thousands of free movies, classic television series, and live streaming channels.",
-        logo: "🦊",
-        logoBg: "linear-gradient(135deg, #f72585, #7209b7)",
+        logoSvg: brandLogos.tubi,
+        bgGradient: "linear-gradient(135deg, #2b0e25, #140510)",
         url: "https://tubitv.com",
         regions: ["us", "ca", "au"],
         tags: ["Free Streaming", "No Sub Required", "Classics"],
         highlightTag: "Free TV"
       },
-
-      // Global Giants
       {
         id: "netflix",
         name: "Netflix",
         desc: "Stream Stranger Things, Wednesday, original films, and global hits.",
-        logo: "N",
-        logoBg: "linear-gradient(135deg, #e50914, #831843)",
+        logoSvg: brandLogos.netflix,
+        bgGradient: "linear-gradient(135deg, #2b0c10, #140507)",
         url: "https://www.netflix.com",
         regions: ["all", "uk", "us", "ca", "au", "ie", "in"],
         tags: ["4K HDR", "Originals", "Spatial Audio"],
@@ -1213,8 +1331,8 @@
         id: "primevideo",
         name: "Amazon Prime Video",
         desc: "The Boys, Rings of Power, Fallout, Thursday Night Football, and Prime Cinema.",
-        logo: "🛒",
-        logoBg: "linear-gradient(135deg, #00a8e8, #007ea7)",
+        logoSvg: brandLogos.primevideo,
+        bgGradient: "linear-gradient(135deg, #0d2332, #051017)",
         url: "https://www.primevideo.com",
         regions: ["all", "uk", "us", "ca", "au", "ie", "in"],
         tags: ["The Boys", "Prime 4K", "X-Ray"],
@@ -1224,8 +1342,8 @@
         id: "disneyplus",
         name: "Disney+",
         desc: "Disney, Pixar, Marvel Cinematic Universe, Star Wars, and National Geographic.",
-        logo: "🏰",
-        logoBg: "linear-gradient(135deg, #113ccf, #0c2085)",
+        logoSvg: brandLogos.disneyplus,
+        bgGradient: "linear-gradient(135deg, #0d1936, #050b18)",
         url: "https://www.disneyplus.com",
         regions: ["all", "uk", "us", "ca", "au", "ie", "in"],
         tags: ["IMAX Enhanced", "Marvel", "Star Wars"],
@@ -1235,56 +1353,30 @@
         id: "appletv",
         name: "Apple TV+",
         desc: "Ted Lasso, Severance, Foundation, Morning Show, and high-bitrate 4K HDR masters.",
-        logo: "🍎",
-        logoBg: "linear-gradient(135deg, #333333, #111111)",
+        logoSvg: brandLogos.appletv,
+        bgGradient: "linear-gradient(135deg, #1e2024, #0b0c0e)",
         url: "https://tv.apple.com",
         regions: ["all", "uk", "us", "ca", "au", "ie", "in"],
         tags: ["Apple Master 4K", "Dolby Vision", "Award Winning"],
         highlightTag: "Apple 4K"
       },
-
-      // Canada Specific
       {
         id: "crave",
         name: "Crave",
         desc: "Canada's exclusive home of HBO, Max Originals, Showtime, and French content.",
-        logo: "🇨🇦",
-        logoBg: "linear-gradient(135deg, #003049, #d62828)",
+        logoSvg: brandLogos.crave,
+        bgGradient: "linear-gradient(135deg, #141f2d, #090e15)",
         url: "https://www.crave.ca",
         regions: ["ca"],
         tags: ["HBO in Canada", "Showtime", "French & English"],
         highlightTag: "Crave HBO"
       },
       {
-        id: "cbcgem",
-        name: "CBC Gem",
-        desc: "Canadian original comedy, news, documentaries, and live CBC network.",
-        logo: "💎",
-        logoBg: "linear-gradient(135deg, #d90429, #ef233c)",
-        url: "https://gem.cbc.ca",
-        regions: ["ca"],
-        tags: ["CBC Live", "Canadian Originals", "Free"],
-        highlightTag: "CBC Gem"
-      },
-      {
-        id: "ctv",
-        name: "CTV",
-        desc: "Canada's top drama, live sports, late night comedy, and CTV throwback library.",
-        logo: "📺",
-        logoBg: "linear-gradient(135deg, #0077b6, #023e8a)",
-        url: "https://www.ctv.ca",
-        regions: ["ca"],
-        tags: ["CTV Live", "Drama", "Sports"],
-        highlightTag: "CTV"
-      },
-
-      // Australia Specific
-      {
         id: "binge",
         name: "Binge",
         desc: "Australia's top entertainment service for HBO, Warner, and binge-worthy series.",
-        logo: "🦘",
-        logoBg: "linear-gradient(135deg, #ff0054, #9e0059)",
+        logoSvg: brandLogos.binge,
+        bgGradient: "linear-gradient(135deg, #2b0b18, #14040a)",
         url: "https://binge.com.au",
         regions: ["au"],
         tags: ["HBO Australia", "Warner", "4K HDR"],
@@ -1294,8 +1386,8 @@
         id: "foxtelnow",
         name: "Foxtel Now",
         desc: "Live Sky Channels, Fox Sports Australia, HBO drama, and Foxtel exclusives.",
-        logo: "🦊",
-        logoBg: "linear-gradient(135deg, #ff5400, #ff0054)",
+        logoSvg: brandLogos.foxtel,
+        bgGradient: "linear-gradient(135deg, #2b170c, #140a04)",
         url: "https://www.foxtel.com.au/now/",
         regions: ["au"],
         tags: ["Live Sky AU", "Fox Sports", "Drama"],
@@ -1305,8 +1397,8 @@
         id: "stan",
         name: "Stan",
         desc: "Iconic Australian originals, Stan Sport (Champions League & Rugby), and movies.",
-        logo: "🇦🇺",
-        logoBg: "linear-gradient(135deg, #0077b6, #00b4d8)",
+        logoSvg: brandLogos.stan,
+        bgGradient: "linear-gradient(135deg, #0d1e2b, #050d14)",
         url: "https://www.stan.com.au",
         regions: ["au"],
         tags: ["Stan Sport", "AU Originals", "4K Cinema"],
@@ -1316,32 +1408,19 @@
         id: "kayosports",
         name: "Kayo Sports",
         desc: "Over 50 sports live and on demand: AFL, NRL, Cricket, F1, and MotoGP.",
-        logo: "⚽",
-        logoBg: "linear-gradient(135deg, #38b000, #007200)",
+        logoSvg: brandLogos.kayo,
+        bgGradient: "linear-gradient(135deg, #0a260a, #041204)",
         url: "https://kayosports.com.au",
         regions: ["au"],
         tags: ["AFL / NRL", "Formula 1", "50+ Sports"],
         highlightTag: "Kayo Sports"
       },
       {
-        id: "abciview",
-        name: "ABC iview",
-        desc: "The Australian Broadcasting Corporation's free video on demand and live news.",
-        logo: "📡",
-        logoBg: "linear-gradient(135deg, #0096c7, #03045e)",
-        url: "https://iview.abc.net.au",
-        regions: ["au"],
-        tags: ["ABC Live", "Free-to-Air", "Documentaries"],
-        highlightTag: "ABC iview"
-      },
-
-      // Ireland Specific
-      {
         id: "rteplayer",
         name: "RTÉ Player",
         desc: "Irish national television: The Late Late Show, GAA sports, and RTÉ News live.",
-        logo: "☘️",
-        logoBg: "linear-gradient(135deg, #2d6a4f, #1b4332)",
+        logoSvg: brandLogos.rte,
+        bgGradient: "linear-gradient(135deg, #0e241b, #05120c)",
         url: "https://www.rte.ie/player",
         regions: ["ie"],
         tags: ["RTÉ One & Two", "GAA Sports", "Irish Drama"],
@@ -1351,8 +1430,8 @@
         id: "virginmediaplay",
         name: "Virgin Media Play",
         desc: "Live Virgin Media One, Two, Three, Four, Champions League & reality hits in Ireland.",
-        logo: "🔴",
-        logoBg: "linear-gradient(135deg, #d00000, #9d0208)",
+        logoSvg: brandLogos.virgin,
+        bgGradient: "linear-gradient(135deg, #2b0c0c, #140505)",
         url: "https://www.virginmediatelevision.ie/player",
         regions: ["ie"],
         tags: ["Live TV", "Champions League", "Irish TV"],
@@ -1362,32 +1441,19 @@
         id: "tg4",
         name: "TG4 Player",
         desc: "Irish language television, traditional music, cultural series, and live club GAA.",
-        logo: "🇮🇪",
-        logoBg: "linear-gradient(135deg, #38b000, #007200)",
+        logoSvg: brandLogos.tg4,
+        bgGradient: "linear-gradient(135deg, #0e241b, #05120c)",
         url: "https://www.tg4.ie/en/player/",
         regions: ["ie"],
         tags: ["Gaelic", "Club GAA", "Traditional"],
         highlightTag: "TG4"
       },
       {
-        id: "now-ie",
-        name: "NOW Ireland",
-        desc: "Stream Sky Sports, Sky Cinema, and Sky Atlantic directly in the Republic of Ireland.",
-        logo: "🟢",
-        logoBg: "linear-gradient(135deg, #00b4d8, #0077b6)",
-        url: "https://www.nowtv.com/ie",
-        regions: ["ie"],
-        tags: ["Sky Sports IE", "Sky Cinema", "Entertainment"],
-        highlightTag: "NOW Ireland"
-      },
-
-      // India Specific
-      {
         id: "jiocinema",
         name: "JioCinema",
         desc: "Home of HBO, Max, IPL Cricket, Bigg Boss, and blockbuster Indian cinema.",
-        logo: "🇮🇳",
-        logoBg: "linear-gradient(135deg, #e60067, #a1004a)",
+        logoSvg: brandLogos.jio,
+        bgGradient: "linear-gradient(135deg, #2b0b1c, #14040c)",
         url: "https://www.jiocinema.com",
         regions: ["in"],
         tags: ["HBO in India", "IPL Live", "4K Movies"],
@@ -1397,8 +1463,8 @@
         id: "hotstar",
         name: "Disney+ Hotstar",
         desc: "Disney+, Marvel, Star Wars, ICC Cricket tournaments, and premier Indian serials.",
-        logo: "🌟",
-        logoBg: "linear-gradient(135deg, #001e6c, #001449)",
+        logoSvg: brandLogos.hotstar,
+        bgGradient: "linear-gradient(135deg, #0a1632, #040915)",
         url: "https://www.hotstar.com/in",
         regions: ["in"],
         tags: ["ICC Cricket", "Disney+", "Star Plus"],
@@ -1408,8 +1474,8 @@
         id: "sonyliv",
         name: "SonyLIV",
         desc: "UEFA Champions League, Sony entertainment shows, Shark Tank India, and movies.",
-        logo: "📺",
-        logoBg: "linear-gradient(135deg, #2b2d42, #1b1c2b)",
+        logoSvg: brandLogos.sonyliv,
+        bgGradient: "linear-gradient(135deg, #181924, #0a0b0f)",
         url: "https://www.sonyliv.com",
         regions: ["in"],
         tags: ["Champions League", "Shark Tank", "Sony TV"],
@@ -1419,21 +1485,19 @@
         id: "zee5",
         name: "Zee5",
         desc: "Vast collection of Hindi, Tamil, Telugu, and regional language cinema and originals.",
-        logo: "⚡",
-        logoBg: "linear-gradient(135deg, #8338ec, #3a0ca3)",
+        logoSvg: brandLogos.zee5,
+        bgGradient: "linear-gradient(135deg, #1f1032, #0b0513)",
         url: "https://www.zee5.com",
         regions: ["in"],
         tags: ["Regional Indian", "Zee Classics", "Originals"],
         highlightTag: "Zee5"
       },
-
-      // Other / General
       {
         id: "youtube",
         name: "YouTube 4K Cinema",
         desc: "Trailers, 4K documentary showcases, live event broadcasts, and music video mixes.",
-        logo: "▶️",
-        logoBg: "linear-gradient(135deg, #ff0000, #cc0000)",
+        logoSvg: brandLogos.youtube,
+        bgGradient: "linear-gradient(135deg, #2b0c0c, #140505)",
         url: "https://www.youtube.com",
         regions: ["all", "uk", "us", "ca", "au", "ie", "in"],
         tags: ["4K 60FPS", "Trailers", "Global Live"],
@@ -1443,8 +1507,8 @@
         id: "crunchyroll",
         name: "Crunchyroll",
         desc: "World's largest anime library: Demon Slayer, Jujutsu Kaisen, One Piece, and Attack on Titan.",
-        logo: "🟠",
-        logoBg: "linear-gradient(135deg, #f77f00, #d62828)",
+        logoSvg: brandLogos.crunchyroll,
+        bgGradient: "linear-gradient(135deg, #2b180a, #140a04)",
         url: "https://www.crunchyroll.com",
         regions: ["all", "uk", "us", "ca", "au", "ie"],
         tags: ["Anime Simulcasts", "Japanese Audio", "HD"],
@@ -1454,8 +1518,8 @@
         id: "plex",
         name: "Plex",
         desc: "Personal media server, free streaming movies, live channels, and media organization.",
-        logo: "⚡",
-        logoBg: "linear-gradient(135deg, #e5a00d, #cc8500)",
+        logoSvg: brandLogos.plex,
+        bgGradient: "linear-gradient(135deg, #241c0e, #0e0a05)",
         url: "https://app.plex.tv",
         regions: ["all", "uk", "us", "ca", "au", "ie", "in"],
         tags: ["Personal Media", "Free Movies", "Live Guide"],
@@ -1463,13 +1527,94 @@
       }
     ];
 
+    // Curated Upcoming Major Broadcasts & Premieres
+    const featuredTracks = [
+      {
+        id: "ft-1",
+        title: "Premier League: Arsenal vs Man City",
+        serviceId: "skygo",
+        serviceName: "Sky Go / NOW TV",
+        serviceUrl: "https://www.nowtv.com/watch",
+        type: "Live Sports Broadcast",
+        time: "Tonight • 8:00 PM GMT",
+        isLive: true,
+        desc: "Title clash live on Sky Sports Premier League with studio analysis."
+      },
+      {
+        id: "ft-2",
+        title: "UEFA Champions League Live",
+        serviceId: "discovery-uk",
+        serviceName: "Discovery+ (TNT Sports)",
+        serviceUrl: "https://www.discoveryplus.com/gb",
+        type: "Live Sports Broadcast",
+        time: "Wednesday • 7:45 PM GMT",
+        isLive: false,
+        desc: "Full European matchday coverage in 4K HDR with multi-cam."
+      },
+      {
+        id: "ft-3",
+        title: "House of the Dragon: New Episode",
+        serviceId: "max",
+        serviceName: "Max (HBO)",
+        serviceUrl: "https://play.max.com",
+        type: "Series Premiere",
+        time: "Sunday • 9:00 PM EST",
+        isLive: false,
+        desc: "HBO original drama series available in 4K Dolby Vision."
+      },
+      {
+        id: "ft-4",
+        title: "Yellowstone: Season 5 Finale",
+        serviceId: "paramount-uk",
+        serviceName: "Paramount+",
+        serviceUrl: "https://www.paramountplus.com",
+        type: "Series Premiere",
+        time: "Coming Soon",
+        isLive: false,
+        desc: "Taylor Sheridan epic conclusion streaming in 4K."
+      },
+      {
+        id: "ft-5",
+        title: "Formula 1 Grand Prix: Race Day",
+        serviceId: "skygo",
+        serviceName: "Sky Go / Kayo Sports",
+        serviceUrl: "https://www.nowtv.com/watch",
+        type: "Live Sports Broadcast",
+        time: "Sunday • 2:00 PM GMT",
+        isLive: false,
+        desc: "Lights out live on Sky Sports F1 & Kayo with onboard telemetry."
+      },
+      {
+        id: "ft-6",
+        title: "Doctor Who: Special Broadcast",
+        serviceId: "bbciplayer",
+        serviceName: "BBC iPlayer",
+        serviceUrl: "https://www.bbc.co.uk/iplayer",
+        type: "Live TV Broadcast",
+        time: "Saturday • 6:30 PM GMT",
+        isLive: false,
+        desc: "Airing simultaneously on BBC One and BBC iPlayer UHD."
+      }
+    ];
+
+    let userWatchlist = [];
     let currentRegion = 'all';
     let focusedIndex = 0;
     let focusableCards = [];
-    let deadzone = 0.18;
-    let leftStickResting = { x: 0, y: 0 };
-    let rightStickResting = { x: 0, y: 0 };
-    let lastNavTime = 0;
+    let currentMainTab = 'apps';
+
+    function switchMainTab(tab) {
+      currentMainTab = tab;
+      document.getElementById('nav-mode-apps').classList.toggle('active', tab === 'apps');
+      document.getElementById('nav-mode-tracker').classList.toggle('active', tab === 'tracker');
+      
+      document.getElementById('section-apps').style.display = (tab === 'apps') ? 'block' : 'none';
+      document.getElementById('section-tracker').style.display = (tab === 'tracker') ? 'block' : 'none';
+
+      if (tab === 'tracker') {
+        renderTrackerShelf();
+      }
+    }
 
     function renderServices() {
       const grid = document.getElementById('services-grid');
@@ -1514,12 +1659,12 @@
         }).join('');
 
         const tagsHtml = s.tags.map(t => `<span class="card-tag">${t}</span>`).join('');
-        const highlightHtml = s.highlightTag ? `<span class="card-tag highlight">${s.highlightTag}</span>` : '';
+        const highlightHtml = s.highlightTag ? `<span class="card-tag gold">${s.highlightTag}</span>` : '';
 
         card.innerHTML = `
           <div>
             <div class="card-top">
-              <div class="service-logo" style="background: ${s.logoBg}">${s.logo}</div>
+              <div class="service-logo-box" style="background: ${s.bgGradient};">${s.logoSvg}</div>
               <div class="service-regions">${flagBadges}</div>
             </div>
             <div class="service-meta" style="margin-top: 14px;">
@@ -1533,7 +1678,7 @@
               ${tagsHtml}
             </div>
             <div class="card-bottom">
-              <span class="play-btn-mini">Watch Internally ➔</span>
+              <span class="select-app-btn">Select App ➔</span>
               <span style="font-size: 11px; color: var(--text-muted);">● Ambient Ready</span>
             </div>
           </div>
@@ -1583,6 +1728,157 @@
       renderServices();
     }
 
+    // Program Tracker Functions
+    function renderTrackerShelf() {
+      // 1. Featured cards
+      const fContainer = document.getElementById('featured-track-cards');
+      fContainer.innerHTML = '';
+      featuredTracks.forEach(item => {
+        const c = document.createElement('div');
+        c.className = 'event-card' + (item.isLive ? ' live' : '');
+        c.innerHTML = `
+          <div>
+            <div class="event-header">
+              <span class="event-badge ${item.isLive ? 'live' : ''}">${item.isLive ? '🔴 LIVE NOW' : item.type}</span>
+              <span style="font-size: 11px; color: var(--accent-gold); font-weight: 700;">${item.serviceName}</span>
+            </div>
+            <div class="event-title">${item.title}</div>
+            <div class="event-meta">⏰ ${item.time}</div>
+            <p style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">${item.desc}</p>
+          </div>
+          <div class="event-actions">
+            <button class="btn-secondary" style="font-size: 11px; padding: 5px 10px;" onclick='trackFeaturedItem(${JSON.stringify(item)})'>
+              <span>🔔</span> Set Reminder
+            </button>
+            <button class="select-app-btn" onclick="openTrackedUrl('${item.serviceUrl}', '${item.serviceName}')">
+              Select App ➔
+            </button>
+          </div>
+        `;
+        fContainer.appendChild(c);
+      });
+
+      // 2. User watchlist cards
+      const uContainer = document.getElementById('user-watchlist-cards');
+      uContainer.innerHTML = '';
+      if (userWatchlist.length === 0) {
+        uContainer.innerHTML = `
+          <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-muted); background: rgba(18,20,26,0.5); border-radius: 14px; border: 1px dashed var(--card-border);">
+            <h4>No tracked shows or matches yet</h4>
+            <p style="font-size: 12px; margin-top: 6px;">Click <b>"➕ Track New Show or Match"</b> above or set reminders from the featured events.</p>
+          </div>
+        `;
+        return;
+      }
+
+      userWatchlist.forEach((item, idx) => {
+        const c = document.createElement('div');
+        c.className = 'event-card';
+        c.innerHTML = `
+          <div>
+            <div class="event-header">
+              <span class="event-badge">${item.type || 'Tracked Stream'}</span>
+              <span style="font-size: 11px; color: var(--accent-gold); font-weight: 700;">${item.serviceName}</span>
+            </div>
+            <div class="event-title">${item.title}</div>
+            <div class="event-meta">⏰ ${item.time || 'Upcoming'} • Reminder: ${item.reminderMinutes || 15}m before</div>
+          </div>
+          <div class="event-actions">
+            <button class="btn-secondary" style="font-size: 11px; padding: 5px 10px; color: #ff6b6b;" onclick="deleteTrackedItem(${idx})">
+              <span>✕</span> Remove
+            </button>
+            <button class="select-app-btn" onclick="openTrackedUrl('${item.serviceUrl}', '${item.serviceName}')">
+              Select App ➔
+            </button>
+          </div>
+        `;
+        uContainer.appendChild(c);
+      });
+    }
+
+    function openAddTrackModal() {
+      document.getElementById('add-track-modal').classList.add('active');
+    }
+
+    function trackFeaturedItem(item) {
+      userWatchlist.push({
+        id: 'user-' + Date.now(),
+        title: item.title,
+        serviceId: item.serviceId,
+        serviceName: item.serviceName,
+        serviceUrl: item.serviceUrl,
+        type: item.type,
+        time: item.time,
+        reminderMinutes: 15
+      });
+      syncWatchlist();
+      renderTrackerShelf();
+      postCinemaMessage('sendNotification', {
+        title: '🔔 Reminder Set!',
+        body: `You will be reminded before ${item.title} starts on ${item.serviceName}.`
+      });
+    }
+
+    function saveNewTrackedItem() {
+      const title = document.getElementById('track-input-title').value.trim();
+      if (!title) {
+        alert("Please enter a title for the program or live match.");
+        return;
+      }
+      const sId = document.getElementById('track-input-service').value;
+      const matched = services.find(s => s.id === sId) || { name: 'Streaming Service', url: 'https://web.stremio.com' };
+      const type = document.getElementById('track-input-type').value;
+      const time = document.getElementById('track-input-time').value.trim() || 'Upcoming';
+      const reminder = parseInt(document.getElementById('track-input-reminder').value);
+
+      userWatchlist.push({
+        id: 'user-' + Date.now(),
+        title: title,
+        serviceId: sId,
+        serviceName: matched.name,
+        serviceUrl: matched.url,
+        type: type,
+        time: time,
+        reminderMinutes: reminder
+      });
+
+      syncWatchlist();
+      closeModal('add-track-modal');
+      renderTrackerShelf();
+
+      postCinemaMessage('sendNotification', {
+        title: '🔔 Program Reminder Active',
+        body: `Tracking "${title}" on ${matched.name}. Reminder set for ${reminder} mins before start.`
+      });
+
+      document.getElementById('track-input-title').value = '';
+      document.getElementById('track-input-time').value = '';
+    }
+
+    function deleteTrackedItem(index) {
+      userWatchlist.splice(index, 1);
+      syncWatchlist();
+      renderTrackerShelf();
+    }
+
+    function openTrackedUrl(url, name) {
+      postCinemaMessage('navigateService', { url: url, name: name });
+    }
+
+    function syncWatchlist() {
+      postCinemaMessage('saveWatchlist', { watchlist: userWatchlist });
+      localStorage.setItem('nightknight_watchlist', JSON.stringify(userWatchlist));
+    }
+
+    function loadWatchlist() {
+      try {
+        const stored = localStorage.getItem('nightknight_watchlist');
+        if (stored) {
+          userWatchlist = JSON.parse(stored);
+        }
+      } catch (e) {}
+    }
+
     // Communication with native Swift app
     function postCinemaMessage(action, payload = {}) {
       if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.cinemaAction) {
@@ -1612,10 +1908,6 @@
       postCinemaMessage('setWhiteTone', { tone: tone });
     }
 
-    function runWizard() {
-      postCinemaMessage('runWizard');
-    }
-
     function checkUpdatesNow() {
       postCinemaMessage('checkUpdates');
     }
@@ -1639,65 +1931,16 @@
     }
 
     function openControllerModal() {
-      document.getElementById('controller-modal').classList.add('active');
+      postCinemaMessage('openControllerSettings');
     }
 
     function closeModal(id) {
       document.getElementById(id).classList.remove('active');
     }
 
-    function updateDeadzone(val) {
-      deadzone = val / 100.0;
-      document.getElementById('deadzone-val').innerText = val + '%';
-      const px = Math.round(100 * deadzone);
-      document.getElementById('left-deadzone-ring').style.width = px + 'px';
-      document.getElementById('left-deadzone-ring').style.height = px + 'px';
-      document.getElementById('right-deadzone-ring').style.width = px + 'px';
-      document.getElementById('right-deadzone-ring').style.height = px + 'px';
-    }
-
-    function autoCalibrateCenter() {
-      const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
-      let gp = null;
-      for (let g of gamepads) { if (g) { gp = g; break; } }
-      if (gp && gp.axes.length >= 2) {
-        leftStickResting.x = gp.axes[0] || 0;
-        leftStickResting.y = gp.axes[1] || 0;
-        if (gp.axes.length >= 4) {
-          rightStickResting.x = gp.axes[2] || 0;
-          rightStickResting.y = gp.axes[3] || 0;
-        }
-        alert("✓ Zero Center Calibrated successfully!\nLeft Center: (" + leftStickResting.x.toFixed(2) + ", " + leftStickResting.y.toFixed(2) + ")");
-      } else {
-        leftStickResting = { x: 0, y: 0 };
-        rightStickResting = { x: 0, y: 0 };
-        alert("✓ Center offsets reset to default (0.00, 0.00).");
-      }
-    }
-
-    function testHaptics() {
-      const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
-      let triggered = false;
-      for (let g of gamepads) {
-        if (g && g.vibrationActuator) {
-          g.vibrationActuator.playEffect("dual-rumble", {
-            startDelay: 0,
-            duration: 400,
-            weakMagnitude: 0.8,
-            strongMagnitude: 1.0
-          });
-          triggered = true;
-        }
-      }
-      if (!triggered) {
-        postCinemaMessage('testControllerHaptics');
-      }
-    }
-
-    // Keyboard & Remote Spatial Navigation
+    // Keyboard & Gamepad Listeners
     window.addEventListener('keydown', (e) => {
-      const cols = Math.max(1, Math.floor(document.getElementById('services-grid').offsetWidth / 280));
-      
+      const cols = Math.max(1, Math.floor(document.getElementById('services-grid').offsetWidth / 285));
       if (e.key === 'ArrowRight') {
         focusedIndex = Math.min(focusableCards.length - 1, focusedIndex + 1);
         updateFocus();
@@ -1715,26 +1958,24 @@
         updateFocus();
         e.preventDefault();
       } else if (e.key === 'Enter') {
-        if (focusableCards[focusedIndex]) {
+        if (currentMainTab === 'apps' && focusableCards[focusedIndex]) {
           openService(focusableCards[focusedIndex].service);
         }
       } else if (e.key === 'Escape') {
         closeModal('cast-modal');
         closeModal('credits-modal');
-        closeModal('controller-modal');
-      } else if (e.key.toLowerCase() === 'f') {
-        postCinemaMessage('toggleFullScreen');
+        closeModal('add-track-modal');
       }
     });
 
-    // 60FPS Gamepad Loop
+    // Gamepad Polling Loop
     let buttonStates = {};
+    let lastNavTime = 0;
 
     function gamepadLoop() {
       const now = performance.now();
       const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
       let activeGp = null;
-
       for (let gp of gamepads) {
         if (gp && gp.connected) {
           activeGp = gp;
@@ -1745,46 +1986,18 @@
       const statusBtn = document.getElementById('controller-header-btn');
       const statusText = document.getElementById('controller-status-text');
       const hudTitle = document.getElementById('active-gamepad-name');
-      const modalTitle = document.getElementById('modal-gamepad-title');
 
       if (activeGp) {
         statusBtn.classList.add('connected');
-        statusText.innerText = activeGp.id.split('(')[0].trim().slice(0, 18) + " (Ready)";
+        statusText.innerText = activeGp.id.split('(')[0].trim().slice(0, 16) + " (Ready)";
         hudTitle.innerText = "🎮 " + activeGp.id.split('(')[0].trim();
-        modalTitle.innerText = activeGp.id;
 
-        // Thumbstick Reading with Auto-Calibration & Deadzone
-        let lx = (activeGp.axes[0] || 0) - leftStickResting.x;
-        let ly = (activeGp.axes[1] || 0) - leftStickResting.y;
-        let rx = (activeGp.axes[2] || 0) - rightStickResting.x;
-        let ry = (activeGp.axes[3] || 0) - rightStickResting.y;
+        const lx = activeGp.axes[0] || 0;
+        const ly = activeGp.axes[1] || 0;
+        const deadzone = 0.20;
 
-        // Update Calibration UI Reticles
-        const lDot = document.getElementById('left-stick-dot');
-        const rDot = document.getElementById('right-stick-dot');
-        if (lDot) {
-          lDot.style.transform = `translate(${lx * 38}px, ${ly * 38}px)`;
-          document.getElementById('left-stick-coords').innerText = `X: ${lx.toFixed(2)} Y: ${ly.toFixed(2)}`;
-        }
-        if (rDot) {
-          rDot.style.transform = `translate(${rx * 38}px, ${ry * 38}px)`;
-          document.getElementById('right-stick-coords').innerText = `X: ${rx.toFixed(2)} Y: ${ry.toFixed(2)}`;
-        }
-
-        // Buttons live tester update
-        activeGp.buttons.forEach((b, idx) => {
-          const el = document.getElementById('test-btn-' + idx);
-          if (el) {
-            if (b.pressed) el.classList.add('active');
-            else el.classList.remove('active');
-          }
-        });
-
-        // Navigation debounce (200ms)
         if (now - lastNavTime > 190) {
-          const cols = Math.max(1, Math.floor(document.getElementById('services-grid').offsetWidth / 280));
-          
-          // D-Pad or Left Stick
+          const cols = Math.max(1, Math.floor(document.getElementById('services-grid').offsetWidth / 285));
           const dUp = activeGp.buttons[12] && activeGp.buttons[12].pressed;
           const dDown = activeGp.buttons[13] && activeGp.buttons[13].pressed;
           const dLeft = activeGp.buttons[14] && activeGp.buttons[14].pressed;
@@ -1809,7 +2022,6 @@
           }
         }
 
-        // Button Actions (trigger once per press)
         const checkPress = (btnIndex, action) => {
           const isPressed = activeGp.buttons[btnIndex] && activeGp.buttons[btnIndex].pressed;
           if (isPressed && !buttonStates[btnIndex]) {
@@ -1820,66 +2032,34 @@
           }
         };
 
-        // (A) Button (0) -> Select
         checkPress(0, () => {
-          if (document.getElementById('controller-modal').classList.contains('active')) {
-            closeModal('controller-modal');
-          } else if (focusableCards[focusedIndex]) {
+          if (currentMainTab === 'apps' && focusableCards[focusedIndex]) {
             openService(focusableCards[focusedIndex].service);
           }
         });
 
-        // (B) Button (1) -> Home / Close Modal
         checkPress(1, () => {
-          closeModal('controller-modal');
           closeModal('cast-modal');
           closeModal('credits-modal');
+          closeModal('add-track-modal');
           postCinemaMessage('returnHome');
         });
 
-        // (X) Button (2) -> Fullscreen
-        checkPress(2, () => {
-          postCinemaMessage('toggleFullScreen');
-        });
-
-        // (Y) Button (3) -> Cast Dialog
-        checkPress(3, () => {
-          openCastModal();
-        });
-
-        // (LB) Button (4) -> Previous Region
+        checkPress(2, () => postCinemaMessage('toggleFullScreen'));
+        checkPress(3, () => openCastModal());
         checkPress(4, () => cycleRegion(-1));
-
-        // (RB) Button (5) -> Next Region
         checkPress(5, () => cycleRegion(1));
-
-        // (Options / Menu) Button (9) -> Controller Modal
-        checkPress(9, () => {
-          if (document.getElementById('controller-modal').classList.contains('active')) {
-            closeModal('controller-modal');
-          } else {
-            openControllerModal();
-          }
-        });
       } else {
         statusBtn.classList.remove('connected');
-        statusText.innerText = "Remotes / BT: Ready";
+        statusText.innerText = "Controller Ready";
         hudTitle.innerText = "🎮 Gamepads & Remotes Auto-Connect";
       }
 
       requestAnimationFrame(gamepadLoop);
     }
 
-    window.addEventListener("gamepadconnected", (e) => {
-      console.log("Gamepad connected:", e.gamepad.id);
-      autoCalibrateCenter();
-    });
-
-    window.addEventListener("gamepaddisconnected", (e) => {
-      console.log("Gamepad disconnected:", e.gamepad.id);
-    });
-
-    // Start
+    // Startup
+    loadWatchlist();
     renderServices();
     requestAnimationFrame(gamepadLoop);
   </script>

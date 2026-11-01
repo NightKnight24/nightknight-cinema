@@ -21,6 +21,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuDele
     let pythonPath = "/usr/bin/python3"
     let playerDir = "/Users/jordanallison/Documents/stremio add on/nightknight-player"
     let configFile = NSString(string: "~/.nightknight_ambient.json").expandingTildeInPath
+    let watchlistFile = NSString(string: "~/.nightknight_watchlist.json").expandingTildeInPath
 
     var dashboardUrl: URL {
         let bundlePath = Bundle.main.bundlePath
@@ -122,11 +123,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuDele
         navBar = NSView(frame: NSRect(x: 0, y: initialHeight - barHeight, width: initialWidth, height: barHeight))
         navBar.autoresizingMask = [.width, .minYMargin]
         navBar.wantsLayer = true
-        navBar.layer?.backgroundColor = NSColor(red: 0.07, green: 0.09, blue: 0.13, alpha: 0.95).cgColor
+        navBar.layer?.backgroundColor = NSColor(red: 0.04, green: 0.05, blue: 0.07, alpha: 0.96).cgColor
 
         // Left Controls: Home, Back, Forward, Reload
         let homeBtn = createCinemaButton(title: " 🏠 Home ", x: 14, y: 7, width: 85, height: 32, action: #selector(returnHome))
-        homeBtn.bezelColor = NSColor(red: 0.0, green: 0.6, blue: 0.8, alpha: 0.3)
+        homeBtn.bezelColor = NSColor(red: 0.90, green: 0.60, blue: 0.15, alpha: 0.35)
         navBar.addSubview(homeBtn)
 
         let backBtn = createCinemaButton(title: "◀", x: 106, y: 7, width: 36, height: 32, action: #selector(navigateBack))
@@ -145,10 +146,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuDele
         titleLabel.drawsBackground = false
         titleLabel.isEditable = false
         titleLabel.isSelectable = false
-        titleLabel.textColor = NSColor(red: 0.7, green: 0.75, blue: 0.82, alpha: 1.0)
+        titleLabel.textColor = NSColor(red: 0.92, green: 0.75, blue: 0.40, alpha: 1.0)
         titleLabel.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
         titleLabel.alignment = .center
-        titleLabel.stringValue = "🎬 NightKnight Cinema Hub • Controller & Ambient Active"
+        titleLabel.stringValue = "🎬 NightKnight Cinema Lounge • Dolby Ambient Active"
         navBar.addSubview(titleLabel)
 
         // Right Controls: Tone Switcher, Cast, Fullscreen
@@ -329,7 +330,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuDele
     }
 
     func loadDashboard() {
-        titleLabel.stringValue = "🎬 NightKnight Cinema Hub • Controller & Ambient Active"
+        titleLabel.stringValue = "🎬 NightKnight Cinema Lounge • Dolby Ambient Active"
         webView.loadFileURL(dashboardUrl, allowingReadAccessTo: dashboardUrl.deletingLastPathComponent())
     }
 
@@ -367,22 +368,33 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuDele
             openScreenMirroringSettings()
         case "checkUpdates":
             checkUpdatesManually()
-        case "testControllerHaptics":
-            testConnectedControllerHaptics()
+        case "saveWatchlist":
+            if let list = dict["watchlist"] as? [[String: Any]] {
+                saveWatchlist(list)
+            }
+        case "sendNotification":
+            let title = dict["title"] as? String ?? "Cinema Alert"
+            let body = dict["body"] as? String ?? ""
+            sendNotification(title: title, body: body)
+        case "openControllerSettings":
+            openControllerSettings()
         default:
             break
         }
     }
 
-    func testConnectedControllerHaptics() {
-        for controller in GCController.controllers() {
-            if #available(macOS 11.0, *) {
-                if controller.haptics != nil {
-                    // Trigger haptic engine pattern
-                    print("Triggering haptics on \(controller.vendorName ?? "Gamepad")")
-                }
-            }
+    func saveWatchlist(_ list: [[String: Any]]) {
+        if let data = try? JSONSerialization.data(withJSONObject: list, options: .prettyPrinted) {
+            try? data.write(to: URL(fileURLWithPath: watchlistFile))
         }
+    }
+
+    func openControllerSettings() {
+        let script = "open 'x-apple.systempreferences:com.apple.Game-Controller-Settings.extension'"
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/bin/sh")
+        p.arguments = ["-c", script]
+        try? p.run()
     }
 
     // MARK: - Auto-Updater
