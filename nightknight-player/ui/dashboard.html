@@ -9,13 +9,14 @@
       --bg: #0b0d13;
       --card-bg: rgba(22, 27, 34, 0.75);
       --card-border: rgba(255, 255, 255, 0.08);
-      --card-hover-border: rgba(0, 212, 255, 0.5);
+      --card-hover-border: rgba(0, 212, 255, 0.6);
       --accent-cyan: #00d4ff;
       --accent-purple: #9d4edd;
       --accent-gold: #ffb703;
       --accent-green: #06d6a0;
       --text-main: #f0f6fc;
       --text-muted: #8b949e;
+      --focus-glow: 0 0 25px rgba(0, 212, 255, 0.7);
       --font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
     }
 
@@ -48,8 +49,8 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 16px 36px;
-      background: rgba(11, 13, 19, 0.85);
+      padding: 14px 36px;
+      background: rgba(11, 13, 19, 0.88);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
       border-bottom: 1px solid var(--card-border);
@@ -70,7 +71,7 @@
       align-items: center;
       justify-content: center;
       font-size: 24px;
-      box-shadow: 0 0 20px rgba(0, 212, 255, 0.35);
+      box-shadow: 0 0 20px rgba(0, 212, 255, 0.4);
     }
 
     .brand-title {
@@ -93,7 +94,7 @@
     .header-controls {
       display: flex;
       align-items: center;
-      gap: 16px;
+      gap: 12px;
     }
 
     /* Ambient Lighting Pill */
@@ -161,10 +162,10 @@
       background: rgba(255, 255, 255, 0.06);
       border: 1px solid var(--card-border);
       color: var(--text-main);
-      padding: 8px 14px;
+      padding: 8px 13px;
       border-radius: 10px;
-      font-size: 13px;
-      font-weight: 500;
+      font-size: 12px;
+      font-weight: 600;
       cursor: pointer;
       transition: all 0.2s;
     }
@@ -175,10 +176,21 @@
       transform: translateY(-1px);
     }
 
+    .header-btn.controller-btn {
+      background: rgba(0, 212, 255, 0.08);
+      border-color: rgba(0, 212, 255, 0.25);
+    }
+
+    .header-btn.controller-btn.connected {
+      background: rgba(6, 214, 160, 0.12);
+      border-color: rgba(6, 214, 160, 0.4);
+      color: var(--accent-green);
+    }
+
     /* Main Container */
     main {
       flex: 1;
-      padding: 30px 40px 60px 40px;
+      padding: 24px 40px 60px 40px;
       max-width: 1440px;
       margin: 0 auto;
       width: 100%;
@@ -193,7 +205,7 @@
       border: 1px solid var(--card-border);
       border-radius: 20px;
       padding: 24px 32px;
-      margin-bottom: 30px;
+      margin-bottom: 24px;
       box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
       position: relative;
       overflow: hidden;
@@ -225,6 +237,7 @@
       display: flex;
       gap: 10px;
       margin-top: 12px;
+      flex-wrap: wrap;
     }
 
     .hero-badge {
@@ -238,6 +251,18 @@
       display: flex;
       align-items: center;
       gap: 5px;
+    }
+
+    .hero-badge.green {
+      background: rgba(6, 214, 160, 0.12);
+      color: var(--accent-green);
+      border-color: rgba(6, 214, 160, 0.25);
+    }
+
+    .hero-badge.purple {
+      background: rgba(157, 78, 221, 0.12);
+      color: var(--accent-purple);
+      border-color: rgba(157, 78, 221, 0.25);
     }
 
     .hero-actions {
@@ -272,7 +297,7 @@
       align-items: center;
       justify-content: space-between;
       gap: 20px;
-      margin-bottom: 24px;
+      margin-bottom: 22px;
       flex-wrap: wrap;
     }
 
@@ -367,13 +392,22 @@
       cursor: pointer;
       position: relative;
       overflow: hidden;
-      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    .service-card:hover {
-      transform: translateY(-4px) scale(1.01);
-      border-color: var(--card-hover-border);
-      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5), 0 0 25px rgba(0, 212, 255, 0.15);
+    .service-card:hover, .service-card.focused {
+      transform: translateY(-4px) scale(1.02);
+      border-color: var(--accent-cyan);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5), var(--focus-glow);
+    }
+
+    .service-card.focused::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border: 2px solid var(--accent-cyan);
+      border-radius: 16px;
+      pointer-events: none;
     }
 
     .card-top {
@@ -446,18 +480,6 @@
       border: 1px solid rgba(0, 212, 255, 0.3);
     }
 
-    .card-tag.gold {
-      background: rgba(255, 183, 3, 0.15);
-      color: var(--accent-gold);
-      border: 1px solid rgba(255, 183, 3, 0.3);
-    }
-
-    .card-tag.purple {
-      background: rgba(157, 78, 221, 0.15);
-      color: var(--accent-purple);
-      border: 1px solid rgba(157, 78, 221, 0.3);
-    }
-
     .card-bottom {
       display: flex;
       align-items: center;
@@ -476,19 +498,70 @@
       transition: gap 0.2s;
     }
 
-    .service-card:hover .play-btn-mini {
+    .service-card:hover .play-btn-mini, .service-card.focused .play-btn-mini {
       gap: 10px;
       color: #fff;
     }
 
-    /* Modal Styling */
+    /* Controller Bottom HUD Bar */
+    .controller-hud {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(11, 13, 19, 0.95);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-top: 1px solid var(--card-border);
+      padding: 10px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--text-muted);
+      z-index: 90;
+    }
+
+    .hud-controls {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+    }
+
+    .hud-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.15);
+      color: #fff;
+      font-weight: 800;
+      font-size: 10px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+    }
+
+    .btn-badge.a { background: #10b981; }
+    .btn-badge.b { background: #ef4444; }
+    .btn-badge.x { background: #3b82f6; }
+    .btn-badge.y { background: #f59e0b; }
+    .btn-badge.bumper { border-radius: 6px; width: 28px; }
+
+    /* Modals */
     .modal-overlay {
       position: fixed;
       top: 0;
       left: 0;
       right: 0;
       bottom: 0;
-      background: rgba(0, 0, 0, 0.75);
+      background: rgba(0, 0, 0, 0.8);
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
       z-index: 1000;
@@ -509,8 +582,10 @@
       background: #161b22;
       border: 1px solid var(--card-border);
       border-radius: 20px;
-      max-width: 580px;
+      max-width: 640px;
       width: 90%;
+      max-height: 90vh;
+      overflow-y: auto;
       padding: 30px;
       box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6);
       transform: scale(0.95);
@@ -556,6 +631,99 @@
       line-height: 1.6;
     }
 
+    /* Calibration Box */
+    .calibration-box {
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 20px;
+      margin: 16px 0;
+    }
+
+    .stick-grid {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      margin: 16px 0;
+    }
+
+    .stick-view {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .stick-circle {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.04);
+      border: 2px dashed rgba(255, 255, 255, 0.2);
+      position: relative;
+    }
+
+    .stick-dot {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--accent-cyan);
+      box-shadow: 0 0 10px var(--accent-cyan);
+      position: absolute;
+      top: 41px;
+      left: 41px;
+      transition: transform 0.05s linear;
+    }
+
+    .deadzone-ring {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      border: 1px solid rgba(255, 183, 3, 0.4);
+      pointer-events: none;
+    }
+
+    .slider-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-top: 14px;
+    }
+
+    .slider-row input[type="range"] {
+      flex: 1;
+      accent-color: var(--accent-cyan);
+    }
+
+    .buttons-tester {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+
+    .test-btn-indicator {
+      padding: 6px 12px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--card-border);
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+      transition: all 0.1s;
+    }
+
+    .test-btn-indicator.active {
+      background: var(--accent-green);
+      border-color: var(--accent-green);
+      color: #050a14;
+      box-shadow: 0 0 12px var(--accent-green);
+      transform: scale(1.08);
+    }
+
     .cast-option {
       background: rgba(255, 255, 255, 0.04);
       border: 1px solid var(--card-border);
@@ -599,6 +767,7 @@
     footer {
       text-align: center;
       padding: 24px;
+      padding-bottom: 55px;
       font-size: 12px;
       color: var(--text-muted);
       border-top: 1px solid var(--card-border);
@@ -630,6 +799,17 @@
         </div>
       </div>
 
+      <!-- Controller / Remote Indicator Button -->
+      <button class="header-btn controller-btn" id="controller-header-btn" onclick="openControllerModal()">
+        <span id="controller-icon">🎮</span>
+        <span id="controller-status-text">Controller: Auto-Ready</span>
+      </button>
+
+      <!-- Auto-Updater Status Button -->
+      <button class="header-btn" onclick="checkUpdatesNow()">
+        <span>🔄</span> Core: v1.5.0
+      </button>
+
       <!-- Cast Button -->
       <button class="header-btn" onclick="openCastModal()">
         <span>📡</span> Cast to TV
@@ -653,10 +833,11 @@
     <div class="hero-banner">
       <div class="hero-info">
         <h1>NightKnight Cinema Hub</h1>
-        <p>Stream any service internally with live screen-edge ambient lighting sync. Press <b>Esc</b> or <b>H</b> at any time to return home.</p>
+        <p>Stream any service internally with live screen-edge ambient lighting sync. Full gamepad, remote, and Wi-Fi app compatibility active.</p>
         <div class="hero-badges">
           <div class="hero-badge">⚡ Apple Metal Hardware</div>
-          <div class="hero-badge">🌈 Universal Ambient Sync (Active)</div>
+          <div class="hero-badge green">🌈 Universal Ambient Sync (Active)</div>
+          <div class="hero-badge purple">🎮 PS5 / Xbox / Switch / Remotes Auto-Connect</div>
           <div class="hero-badge">🔒 100% In-App Playback</div>
         </div>
       </div>
@@ -670,18 +851,18 @@
     <!-- Controls: Regions & Search -->
     <div class="controls-bar">
       <div class="region-tabs" id="region-tabs">
-        <button class="region-tab active" onclick="filterRegion('all')">🌍 All Platforms</button>
-        <button class="region-tab" onclick="filterRegion('uk')">🇬🇧 United Kingdom</button>
-        <button class="region-tab" onclick="filterRegion('us')">🇺🇸 United States</button>
-        <button class="region-tab" onclick="filterRegion('ca')">🇨🇦 Canada</button>
-        <button class="region-tab" onclick="filterRegion('au')">🇦🇺 Australia</button>
-        <button class="region-tab" onclick="filterRegion('ie')">🇮🇪 Ireland</button>
-        <button class="region-tab" onclick="filterRegion('in')">🇮🇳 India</button>
+        <button class="region-tab active" data-region="all" onclick="filterRegion('all')">🌍 All Platforms</button>
+        <button class="region-tab" data-region="uk" onclick="filterRegion('uk')">🇬🇧 United Kingdom</button>
+        <button class="region-tab" data-region="us" onclick="filterRegion('us')">🇺🇸 United States</button>
+        <button class="region-tab" data-region="ca" onclick="filterRegion('ca')">🇨🇦 Canada</button>
+        <button class="region-tab" data-region="au" onclick="filterRegion('au')">🇦🇺 Australia</button>
+        <button class="region-tab" data-region="ie" onclick="filterRegion('ie')">🇮🇪 Ireland</button>
+        <button class="region-tab" data-region="in" onclick="filterRegion('in')">🇮🇳 India</button>
       </div>
 
       <div class="search-box">
         <span class="search-icon">🔍</span>
-        <input type="text" id="service-search" class="search-input" placeholder="Search services..." oninput="filterSearch()">
+        <input type="text" id="service-search" class="search-input" placeholder="Search services (or use controller)..." oninput="filterSearch()">
       </div>
     </div>
 
@@ -690,6 +871,99 @@
       <!-- Cards dynamically rendered here -->
     </div>
   </main>
+
+  <!-- Controller Bottom Guide Bar -->
+  <div class="controller-hud">
+    <div class="hud-controls">
+      <div class="hud-item"><span class="btn-badge a">A</span> <span>Select</span></div>
+      <div class="hud-item"><span class="btn-badge b">B</span> <span>Home / Back</span></div>
+      <div class="hud-item"><span class="btn-badge x">X</span> <span>Fullscreen</span></div>
+      <div class="hud-item"><span class="btn-badge y">Y</span> <span>Cast to TV</span></div>
+      <div class="hud-item"><span class="btn-badge bumper">LB</span><span class="btn-badge bumper">RB</span> <span>Switch Region</span></div>
+    </div>
+    <div style="display: flex; gap: 14px; align-items: center;">
+      <span id="active-gamepad-name">🎮 Controller / Remote Ready</span>
+      <button class="btn-secondary" style="padding: 4px 10px; font-size: 11px;" onclick="openControllerModal()">Calibrate</button>
+    </div>
+  </div>
+
+  <!-- Controller Calibration & Remotes Modal -->
+  <div class="modal-overlay" id="controller-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2><span>🎮</span> Controller & Remote Control Center</h2>
+        <button class="modal-close" onclick="closeModal('controller-modal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p><b>Connected Device:</b> <span id="modal-gamepad-title" style="color: var(--accent-cyan); font-weight: 700;">Scanning for Controllers & Remotes...</span></p>
+        <p style="font-size: 12px; margin-top: 4px;">Supports PS5 DualSense, PS4, Xbox Series/One, Switch Pro, Bluetooth Remotes, and iOS/Android Wi-Fi Remote Apps.</p>
+
+        <!-- Live Stick Calibration -->
+        <div class="calibration-box">
+          <h4 style="color: var(--text-main); margin-bottom: 6px;">🎯 Thumbstick Auto-Calibration & Deadzones</h4>
+          <p style="font-size: 12px;">Auto-zeroes center points on connect to eliminate stick drift and phantom scrolling.</p>
+
+          <div class="stick-grid">
+            <div class="stick-view">
+              <span style="font-size: 11px; font-weight: 600;">Left Stick (Navigate)</span>
+              <div class="stick-circle">
+                <div class="deadzone-ring" id="left-deadzone-ring" style="width: 30px; height: 30px;"></div>
+                <div class="stick-dot" id="left-stick-dot"></div>
+              </div>
+              <span id="left-stick-coords" style="font-size: 10px; font-family: monospace;">X: 0.00 Y: 0.00</span>
+            </div>
+
+            <div class="stick-view">
+              <span style="font-size: 11px; font-weight: 600;">Right Stick (Scroll)</span>
+              <div class="stick-circle">
+                <div class="deadzone-ring" id="right-deadzone-ring" style="width: 30px; height: 30px;"></div>
+                <div class="stick-dot" id="right-stick-dot"></div>
+              </div>
+              <span id="right-stick-coords" style="font-size: 10px; font-family: monospace;">X: 0.00 Y: 0.00</span>
+            </div>
+          </div>
+
+          <div class="slider-row">
+            <label for="deadzone-slider" style="font-size: 12px; font-weight: 600;">Anti-Drift Deadzone:</label>
+            <input type="range" id="deadzone-slider" min="5" max="40" value="18" oninput="updateDeadzone(this.value)">
+            <span id="deadzone-val" style="font-size: 12px; font-weight: 700; width: 45px;">18%</span>
+          </div>
+
+          <div style="display: flex; gap: 10px; margin-top: 14px;">
+            <button class="btn-secondary" onclick="autoCalibrateCenter()">🎯 Re-Calibrate Center Zero</button>
+            <button class="btn-secondary" onclick="testHaptics()">📳 Test Rumble / Haptics</button>
+          </div>
+        </div>
+
+        <!-- Live Buttons Tester -->
+        <div class="calibration-box">
+          <h4 style="color: var(--text-main); margin-bottom: 6px;">🔘 Live Button / Key Press Tester</h4>
+          <div class="buttons-tester" id="button-tester-grid">
+            <div class="test-btn-indicator" id="test-btn-0">A / Cross</div>
+            <div class="test-btn-indicator" id="test-btn-1">B / Circle</div>
+            <div class="test-btn-indicator" id="test-btn-2">X / Square</div>
+            <div class="test-btn-indicator" id="test-btn-3">Y / Triangle</div>
+            <div class="test-btn-indicator" id="test-btn-4">LB / L1</div>
+            <div class="test-btn-indicator" id="test-btn-5">RB / R1</div>
+            <div class="test-btn-indicator" id="test-btn-12">D-Up</div>
+            <div class="test-btn-indicator" id="test-btn-13">D-Down</div>
+            <div class="test-btn-indicator" id="test-btn-14">D-Left</div>
+            <div class="test-btn-indicator" id="test-btn-15">D-Right</div>
+            <div class="test-btn-indicator" id="test-btn-9">Start / Menu</div>
+          </div>
+        </div>
+
+        <!-- BT Remotes & Wi-Fi Apps Guide -->
+        <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--card-border); border-radius: 12px; padding: 16px;">
+          <h4 style="color: var(--text-main); margin-bottom: 6px;">📱 How to Use Bluetooth Remotes & Wi-Fi Phone Apps:</h4>
+          <ul style="padding-left: 20px; font-size: 12px; line-height: 1.6;">
+            <li><b>Bluetooth Remotes (Satechi, Apple Siri Remote, Firestick):</b> Pair via macOS Bluetooth Settings. D-Pad arrows navigate tiles, Select launches, Back/Home returns home!</li>
+            <li><b>Wi-Fi Phone Apps (Unified Remote, Remote Mouse, Mobile Mouse):</b> Connect over Wi-Fi. Arrow keys and Enter/Return directly control the Cinema interface with zero configuration.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Cast Modal -->
   <div class="modal-overlay" id="cast-modal">
@@ -1190,6 +1464,12 @@
     ];
 
     let currentRegion = 'all';
+    let focusedIndex = 0;
+    let focusableCards = [];
+    let deadzone = 0.18;
+    let leftStickResting = { x: 0, y: 0 };
+    let rightStickResting = { x: 0, y: 0 };
+    let lastNavTime = 0;
 
     function renderServices() {
       const grid = document.getElementById('services-grid');
@@ -1212,12 +1492,15 @@
             <p style="margin-top: 8px;">Try switching regions or checking your search terms.</p>
           </div>
         `;
+        focusableCards = [];
         return;
       }
 
-      filtered.forEach(s => {
+      focusableCards = [];
+      filtered.forEach((s, idx) => {
         const card = document.createElement('div');
-        card.className = 'service-card';
+        card.className = 'service-card' + (idx === focusedIndex ? ' focused' : '');
+        card.dataset.index = idx;
         card.onclick = () => openService(s);
 
         const flagBadges = s.regions.slice(0, 4).map(r => {
@@ -1256,18 +1539,47 @@
           </div>
         `;
         grid.appendChild(card);
+        focusableCards.push({ element: card, service: s });
+      });
+
+      updateFocus();
+    }
+
+    function updateFocus() {
+      if (focusableCards.length === 0) return;
+      if (focusedIndex >= focusableCards.length) focusedIndex = focusableCards.length - 1;
+      if (focusedIndex < 0) focusedIndex = 0;
+
+      focusableCards.forEach((c, i) => {
+        if (i === focusedIndex) {
+          c.element.classList.add('focused');
+          c.element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        } else {
+          c.element.classList.remove('focused');
+        }
       });
     }
 
     function filterRegion(region) {
       currentRegion = region;
       const tabs = document.querySelectorAll('.region-tab');
-      tabs.forEach(t => t.classList.remove('active'));
-      event.target.classList.add('active');
+      tabs.forEach(t => {
+        if (t.dataset.region === region) t.classList.add('active');
+        else t.classList.remove('active');
+      });
+      focusedIndex = 0;
       renderServices();
     }
 
+    function cycleRegion(direction) {
+      const regionList = ['all', 'uk', 'us', 'ca', 'au', 'ie', 'in'];
+      let idx = regionList.indexOf(currentRegion);
+      idx = (idx + direction + regionList.length) % regionList.length;
+      filterRegion(regionList[idx]);
+    }
+
     function filterSearch() {
+      focusedIndex = 0;
       renderServices();
     }
 
@@ -1304,6 +1616,10 @@
       postCinemaMessage('runWizard');
     }
 
+    function checkUpdatesNow() {
+      postCinemaMessage('checkUpdates');
+    }
+
     function triggerAirPlay() {
       postCinemaMessage('triggerAirPlay');
       closeModal('cast-modal');
@@ -1322,20 +1638,250 @@
       document.getElementById('credits-modal').classList.add('active');
     }
 
+    function openControllerModal() {
+      document.getElementById('controller-modal').classList.add('active');
+    }
+
     function closeModal(id) {
       document.getElementById(id).classList.remove('active');
     }
 
-    // Keyboard shortcuts
+    function updateDeadzone(val) {
+      deadzone = val / 100.0;
+      document.getElementById('deadzone-val').innerText = val + '%';
+      const px = Math.round(100 * deadzone);
+      document.getElementById('left-deadzone-ring').style.width = px + 'px';
+      document.getElementById('left-deadzone-ring').style.height = px + 'px';
+      document.getElementById('right-deadzone-ring').style.width = px + 'px';
+      document.getElementById('right-deadzone-ring').style.height = px + 'px';
+    }
+
+    function autoCalibrateCenter() {
+      const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+      let gp = null;
+      for (let g of gamepads) { if (g) { gp = g; break; } }
+      if (gp && gp.axes.length >= 2) {
+        leftStickResting.x = gp.axes[0] || 0;
+        leftStickResting.y = gp.axes[1] || 0;
+        if (gp.axes.length >= 4) {
+          rightStickResting.x = gp.axes[2] || 0;
+          rightStickResting.y = gp.axes[3] || 0;
+        }
+        alert("✓ Zero Center Calibrated successfully!\nLeft Center: (" + leftStickResting.x.toFixed(2) + ", " + leftStickResting.y.toFixed(2) + ")");
+      } else {
+        leftStickResting = { x: 0, y: 0 };
+        rightStickResting = { x: 0, y: 0 };
+        alert("✓ Center offsets reset to default (0.00, 0.00).");
+      }
+    }
+
+    function testHaptics() {
+      const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+      let triggered = false;
+      for (let g of gamepads) {
+        if (g && g.vibrationActuator) {
+          g.vibrationActuator.playEffect("dual-rumble", {
+            startDelay: 0,
+            duration: 400,
+            weakMagnitude: 0.8,
+            strongMagnitude: 1.0
+          });
+          triggered = true;
+        }
+      }
+      if (!triggered) {
+        postCinemaMessage('testControllerHaptics');
+      }
+    }
+
+    // Keyboard & Remote Spatial Navigation
     window.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
+      const cols = Math.max(1, Math.floor(document.getElementById('services-grid').offsetWidth / 280));
+      
+      if (e.key === 'ArrowRight') {
+        focusedIndex = Math.min(focusableCards.length - 1, focusedIndex + 1);
+        updateFocus();
+        e.preventDefault();
+      } else if (e.key === 'ArrowLeft') {
+        focusedIndex = Math.max(0, focusedIndex - 1);
+        updateFocus();
+        e.preventDefault();
+      } else if (e.key === 'ArrowDown') {
+        focusedIndex = Math.min(focusableCards.length - 1, focusedIndex + cols);
+        updateFocus();
+        e.preventDefault();
+      } else if (e.key === 'ArrowUp') {
+        focusedIndex = Math.max(0, focusedIndex - cols);
+        updateFocus();
+        e.preventDefault();
+      } else if (e.key === 'Enter') {
+        if (focusableCards[focusedIndex]) {
+          openService(focusableCards[focusedIndex].service);
+        }
+      } else if (e.key === 'Escape') {
         closeModal('cast-modal');
         closeModal('credits-modal');
+        closeModal('controller-modal');
+      } else if (e.key.toLowerCase() === 'f') {
+        postCinemaMessage('toggleFullScreen');
       }
     });
 
-    // Initial render
+    // 60FPS Gamepad Loop
+    let buttonStates = {};
+
+    function gamepadLoop() {
+      const now = performance.now();
+      const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+      let activeGp = null;
+
+      for (let gp of gamepads) {
+        if (gp && gp.connected) {
+          activeGp = gp;
+          break;
+        }
+      }
+
+      const statusBtn = document.getElementById('controller-header-btn');
+      const statusText = document.getElementById('controller-status-text');
+      const hudTitle = document.getElementById('active-gamepad-name');
+      const modalTitle = document.getElementById('modal-gamepad-title');
+
+      if (activeGp) {
+        statusBtn.classList.add('connected');
+        statusText.innerText = activeGp.id.split('(')[0].trim().slice(0, 18) + " (Ready)";
+        hudTitle.innerText = "🎮 " + activeGp.id.split('(')[0].trim();
+        modalTitle.innerText = activeGp.id;
+
+        // Thumbstick Reading with Auto-Calibration & Deadzone
+        let lx = (activeGp.axes[0] || 0) - leftStickResting.x;
+        let ly = (activeGp.axes[1] || 0) - leftStickResting.y;
+        let rx = (activeGp.axes[2] || 0) - rightStickResting.x;
+        let ry = (activeGp.axes[3] || 0) - rightStickResting.y;
+
+        // Update Calibration UI Reticles
+        const lDot = document.getElementById('left-stick-dot');
+        const rDot = document.getElementById('right-stick-dot');
+        if (lDot) {
+          lDot.style.transform = `translate(${lx * 38}px, ${ly * 38}px)`;
+          document.getElementById('left-stick-coords').innerText = `X: ${lx.toFixed(2)} Y: ${ly.toFixed(2)}`;
+        }
+        if (rDot) {
+          rDot.style.transform = `translate(${rx * 38}px, ${ry * 38}px)`;
+          document.getElementById('right-stick-coords').innerText = `X: ${rx.toFixed(2)} Y: ${ry.toFixed(2)}`;
+        }
+
+        // Buttons live tester update
+        activeGp.buttons.forEach((b, idx) => {
+          const el = document.getElementById('test-btn-' + idx);
+          if (el) {
+            if (b.pressed) el.classList.add('active');
+            else el.classList.remove('active');
+          }
+        });
+
+        // Navigation debounce (200ms)
+        if (now - lastNavTime > 190) {
+          const cols = Math.max(1, Math.floor(document.getElementById('services-grid').offsetWidth / 280));
+          
+          // D-Pad or Left Stick
+          const dUp = activeGp.buttons[12] && activeGp.buttons[12].pressed;
+          const dDown = activeGp.buttons[13] && activeGp.buttons[13].pressed;
+          const dLeft = activeGp.buttons[14] && activeGp.buttons[14].pressed;
+          const dRight = activeGp.buttons[15] && activeGp.buttons[15].pressed;
+
+          if (dRight || lx > deadzone) {
+            focusedIndex = Math.min(focusableCards.length - 1, focusedIndex + 1);
+            updateFocus();
+            lastNavTime = now;
+          } else if (dLeft || lx < -deadzone) {
+            focusedIndex = Math.max(0, focusedIndex - 1);
+            updateFocus();
+            lastNavTime = now;
+          } else if (dDown || ly > deadzone) {
+            focusedIndex = Math.min(focusableCards.length - 1, focusedIndex + cols);
+            updateFocus();
+            lastNavTime = now;
+          } else if (dUp || ly < -deadzone) {
+            focusedIndex = Math.max(0, focusedIndex - cols);
+            updateFocus();
+            lastNavTime = now;
+          }
+        }
+
+        // Button Actions (trigger once per press)
+        const checkPress = (btnIndex, action) => {
+          const isPressed = activeGp.buttons[btnIndex] && activeGp.buttons[btnIndex].pressed;
+          if (isPressed && !buttonStates[btnIndex]) {
+            buttonStates[btnIndex] = true;
+            action();
+          } else if (!isPressed) {
+            buttonStates[btnIndex] = false;
+          }
+        };
+
+        // (A) Button (0) -> Select
+        checkPress(0, () => {
+          if (document.getElementById('controller-modal').classList.contains('active')) {
+            closeModal('controller-modal');
+          } else if (focusableCards[focusedIndex]) {
+            openService(focusableCards[focusedIndex].service);
+          }
+        });
+
+        // (B) Button (1) -> Home / Close Modal
+        checkPress(1, () => {
+          closeModal('controller-modal');
+          closeModal('cast-modal');
+          closeModal('credits-modal');
+          postCinemaMessage('returnHome');
+        });
+
+        // (X) Button (2) -> Fullscreen
+        checkPress(2, () => {
+          postCinemaMessage('toggleFullScreen');
+        });
+
+        // (Y) Button (3) -> Cast Dialog
+        checkPress(3, () => {
+          openCastModal();
+        });
+
+        // (LB) Button (4) -> Previous Region
+        checkPress(4, () => cycleRegion(-1));
+
+        // (RB) Button (5) -> Next Region
+        checkPress(5, () => cycleRegion(1));
+
+        // (Options / Menu) Button (9) -> Controller Modal
+        checkPress(9, () => {
+          if (document.getElementById('controller-modal').classList.contains('active')) {
+            closeModal('controller-modal');
+          } else {
+            openControllerModal();
+          }
+        });
+      } else {
+        statusBtn.classList.remove('connected');
+        statusText.innerText = "Remotes / BT: Ready";
+        hudTitle.innerText = "🎮 Gamepads & Remotes Auto-Connect";
+      }
+
+      requestAnimationFrame(gamepadLoop);
+    }
+
+    window.addEventListener("gamepadconnected", (e) => {
+      console.log("Gamepad connected:", e.gamepad.id);
+      autoCalibrateCenter();
+    });
+
+    window.addEventListener("gamepaddisconnected", (e) => {
+      console.log("Gamepad disconnected:", e.gamepad.id);
+    });
+
+    // Start
     renderServices();
+    requestAnimationFrame(gamepadLoop);
   </script>
 </body>
 </html>
