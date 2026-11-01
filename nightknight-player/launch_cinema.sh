@@ -93,7 +93,12 @@ if [ -f "$SHADER_DIR/SSimSuperRes.glsl" ] && [ -f "$SHADER_DIR/adaptive-sharpen.
     SHADER_ARGS="--mpv-glsl-shaders=$SHADER_DIR/SSimSuperRes.glsl:$SHADER_DIR/adaptive-sharpen.glsl"
 fi
 
-/opt/homebrew/bin/iina \
+EMBEDDED_PLAYER="$DIR/NightKnight's Cinema Experience.app/Contents/Helpers/IINA.app/Contents/MacOS/iina-cli"
+if [ ! -f "$EMBEDDED_PLAYER" ]; then
+    EMBEDDED_PLAYER="/Users/jordanallison/Desktop/NightKnight's Cinema Experience.app/Contents/Helpers/IINA.app/Contents/MacOS/iina-cli"
+fi
+
+"$EMBEDDED_PLAYER" \
     --mpv-hwdec=videotoolbox \
     --mpv-vo=libmpv \
     --mpv-input-ipc-server="$SOCKET_PATH" \
