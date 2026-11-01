@@ -1349,7 +1349,7 @@ function getManifest(baseUrl, userConfig = DEFAULT_USER_CONFIG, rootUrl = baseUr
     id: 'org.stremio.nightknight.cinema',
     version: ADDON_VERSION,
     name: hasRd ? 'NightKnight Cinema ⚡ RD' : 'NightKnight Cinema',
-    description: `Created by NightKnight (@NightKnight24). Complete cinema hub: Native Multi-Language Subtitles Engine (80+ languages), Regional Live TV & TV Guide (EPG), 24/7 Live Music TV & Radios (UK, US, Canada, Australia, Ireland, India), DRM-Free Cinema playback, YouTube in-app player, streaming hubs (BBC iPlayer, ITVX, Netflix, Disney+, Hotstar), franchise viewing orders & speed engine.${hasRd ? ' • ⚡ Real-Debrid High-Speed Cloud Stream Active' : ''} See my projects: https://github.com/NightKnight24`,
+    description: `Created by NightKnight (@NightKnight24). Complete cinema hub: ⚡ Real-Debrid High-Speed Cloud Streams ${hasRd ? 'Active' : '(Click ⚙️ Configure to enable)'}, Native Multi-Language Subtitles Engine (80+ languages), Regional Live TV & TV Guide (EPG), 24/7 Live Music TV & Radios (UK, US, Canada, Australia, Ireland, India), DRM-Free Cinema playback, YouTube in-app player, streaming hubs (BBC iPlayer, ITVX, Netflix, Disney+, Hotstar), franchise viewing orders & speed engine. See my projects: https://github.com/NightKnight24`,
     logo: `${rootUrl}/icon.png`,
     background: `${rootUrl}/background.png`,
     resources: ['catalog', 'meta', 'stream', 'subtitles'],
