@@ -1,7 +1,7 @@
-# ⚔️ NightKnight Cinema — Stremio Addon (v1.10.0)
+# ⚔️ NightKnight Cinema — Stremio Addon (v1.11.0)
 
 > **Created by NightKnight**  
-> The ultimate all-in-one cinema & media hub: Native Multi-Language Subtitles Engine (80+ languages, zero extra addons required), Regional Live TV & TV Guide (EPG), Native DRM-Free Cinema, YouTube in-app playback & global search, BYOA streaming hubs (Netflix, BBC iPlayer, ITVX, Channel 4, Disney+, Prime, Max), Curated Franchises in release order, Verified IMDb & TMDb Ratings, Home Theater Audio/Video tags, intelligent stream speed ranking, real-time community feedback & live telemetry.
+> The ultimate all-in-one cinema & media hub: Native Multi-Language Subtitles Engine (80+ languages, zero extra addons required), Torrentio Real-Debrid Integration (Zero-Buffering High-Speed Cloud Caching), Regional Live TV & TV Guide (EPG), Native DRM-Free Cinema, YouTube in-app playback & global search, BYOA streaming hubs (Netflix, BBC iPlayer, ITVX, Channel 4, Disney+, Prime, Max), Curated Franchises in release order, Verified IMDb & TMDb Ratings, Home Theater Audio/Video tags, intelligent stream speed ranking, real-time community feedback & live telemetry.
 
 ---
 
@@ -11,7 +11,7 @@
 * 🚀 **Stremio 1-Click Install**: [`stremio://nightknight-cinema.vercel.app/manifest.json`](stremio://nightknight-cinema.vercel.app/manifest.json)
 * 📖 **Step-by-Step User Guide**: [Read Tutorial Below](#-complete-step-by-step-user-guide-how-to-use-everything)
 * 👨‍💻 **Developer Profile & Projects**: [https://github.com/NightKnight24](https://github.com/NightKnight24)
-* 📦 **Official Releases**: [GitHub Releases (v1.10.0)](https://github.com/NightKnight24/nightknight-cinema/releases)
+* 📦 **Official Releases**: [GitHub Releases (v1.11.0)](https://github.com/NightKnight24/nightknight-cinema/releases)
 * 🐳 **Container Packages**: [GitHub Packages (`ghcr.io`)](https://github.com/NightKnight24/nightknight-cinema/pkgs/container/nightknight-cinema)
 * 📊 **Live Anonymized Analytics**: [https://nightknight-cinema.vercel.app/api/stats](https://nightknight-cinema.vercel.app/api/stats)
 * 🐛 **Issue Tracker & Feature Requests**: [GitHub Issues](https://github.com/NightKnight24/nightknight-cinema/issues)
@@ -89,9 +89,11 @@
   * **Sound Codecs**: `🔊 Dolby Atmos`, `🔊 TrueHD 7.1`, `🔊 DTS-HD MA`, `🔊 DTS:X`, `🔊 5.1 Surround`.
   * **Editions**: `💎 Lossless Remux`, `🎞️ IMAX Enhanced`, `🎬 Extended / Director's Cut`.
 
-### 10. ⚡ Intelligent Stream Speed Ranking & Buffer Shield
-* **Speed Optimizer**: Places instant cloud CDN streams (`🚀 [INSTANT CDN • 0 BUFFER]`) and high-seeder torrents (`⚡ [FASTEST • 600+ 👤]`) at the very top.
+### 10. ⚡ Torrentio Real-Debrid Integration & Buffer Shield
+* **User-Provided Real-Debrid Token**: Users can enter their personal Real-Debrid API token directly on the configuration page or in the manifest URL. NightKnight Cinema automatically queries Torrentio Debrid, delivering instant high-speed cloud streams (`🚀 [INSTANT CDN • 0 BUFFER]`) with zero P2P seeding and zero buffering.
+* **Intelligent Speed Optimizer**: Ranks cached Debrid streams and high-seeder torrents (`⚡ [FASTEST • 600+ 👤]`) at the very top.
 * **Buffer Shield**: Warns against dangerous, massive files with low seeders (`⚠️ [HIGH BUFFER RISK]`) and filters out dead streams (0 seeders).
+* **Automatic P2P Fallback**: If a title has no cached Debrid copies, the addon automatically falls back to public Torrentio streams so viewers are never left stranded.
 * **Direct HTTP Streams & Usenet/Debrid**: 100% compatible with direct HTTP/HLS streams (FAST channels, web streams, direct MP4/MKV) and Usenet/Debrid links (Real-Debrid, TorBox, Premiumize, EasyDebrid). Usenet NZB downloads cached on Debrid providers stream instantly as high-speed HTTP streams directly into Stremio.
 
 ### 11. 🎬 Complete Actor & Director Filmographies

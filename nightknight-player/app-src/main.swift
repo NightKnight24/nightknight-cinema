@@ -4,6 +4,13 @@ import Foundation
 import UserNotifications
 import GameController
 
+class DraggableNavBar: NSView {
+    var isPositionLocked: Bool = false
+    override var mouseDownCanMoveWindow: Bool {
+        return !isPositionLocked
+    }
+}
+
 class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuDelegate, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
     var window: NSWindow!
     var webView: WKWebView!
@@ -11,6 +18,17 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuDele
     var titleLabel: NSTextField!
     var toneSegment: NSSegmentedControl!
     var statusItem: NSStatusItem!
+
+    var isPositionLocked: Bool = false
+    var isAlwaysOnTop: Bool = false
+    var lockBtn: NSButton?
+    var pinBtn: NSButton?
+    var homeBtn: NSButton?
+    var backBtn: NSButton?
+    var fwdBtn: NSButton?
+    var reloadBtn: NSButton?
+    var castBtn: NSButton?
+    var fsBtn: NSButton?
 
     var ambientProcess: Process?
     var bridgeProcess: Process?
@@ -57,6 +75,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuDele
         setupStatusItem()
         startBackgroundEngines()
         setupWindow()
+        applySavedWindowState()
         setupGlobalKeyMonitor()
         setupGameControllers()
         runAutoUpdaterSilently()
@@ -77,9 +96,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuDele
 
     func loadConfig() {
         if let data = try? Data(contentsOf: URL(fileURLWithPath: configFile)),
-           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-           let tone = json["white_tone"] as? String {
-            currentWhiteTone = tone
+           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            if let tone = json["white_tone"] as? String {
+                currentWhiteTone = tone
+            }
+            if let locked = json["is_position_locked"] as? Bool {
+                isPositionLocked = locked
+            }
+            if let pinned = json["is_pinned"] as? Bool {
+                isAlwaysOnTop = pinned
+            }
         }
     }
 
@@ -120,7 +146,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuDele
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
         window.backgroundColor = NSColor(red: 0.04, green: 0.05, blue: 0.08, alpha: 1.0)
-        window.isMovableByWindowBackground = false
+        window.isMovableByWindowBackground = true
+        window.minSize = NSSize(width: 580, height: 440)
+        window.setFrameAutosaveName("NightKnightCinemaMainWindow")
         window.delegate = self
 
         let container = NSView(frame: NSRect(x: 0, y: 0, width: initialWidth, height: initialHeight))
@@ -128,30 +156,37 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuDele
         container.wantsLayer = true
         container.layer?.backgroundColor = NSColor(red: 0.04, green: 0.05, blue: 0.08, alpha: 1.0).cgColor
 
-        // Top Cinema Navigation Bar
+        // Top Cinema Navigation Bar (Draggable across any screen)
         let barHeight: CGFloat = 46
-        navBar = NSView(frame: NSRect(x: 0, y: initialHeight - barHeight, width: initialWidth, height: barHeight))
-        navBar.autoresizingMask = [.width, .minYMargin]
-        navBar.wantsLayer = true
-        navBar.layer?.backgroundColor = NSColor(red: 0.04, green: 0.05, blue: 0.07, alpha: 0.96).cgColor
+        let dragBar = DraggableNavBar(frame: NSRect(x: 0, y: initialHeight - barHeight, width: initialWidth, height: barHeight))
+        dragBar.autoresizingMask = [.width, .minYMargin]
+        dragBar.wantsLayer = true
+        dragBar.layer?.backgroundColor = NSColor(red: 0.04, green: 0.05, blue: 0.07, alpha: 0.96).cgColor
+        navBar = dragBar
 
         // Left Controls: Home, Back, Forward, Reload
-        let homeBtn = createCinemaButton(title: " 🏠 Home ", x: 14, y: 7, width: 85, height: 32, action: #selector(returnHome))
-        homeBtn.bezelColor = NSColor(red: 0.90, green: 0.60, blue: 0.15, alpha: 0.35)
-        navBar.addSubview(homeBtn)
+        homeBtn = createCinemaButton(title: " 🏠 Home ", x: 14, y: 7, width: 80, height: 32, action: #selector(returnHome))
+        homeBtn?.bezelColor = NSColor(red: 0.90, green: 0.60, blue: 0.15, alpha: 0.35)
+        navBar.addSubview(homeBtn!)
 
-        let backBtn = createCinemaButton(title: "◀", x: 106, y: 7, width: 36, height: 32, action: #selector(navigateBack))
-        navBar.addSubview(backBtn)
+        backBtn = createCinemaButton(title: "◀", x: 98, y: 7, width: 34, height: 32, action: #selector(navigateBack))
+        navBar.addSubview(backBtn!)
 
-        let fwdBtn = createCinemaButton(title: "▶", x: 146, y: 7, width: 36, height: 32, action: #selector(navigateForward))
-        navBar.addSubview(fwdBtn)
+        fwdBtn = createCinemaButton(title: "▶", x: 136, y: 7, width: 34, height: 32, action: #selector(navigateForward))
+        navBar.addSubview(fwdBtn!)
 
-        let reloadBtn = createCinemaButton(title: "🔄", x: 186, y: 7, width: 36, height: 32, action: #selector(reloadPage))
-        navBar.addSubview(reloadBtn)
+        reloadBtn = createCinemaButton(title: "🔄", x: 174, y: 7, width: 34, height: 32, action: #selector(reloadPage))
+        navBar.addSubview(reloadBtn!)
+
+        // Lock & Float Position Controls
+        lockBtn = createCinemaButton(title: "🔓 Move", x: 214, y: 7, width: 78, height: 32, action: #selector(togglePositionLock))
+        navBar.addSubview(lockBtn!)
+
+        pinBtn = createCinemaButton(title: "📍 Float", x: 296, y: 7, width: 72, height: 32, action: #selector(toggleAlwaysOnTop))
+        navBar.addSubview(pinBtn!)
 
         // Center Title / Status
-        titleLabel = NSTextField(frame: NSRect(x: 235, y: 11, width: initialWidth - 620, height: 24))
-        titleLabel.autoresizingMask = [.width]
+        titleLabel = NSTextField(frame: NSRect(x: 376, y: 11, width: 280, height: 24))
         titleLabel.isBezeled = false
         titleLabel.drawsBackground = false
         titleLabel.isEditable = false
@@ -165,13 +200,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuDele
         // Right Controls: Tone Switcher, Cast, Fullscreen
         let rightEdge = initialWidth
 
-        let fsBtn = createCinemaButton(title: "⛶", x: rightEdge - 50, y: 7, width: 36, height: 32, action: #selector(toggleFullScreen))
-        fsBtn.autoresizingMask = [.minXMargin]
-        navBar.addSubview(fsBtn)
+        fsBtn = createCinemaButton(title: "⛶", x: rightEdge - 50, y: 7, width: 36, height: 32, action: #selector(toggleFullScreen))
+        fsBtn?.autoresizingMask = [.minXMargin]
+        navBar.addSubview(fsBtn!)
 
-        let castBtn = createCinemaButton(title: "📡 Cast", x: rightEdge - 135, y: 7, width: 78, height: 32, action: #selector(openCastDialog))
-        castBtn.autoresizingMask = [.minXMargin]
-        navBar.addSubview(castBtn)
+        castBtn = createCinemaButton(title: "📡 Cast", x: rightEdge - 135, y: 7, width: 78, height: 32, action: #selector(openCastDialog))
+        castBtn?.autoresizingMask = [.minXMargin]
+        navBar.addSubview(castBtn!)
 
         toneSegment = NSSegmentedControl(labels: ["Bright", "Warm", "Cool"], trackingMode: .selectOne, target: self, action: #selector(toneSegmentChanged(_:)))
         toneSegment.frame = NSRect(x: rightEdge - 345, y: 9, width: 200, height: 28)
@@ -179,6 +214,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuDele
         toneSegment.segmentStyle = .roundRect
         updateToneSegment()
         navBar.addSubview(toneSegment)
+
+        layoutNavBar()
 
         container.addSubview(navBar)
 
@@ -398,6 +435,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuDele
             sendNotification(title: title, body: body)
         case "openControllerSettings":
             openControllerSettings()
+        case "toggleLockWindow":
+            togglePositionLock()
+        case "toggleAlwaysOnTop":
+            toggleAlwaysOnTop()
+        case "getWindowLockState":
+            webView.evaluateJavaScript("if (window.onWindowLockChanged) onWindowLockChanged(\(isPositionLocked)); if (window.onWindowPinChanged) onWindowPinChanged(\(isAlwaysOnTop));", completionHandler: nil)
         default:
             break
         }
@@ -726,6 +769,159 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuDele
 
     func applicationWillTerminate(_ notification: Notification) {
         stopBackgroundEngines()
+    }
+
+    // MARK: - Window Layout, Dragging & Position Locking
+    func applySavedWindowState() {
+        if window.setFrameUsingName("NightKnightCinemaMainWindow") == false {
+            if let data = try? Data(contentsOf: URL(fileURLWithPath: configFile)),
+               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let frameDict = json["window_frame"] as? [String: Double],
+               let x = frameDict["x"], let y = frameDict["y"],
+               let w = frameDict["width"], let h = frameDict["height"],
+               w >= 500, h >= 400 {
+                let savedRect = NSRect(x: CGFloat(x), y: CGFloat(y), width: CGFloat(w), height: CGFloat(h))
+                let isOnScreen = NSScreen.screens.contains { $0.frame.intersects(savedRect) }
+                if isOnScreen {
+                    window.setFrame(savedRect, display: true)
+                }
+            }
+        }
+        setPositionLocked(isPositionLocked)
+        setAlwaysOnTop(isAlwaysOnTop)
+        layoutNavBar()
+    }
+
+    func layoutNavBar() {
+        guard let win = window, let bar = navBar else { return }
+        let w = win.frame.width
+        let barHeight: CGFloat = 46
+        bar.frame = NSRect(x: 0, y: win.frame.height - barHeight, width: w, height: barHeight)
+
+        var leftX: CGFloat = 14
+        if let hb = homeBtn {
+            hb.frame = NSRect(x: leftX, y: 7, width: 80, height: 32)
+            leftX += 86
+        }
+        if let bb = backBtn {
+            bb.frame = NSRect(x: leftX, y: 7, width: 34, height: 32)
+            leftX += 38
+        }
+        if let fb = fwdBtn {
+            fb.frame = NSRect(x: leftX, y: 7, width: 34, height: 32)
+            leftX += 38
+        }
+        if let rb = reloadBtn {
+            rb.frame = NSRect(x: leftX, y: 7, width: 34, height: 32)
+            leftX += 42
+        }
+        if let lb = lockBtn {
+            lb.frame = NSRect(x: leftX, y: 7, width: 80, height: 32)
+            leftX += 86
+        }
+        if let pb = pinBtn {
+            pb.frame = NSRect(x: leftX, y: 7, width: 72, height: 32)
+            leftX += 78
+        }
+
+        var rightX = w - 14
+        if let fs = fsBtn {
+            rightX -= 36
+            fs.frame = NSRect(x: rightX, y: 7, width: 36, height: 32)
+            rightX -= 8
+        }
+        if let cast = castBtn {
+            rightX -= 76
+            cast.frame = NSRect(x: rightX, y: 7, width: 76, height: 32)
+            rightX -= 10
+        }
+        if let tone = toneSegment {
+            if w > 860 {
+                tone.isHidden = false
+                rightX -= 185
+                tone.frame = NSRect(x: rightX, y: 9, width: 185, height: 28)
+                rightX -= 12
+            } else {
+                tone.isHidden = true
+            }
+        }
+
+        if let title = titleLabel {
+            let availableWidth = rightX - leftX - 16
+            if availableWidth > 120 {
+                title.isHidden = false
+                title.frame = NSRect(x: leftX + 8, y: 11, width: availableWidth, height: 24)
+            } else {
+                title.isHidden = true
+            }
+        }
+    }
+
+    @objc func togglePositionLock() {
+        setPositionLocked(!isPositionLocked)
+    }
+
+    func setPositionLocked(_ locked: Bool) {
+        isPositionLocked = locked
+        window.isMovable = !locked
+        window.isMovableByWindowBackground = !locked
+        (navBar as? DraggableNavBar)?.isPositionLocked = locked
+        lockBtn?.title = locked ? "🔒 Locked" : "🔓 Move"
+        lockBtn?.bezelColor = locked ? NSColor(red: 0.88, green: 0.20, blue: 0.20, alpha: 0.45) : nil
+        saveWindowFrame()
+
+        let msg = locked ? "Window position is now LOCKED in place. Accidental drags are disabled." : "Window is UNLOCKED. Drag anywhere along the top bar to reposition."
+        sendNotification(title: "Window Lock Mode", body: msg)
+        webView?.evaluateJavaScript("if (window.onWindowLockChanged) onWindowLockChanged(\(locked))", completionHandler: nil)
+    }
+
+    @objc func toggleAlwaysOnTop() {
+        setAlwaysOnTop(!isAlwaysOnTop)
+    }
+
+    func setAlwaysOnTop(_ pinned: Bool) {
+        isAlwaysOnTop = pinned
+        window.level = pinned ? .floating : .normal
+        pinBtn?.title = pinned ? "📌 Pinned" : "📍 Float"
+        pinBtn?.bezelColor = pinned ? NSColor(red: 0.96, green: 0.62, blue: 0.10, alpha: 0.45) : nil
+        saveWindowFrame()
+
+        let msg = pinned ? "Window is PINNED on top. It will stay floating above all other apps." : "Standard window layering restored."
+        sendNotification(title: "Window Float Mode", body: msg)
+        webView?.evaluateJavaScript("if (window.onWindowPinChanged) onWindowPinChanged(\(pinned))", completionHandler: nil)
+    }
+
+    func saveWindowFrame() {
+        guard let win = window else { return }
+        win.saveFrame(usingName: "NightKnightCinemaMainWindow")
+
+        let frameDict: [String: Double] = [
+            "x": Double(win.frame.origin.x),
+            "y": Double(win.frame.origin.y),
+            "width": Double(win.frame.size.width),
+            "height": Double(win.frame.size.height)
+        ]
+
+        var json: [String: Any] = [:]
+        if let data = try? Data(contentsOf: URL(fileURLWithPath: configFile)),
+           let existing = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            json = existing
+        }
+        json["window_frame"] = frameDict
+        json["is_position_locked"] = isPositionLocked
+        json["is_pinned"] = isAlwaysOnTop
+        if let data = try? JSONSerialization.data(withJSONObject: json, options: .prettyPrinted) {
+            try? data.write(to: URL(fileURLWithPath: configFile))
+        }
+    }
+
+    func windowDidMove(_ notification: Notification) {
+        saveWindowFrame()
+    }
+
+    func windowDidResize(_ notification: Notification) {
+        layoutNavBar()
+        saveWindowFrame()
     }
 
     func windowShouldClose(_ sender: NSWindow) -> Bool {

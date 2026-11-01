@@ -15,7 +15,7 @@ const TMDB_API_KEY = process.env.TMDB_API_KEY || '3157bd6dacbc3a653ae2e5a3b19beb
 const PORT = process.env.PORT || 7000;
 const HOST = process.env.HOST || (process.env.PORT ? '0.0.0.0' : '127.0.0.1');
 
-const ADDON_VERSION = '1.10.0';
+const ADDON_VERSION = '1.11.0';
 
 // Load server-wide DEFAULTS (read-only). Per-user settings live in the install URL, never on the server.
 function loadConfig() {
@@ -1067,7 +1067,8 @@ function isSafeUpstream(u) {
 const DEFAULT_USER_CONFIG = {
   upstream: normalizeUpstream(APP_CONFIG.upstreamScraper) || 'https://torrentio.strem.fun',
   hideRisk: !!APP_CONFIG.filterHighBufferRisk,
-  region: REGIONS[APP_CONFIG.defaultRegion] ? APP_CONFIG.defaultRegion : 'GB'
+  region: REGIONS[APP_CONFIG.defaultRegion] ? APP_CONFIG.defaultRegion : 'GB',
+  realDebrid: ''
 };
 
 function decodeUserConfig(segment) {
@@ -1078,6 +1079,14 @@ function decodeUserConfig(segment) {
     cfg.region = upper;
     return cfg;
   }
+  // Direct Torrentio-style realdebrid=TOKEN segment support
+  if (segment.startsWith('realdebrid=')) {
+    const rawToken = segment.slice('realdebrid='.length).trim();
+    if (/^[A-Za-z0-9_-]{10,128}$/.test(rawToken)) {
+      cfg.realDebrid = rawToken;
+    }
+    return cfg;
+  }
   try {
     const json = JSON.parse(Buffer.from(segment, 'base64url').toString('utf-8'));
     if (json && typeof json === 'object') {
@@ -1085,6 +1094,13 @@ function decodeUserConfig(segment) {
       if (up) cfg.upstream = up;
       if (typeof json.hideRisk === 'boolean') cfg.hideRisk = json.hideRisk;
       if (typeof json.region === 'string' && REGIONS[json.region.toUpperCase()]) cfg.region = json.region.toUpperCase();
+      const rawRd = json.realDebrid || json.rdToken || json.debridToken || '';
+      if (typeof rawRd === 'string') {
+        const cleanRd = rawRd.trim();
+        if (/^[A-Za-z0-9_-]{10,128}$/.test(cleanRd)) {
+          cfg.realDebrid = cleanRd;
+        }
+      }
     }
   } catch (e) {
     // Invalid config segment -> safe defaults
@@ -1327,11 +1343,13 @@ function getManifest(baseUrl, userConfig = DEFAULT_USER_CONFIG, rootUrl = baseUr
   const regionalChannelsList = REGIONAL_CHANNELS[regionCode] || REGIONAL_CHANNELS.GB;
   const regionalGenres = ['All Channels', ...new Set(regionalChannelsList.flatMap(c => c.genres))];
   const drmFreeGenres = ['All Titles', ...new Set(DRM_FREE_MOVIES.flatMap(m => m.genres))];
+  const hasRd = Boolean(userConfig && userConfig.realDebrid);
+
   return {
     id: 'org.stremio.nightknight.cinema',
     version: ADDON_VERSION,
-    name: 'NightKnight Cinema',
-    description: 'Created by NightKnight (@NightKnight24). Complete cinema hub: Native Multi-Language Subtitles Engine (80+ languages), Regional Live TV & TV Guide (EPG), 24/7 Live Music TV & Radios (UK, US, Canada, Australia, Ireland, India), DRM-Free Cinema playback, YouTube in-app player, streaming hubs (BBC iPlayer, ITVX, Netflix, Disney+, Hotstar), franchise viewing orders & speed engine. See my projects: https://github.com/NightKnight24',
+    name: hasRd ? 'NightKnight Cinema ⚡ RD' : 'NightKnight Cinema',
+    description: `Created by NightKnight (@NightKnight24). Complete cinema hub: Native Multi-Language Subtitles Engine (80+ languages), Regional Live TV & TV Guide (EPG), 24/7 Live Music TV & Radios (UK, US, Canada, Australia, Ireland, India), DRM-Free Cinema playback, YouTube in-app player, streaming hubs (BBC iPlayer, ITVX, Netflix, Disney+, Hotstar), franchise viewing orders & speed engine.${hasRd ? ' • ⚡ Real-Debrid High-Speed Cloud Stream Active' : ''} See my projects: https://github.com/NightKnight24`,
     logo: `${rootUrl}/icon.png`,
     background: `${rootUrl}/background.png`,
     resources: ['catalog', 'meta', 'stream', 'subtitles'],
@@ -2761,7 +2779,8 @@ async function handleStream(type, id, userConfig = DEFAULT_USER_CONFIG) {
   }
 
   const region = userConfig.region || 'GB';
-  const cacheKey = `stream:${type}:${id}:${region}:${userConfig.upstream}:${userConfig.hideRisk}`;
+  const rdKey = userConfig.realDebrid ? crypto.createHash('sha256').update(userConfig.realDebrid).digest('hex').slice(0, 12) : 'none';
+  const cacheKey = `stream:${type}:${id}:${region}:${userConfig.upstream}:${userConfig.hideRisk}:${rdKey}`;
   const cached = getCache(cacheKey);
   if (cached) return cached;
 
@@ -2808,7 +2827,19 @@ async function handleStream(type, id, userConfig = DEFAULT_USER_CONFIG) {
 
     if (!imdbTarget) return byoaStreams;
 
-    const scraperBase = (userConfig.upstream || APP_CONFIG.upstreamScraper || 'https://torrentio.strem.fun').replace(/\/$/, '');
+    let scraperBase = (userConfig.upstream || APP_CONFIG.upstreamScraper || 'https://torrentio.strem.fun').replace(/\/$/, '');
+    const activeRdToken = (userConfig.realDebrid || process.env.REAL_DEBRID_API_KEY || APP_CONFIG.realDebridApiKey || '').trim();
+
+    if (activeRdToken && !scraperBase.includes('realdebrid=')) {
+      if (scraperBase === 'https://torrentio.strem.fun') {
+        scraperBase = `https://torrentio.strem.fun/realdebrid=${encodeURIComponent(activeRdToken)}`;
+      } else if (scraperBase.startsWith('https://torrentio.strem.fun/')) {
+        scraperBase = `${scraperBase}|realdebrid=${encodeURIComponent(activeRdToken)}`;
+      } else {
+        scraperBase = `${scraperBase}/realdebrid=${encodeURIComponent(activeRdToken)}`;
+      }
+    }
+
     const upstreamUrl = `${scraperBase}/stream/${type}/${imdbTarget}.json`;
 
     let rawStreams = [];
@@ -2830,6 +2861,25 @@ async function handleStream(type, id, userConfig = DEFAULT_USER_CONFIG) {
     } catch (e) {
       UPSTREAM_HEALTH.lastError = e.message;
       UPSTREAM_HEALTH.at = new Date().toISOString();
+    }
+
+    // Fallback safeguard: If Real-Debrid returned 0 streams, query public Torrentio so user is never stranded
+    if (rawStreams.length === 0 && activeRdToken && scraperBase.includes('realdebrid=')) {
+      try {
+        const fbUrl = `https://torrentio.strem.fun/stream/${type}/${imdbTarget}.json`;
+        const fbRes = await fetch(fbUrl, {
+          headers: { 'User-Agent': 'Stremio/4.4.168' },
+          signal: AbortSignal.timeout(4500)
+        });
+        if (fbRes.ok) {
+          const fbData = await fbRes.json();
+          if (Array.isArray(fbData.streams) && fbData.streams.length > 0) {
+            rawStreams = fbData.streams;
+          }
+        }
+      } catch (fbErr) {
+        // Fallback network failure -> proceed
+      }
     }
 
     const optimized = optimizeAndRankStreams(rawStreams, userConfig);
@@ -3375,6 +3425,7 @@ export async function handleRequest(req, res) {
       const initialUpstream = escapeHtml(userConfig.upstream || 'https://torrentio.strem.fun');
       const initialRegion = userConfig.region || 'GB';
       const initialHideRisk = userConfig.hideRisk;
+      const initialRealDebrid = escapeHtml(userConfig.realDebrid || '');
 
       res.setHeader('Cache-Control', 'public, max-age=60, must-revalidate');
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -3938,7 +3989,10 @@ export async function handleRequest(req, res) {
     <div class="byline">Crafted by <a href="https://github.com/NightKnight24" target="_blank" class="author-link">NightKnight (@NightKnight24)</a></div>
     <div class="subtitle">The ultimate all-in-one cinema & media hub: Native Multi-Language Subtitles (80+ languages), Regional Live TV, 24/7 Music TV & Live Radios, DRM-Free Cinema, YouTube in-app playback, BYOA streaming hubs (Netflix, BBC iPlayer, ITVX, Channel 4, Disney+, Prime, Max, Hotstar), Curated Franchises & intelligent speed ranking.</div>
     
-    <a id="install-btn" href="stremio://${host}/manifest.json" class="btn">🚀 Install on Stremio</a>
+    <div style="display: flex; gap: 10px; margin-bottom: 24px; flex-wrap: wrap;">
+      <a id="install-btn" href="stremio://${host}/manifest.json" class="btn" style="flex: 1; min-width: 200px; margin-bottom: 0;">🚀 Install on Stremio</a>
+      <button id="copy-manifest-btn" type="button" class="btn" style="flex: 1; min-width: 200px; margin-bottom: 0; background: linear-gradient(135deg, #334155, #1e293b); border: 1px solid rgba(255,255,255,0.15); box-shadow: none;">📋 Copy Manifest Link</button>
+    </div>
     
     <div class="features">
       <div class="feature-item">
@@ -4004,7 +4058,17 @@ export async function handleRequest(req, res) {
         </div>
       </div>
       <div class="input-group">
-        <label>Upstream Scraper (Default: Torrentio, or paste custom Real-Debrid / Scraper URL):</label>
+        <label>⚡ Real-Debrid API Token (Optional — Instant High-Speed Cloud Streams):</label>
+        <div style="position: relative; display: flex; align-items: center;">
+          <input type="password" id="rd-input" value="${initialRealDebrid}" placeholder="Paste your Real-Debrid API token here..." autocomplete="off" style="width: 100%; padding-right: 70px;">
+          <button type="button" id="toggle-rd-vis" style="position: absolute; right: 8px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #cbd5e1; border-radius: 6px; padding: 4px 8px; font-size: 11px; cursor: pointer;">Show</button>
+        </div>
+        <div style="font-size: 11px; color: #94a3b8; margin-top: 6px;">
+          🚀 Automatically supercharges Torrentio with Real-Debrid high-speed cloud caching (zero P2P seeding, zero buffer). Get your token at <a href="https://real-debrid.com/apitoken" target="_blank" style="color: #60a5fa; text-decoration: underline;">real-debrid.com/apitoken</a>.
+        </div>
+      </div>
+      <div class="input-group">
+        <label>Upstream Scraper (Default: Torrentio, or paste custom Scraper URL):</label>
         <input type="text" id="upstream-input" value="${initialUpstream}" placeholder="https://torrentio.strem.fun">
       </div>
       <div class="checkbox-group">
@@ -4151,24 +4215,62 @@ export async function handleRequest(req, res) {
       const upstream = document.getElementById('upstream-input').value.trim() || 'https://torrentio.strem.fun';
       const region = document.getElementById('region-select').value;
       const hideRisk = document.getElementById('filter-buffer-risk').checked;
+      const realDebrid = document.getElementById('rd-input').value.trim();
 
-      const isDefault = upstream === 'https://torrentio.strem.fun' && region === 'GB' && !hideRisk;
+      const isDefault = upstream === 'https://torrentio.strem.fun' && region === 'GB' && !hideRisk && !realDebrid;
       const host = window.location.host;
 
       let href = 'stremio://' + host + '/manifest.json';
+      let webHref = window.location.protocol + '//' + host + '/manifest.json';
       if (!isDefault) {
-        const configJson = JSON.stringify({ upstream, region, hideRisk });
+        const configObj = { region, hideRisk };
+        if (upstream !== 'https://torrentio.strem.fun') configObj.upstream = upstream;
+        if (realDebrid) configObj.realDebrid = realDebrid;
+
+        const configJson = JSON.stringify(configObj);
         // UTF-8 safe Base64URL encode
         const b64 = btoa(unescape(encodeURIComponent(configJson))).replace(/\\+/g, '-').replace(/\\//g, '_').replace(/=+$/, '');
         href = 'stremio://' + host + '/' + b64 + '/manifest.json';
+        webHref = window.location.protocol + '//' + host + '/' + b64 + '/manifest.json';
       }
 
       document.getElementById('install-btn').href = href;
+      const copyBtn = document.getElementById('copy-manifest-btn');
+      if (copyBtn) copyBtn.setAttribute('data-url', webHref);
     }
 
     document.getElementById('upstream-input').addEventListener('input', updateInstallLink);
     document.getElementById('region-select').addEventListener('change', updateInstallLink);
     document.getElementById('filter-buffer-risk').addEventListener('change', updateInstallLink);
+
+    const rdInput = document.getElementById('rd-input');
+    const toggleRd = document.getElementById('toggle-rd-vis');
+    if (rdInput) {
+      rdInput.addEventListener('input', updateInstallLink);
+      if (toggleRd) {
+        toggleRd.addEventListener('click', () => {
+          if (rdInput.type === 'password') {
+            rdInput.type = 'text';
+            toggleRd.textContent = 'Hide';
+          } else {
+            rdInput.type = 'password';
+            toggleRd.textContent = 'Show';
+          }
+        });
+      }
+    }
+
+    const copyBtn = document.getElementById('copy-manifest-btn');
+    if (copyBtn) {
+      copyBtn.addEventListener('click', () => {
+        const url = copyBtn.getAttribute('data-url') || (window.location.protocol + '//' + window.location.host + '/manifest.json');
+        navigator.clipboard.writeText(url).then(() => {
+          copyBtn.textContent = '✅ Copied!';
+          setTimeout(() => { copyBtn.textContent = '📋 Copy Manifest Link'; }, 2200);
+        });
+      });
+    }
+
     updateInstallLink();
 
     function updateStats() {
