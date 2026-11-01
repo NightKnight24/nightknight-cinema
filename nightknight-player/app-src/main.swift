@@ -22,6 +22,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuDele
     let playerDir = "/Users/jordanallison/Documents/stremio add on/nightknight-player"
     let configFile = NSString(string: "~/.nightknight_ambient.json").expandingTildeInPath
     let watchlistFile = NSString(string: "~/.nightknight_watchlist.json").expandingTildeInPath
+    let tmdbConfigFile = NSString(string: "~/.nightknight_tmdb.json").expandingTildeInPath
 
     var dashboardUrl: URL {
         let bundlePath = Bundle.main.bundlePath
@@ -43,6 +44,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuDele
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Explicitly set Dock Icon from bundle
+        if let iconUrl = Bundle.main.url(forResource: "AppIcon", withExtension: "icns") {
+            NSApp.applicationIconImage = NSImage(contentsOf: iconUrl)
+        } else if let icon = NSImage(contentsOfFile: "/Users/jordanallison/Desktop/NightKnight's Cinema Experience.app/Contents/Resources/AppIcon.icns") {
+            NSApp.applicationIconImage = icon
+        }
+
         loadConfig()
         setupStatusItem()
         startBackgroundEngines()
@@ -372,6 +380,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuDele
             if let list = dict["watchlist"] as? [[String: Any]] {
                 saveWatchlist(list)
             }
+        case "saveTmdbConfig":
+            if let cfg = dict["config"] as? [String: Any] {
+                saveTmdbConfig(cfg)
+            }
+        case "loadTmdbConfig":
+            let cfg = loadTmdbConfig()
+            if let jsonData = try? JSONSerialization.data(withJSONObject: cfg),
+               let jsonString = String(data: jsonData, encoding: .utf8) {
+                webView.evaluateJavaScript("onTmdbConfigLoaded(\(jsonString))", completionHandler: nil)
+            }
         case "sendNotification":
             let title = dict["title"] as? String ?? "Cinema Alert"
             let body = dict["body"] as? String ?? ""
@@ -381,6 +399,20 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuDele
         default:
             break
         }
+    }
+
+    func saveTmdbConfig(_ config: [String: Any]) {
+        if let data = try? JSONSerialization.data(withJSONObject: config, options: .prettyPrinted) {
+            try? data.write(to: URL(fileURLWithPath: tmdbConfigFile))
+        }
+    }
+
+    func loadTmdbConfig() -> [String: Any] {
+        if let data = try? Data(contentsOf: URL(fileURLWithPath: tmdbConfigFile)),
+           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            return json
+        }
+        return [:]
     }
 
     func saveWatchlist(_ list: [[String: Any]]) {
