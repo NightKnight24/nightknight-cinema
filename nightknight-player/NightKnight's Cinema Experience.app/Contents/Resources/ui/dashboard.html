@@ -835,6 +835,107 @@
       border-top: 1px solid var(--card-border);
       background: rgba(6, 7, 9, 0.5);
     }
+
+    /* ===================================================
+       RESPONSIVE AUTO-ADJUSTMENT TO EVERY WINDOW SIZE
+       =================================================== */
+    @media (max-width: 1280px) {
+      header {
+        padding: 12px 24px;
+        gap: 15px;
+      }
+      .brand-tagline {
+        display: none;
+      }
+      main {
+        padding: 24px 24px 60px;
+      }
+    }
+
+    @media (max-width: 1024px) {
+      header {
+        flex-wrap: wrap;
+        padding: 10px 18px;
+        gap: 10px;
+      }
+      .top-nav-modes {
+        order: 3;
+        width: 100%;
+        justify-content: center;
+      }
+      .header-controls {
+        gap: 8px;
+      }
+      .hero-banner {
+        padding: 24px 20px;
+        border-radius: 18px;
+      }
+      .hero-title {
+        font-size: 24px;
+      }
+      .services-grid {
+        grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+        gap: 16px;
+      }
+    }
+
+    @media (max-width: 768px) {
+      header {
+        padding: 8px 14px;
+      }
+      .brand-title {
+        font-size: 16px;
+      }
+      .brand-icon {
+        width: 36px;
+        height: 36px;
+        font-size: 18px;
+      }
+      .ambient-pill span, .ambient-pill .tone-buttons {
+        display: none;
+      }
+      .ambient-pill {
+        padding: 6px 10px;
+      }
+      .filter-bar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+      }
+      .search-box {
+        width: 100%;
+      }
+      .region-tabs {
+        width: 100%;
+        overflow-x: auto;
+      }
+      .services-grid {
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 12px;
+      }
+      .service-card {
+        padding: 16px;
+      }
+      .service-app-icon {
+        width: 48px;
+        height: 48px;
+      }
+      .hud-controls-hint {
+        display: none;
+      }
+    }
+
+    @media (min-width: 1800px) {
+      .services-grid {
+        grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+        gap: 26px;
+      }
+      .hero-banner, .services-section, .tracker-section {
+        max-width: 2560px;
+        margin-left: auto;
+        margin-right: auto;
+      }
+    }
   </style>
 </head>
 <body>
@@ -886,6 +987,16 @@
       <!-- Auto-Updater Status -->
       <button class="header-btn" onclick="checkUpdatesNow()">
         <span>🔄</span> Core: v1.5.0
+      </button>
+
+      <!-- Window Lock & Pin Controls -->
+      <button class="header-btn" id="window-lock-btn" onclick="postCinemaMessage('toggleLockWindow')" title="Lock window position so it cannot be accidentally moved">
+        <span id="window-lock-icon">🔓</span>
+        <span id="window-lock-text">Window: Free</span>
+      </button>
+      <button class="header-btn" id="window-pin-btn" onclick="postCinemaMessage('toggleAlwaysOnTop')" title="Pin window on top of other applications">
+        <span id="window-pin-icon">📍</span>
+        <span id="window-pin-text">Float on Top</span>
       </button>
 
       <!-- Cast Button -->
@@ -2345,6 +2456,49 @@
       requestAnimationFrame(gamepadLoop);
     }
 
+    // Window Position Lock & Always on Top Handlers
+    window.onWindowLockChanged = function(isLocked) {
+      const icon = document.getElementById('window-lock-icon');
+      const text = document.getElementById('window-lock-text');
+      const btn = document.getElementById('window-lock-btn');
+      if (isLocked) {
+        if (icon) icon.innerText = '🔒';
+        if (text) text.innerText = 'Locked';
+        if (btn) {
+          btn.style.borderColor = 'rgba(239, 68, 68, 0.8)';
+          btn.style.background = 'rgba(239, 68, 68, 0.15)';
+        }
+      } else {
+        if (icon) icon.innerText = '🔓';
+        if (text) text.innerText = 'Window: Free';
+        if (btn) {
+          btn.style.borderColor = '';
+          btn.style.background = '';
+        }
+      }
+    };
+
+    window.onWindowPinChanged = function(isPinned) {
+      const icon = document.getElementById('window-pin-icon');
+      const text = document.getElementById('window-pin-text');
+      const btn = document.getElementById('window-pin-btn');
+      if (isPinned) {
+        if (icon) icon.innerText = '📌';
+        if (text) text.innerText = 'Pinned';
+        if (btn) {
+          btn.style.borderColor = 'rgba(245, 158, 11, 0.8)';
+          btn.style.background = 'rgba(245, 158, 11, 0.15)';
+        }
+      } else {
+        if (icon) icon.innerText = '📍';
+        if (text) text.innerText = 'Float on Top';
+        if (btn) {
+          btn.style.borderColor = '';
+          btn.style.background = '';
+        }
+      }
+    };
+
     // Startup
     try {
       const storedTmdb = localStorage.getItem('nightknight_tmdb');
@@ -2353,6 +2507,7 @@
     loadWatchlist();
     renderServices();
     postCinemaMessage('loadTmdbConfig');
+    postCinemaMessage('getWindowLockState');
     updateTmdbStatusUi();
     requestAnimationFrame(gamepadLoop);
   </script>
