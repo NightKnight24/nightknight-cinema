@@ -2828,7 +2828,7 @@ async function handleStream(type, id, userConfig = DEFAULT_USER_CONFIG) {
     if (!imdbTarget) return byoaStreams;
 
     let scraperBase = (userConfig.upstream || APP_CONFIG.upstreamScraper || 'https://torrentio.strem.fun').replace(/\/$/, '');
-    const activeRdToken = (userConfig.realDebrid || process.env.REAL_DEBRID_API_KEY || APP_CONFIG.realDebridApiKey || '').trim();
+    const activeRdToken = (userConfig.realDebrid || '').trim();
 
     if (activeRdToken && !scraperBase.includes('realdebrid=')) {
       if (scraperBase === 'https://torrentio.strem.fun') {
@@ -4057,14 +4057,19 @@ export async function handleRequest(req, res) {
           📍 Automatically configures your local <strong>Live TV & Guide</strong> channel lineup (e.g. UK Free-to-Air, US Networks, Australia ABC, India Bollywood & FAST TV) and regional BYOA streaming hubs.
         </div>
       </div>
-      <div class="input-group">
-        <label>⚡ Real-Debrid API Token (Optional — Instant High-Speed Cloud Streams):</label>
+      <div class="checkbox-group" style="margin-top: 14px; margin-bottom: ${initialRealDebrid ? '10px' : '16px'};">
+        <input type="checkbox" id="enable-rd" ${initialRealDebrid ? 'checked' : ''}>
+        <label for="enable-rd"><strong>⚡ Enable Real-Debrid Cloud Acceleration</strong> (Off by default — check to provide token)</label>
+      </div>
+
+      <div id="rd-container" style="display: ${initialRealDebrid ? 'block' : 'none'}; margin-bottom: 16px; padding: 14px; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 8px;">
+        <label style="font-size: 13px; font-weight: 600; color: #93c5fd; display: block; margin-bottom: 6px;">Your Personal Real-Debrid API Token:</label>
         <div style="position: relative; display: flex; align-items: center;">
           <input type="password" id="rd-input" value="${initialRealDebrid}" placeholder="Paste your Real-Debrid API token here..." autocomplete="off" style="width: 100%; padding-right: 70px;">
           <button type="button" id="toggle-rd-vis" style="position: absolute; right: 8px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #cbd5e1; border-radius: 6px; padding: 4px 8px; font-size: 11px; cursor: pointer;">Show</button>
         </div>
-        <div style="font-size: 11px; color: #94a3b8; margin-top: 6px;">
-          🚀 Automatically supercharges Torrentio with Real-Debrid high-speed cloud caching (zero P2P seeding, zero buffer). Get your token at <a href="https://real-debrid.com/apitoken" target="_blank" style="color: #60a5fa; text-decoration: underline;">real-debrid.com/apitoken</a>.
+        <div style="font-size: 11px; color: #94a3b8; margin-top: 6px; line-height: 1.4;">
+          🚀 Supercharges Torrentio with instant cloud caching (zero P2P seeding, zero buffer). Your token is stored only in your personal Stremio link and is never saved on the server. Find your token at <a href="https://real-debrid.com/apitoken" target="_blank" style="color: #60a5fa; text-decoration: underline;">real-debrid.com/apitoken</a>.
         </div>
       </div>
       <div class="input-group">
@@ -4215,7 +4220,8 @@ export async function handleRequest(req, res) {
       const upstream = document.getElementById('upstream-input').value.trim() || 'https://torrentio.strem.fun';
       const region = document.getElementById('region-select').value;
       const hideRisk = document.getElementById('filter-buffer-risk').checked;
-      const realDebrid = document.getElementById('rd-input').value.trim();
+      const enableRd = document.getElementById('enable-rd') ? document.getElementById('enable-rd').checked : false;
+      const realDebrid = (enableRd && document.getElementById('rd-input')) ? document.getElementById('rd-input').value.trim() : '';
 
       const isDefault = upstream === 'https://torrentio.strem.fun' && region === 'GB' && !hideRisk && !realDebrid;
       const host = window.location.host;
@@ -4229,7 +4235,7 @@ export async function handleRequest(req, res) {
 
         const configJson = JSON.stringify(configObj);
         // UTF-8 safe Base64URL encode
-        const b64 = btoa(unescape(encodeURIComponent(configJson))).replace(/\\+/g, '-').replace(/\\//g, '_').replace(/=+$/, '');
+        const b64 = btoa(unescape(encodeURIComponent(configJson))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
         href = 'stremio://' + host + '/' + b64 + '/manifest.json';
         webHref = window.location.protocol + '//' + host + '/' + b64 + '/manifest.json';
       }
@@ -4243,8 +4249,23 @@ export async function handleRequest(req, res) {
     document.getElementById('region-select').addEventListener('change', updateInstallLink);
     document.getElementById('filter-buffer-risk').addEventListener('change', updateInstallLink);
 
+    const enableRdCheckbox = document.getElementById('enable-rd');
+    const rdContainer = document.getElementById('rd-container');
     const rdInput = document.getElementById('rd-input');
     const toggleRd = document.getElementById('toggle-rd-vis');
+
+    if (enableRdCheckbox) {
+      enableRdCheckbox.addEventListener('change', () => {
+        if (enableRdCheckbox.checked) {
+          if (rdContainer) rdContainer.style.display = 'block';
+          if (rdInput) rdInput.focus();
+        } else {
+          if (rdContainer) rdContainer.style.display = 'none';
+        }
+        updateInstallLink();
+      });
+    }
+
     if (rdInput) {
       rdInput.addEventListener('input', updateInstallLink);
       if (toggleRd) {
