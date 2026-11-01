@@ -44,12 +44,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuDele
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        NSApp.setActivationPolicy(.regular)
         // Explicitly set Dock Icon from bundle
         if let iconUrl = Bundle.main.url(forResource: "AppIcon", withExtension: "icns") {
             NSApp.applicationIconImage = NSImage(contentsOf: iconUrl)
         } else if let icon = NSImage(contentsOfFile: "/Users/jordanallison/Desktop/NightKnight's Cinema Experience.app/Contents/Resources/AppIcon.icns") {
             NSApp.applicationIconImage = icon
         }
+        NSApp.dockTile.display()
 
         loadConfig()
         setupStatusItem()
