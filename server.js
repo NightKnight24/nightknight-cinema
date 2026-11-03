@@ -1145,6 +1145,10 @@ function loadStats() {
         drmFreeRequests: data.drmFreeRequests || 0,
         estimatedInstalls: data.estimatedInstalls || 0,
         uniqueClients: new Set(data.uniqueClientHashes || []),
+        rdClients: new Set(data.rdClientHashes || []),
+        freeClients: new Set(data.freeClientHashes || []),
+        rdStreamRequests: data.rdStreamRequests || 0,
+        freeStreamRequests: data.freeStreamRequests || 0,
         lastRequestAt: data.lastRequestAt || null
       };
     }
@@ -1156,12 +1160,16 @@ function loadStats() {
     catalogRequests: 0,
     metaRequests: 0,
     streamRequests: 0,
+    rdStreamRequests: 0,
+    freeStreamRequests: 0,
     subtitleRequests: 0,
     youtubeSearches: 0,
     tvGuideRequests: 0,
     drmFreeRequests: 0,
     estimatedInstalls: 0,
     uniqueClients: new Set(),
+    rdClients: new Set(),
+    freeClients: new Set(),
     lastRequestAt: null
   };
 }
@@ -1182,12 +1190,18 @@ function persistStats() {
         catalogRequests: STATS.catalogRequests,
         metaRequests: STATS.metaRequests,
         streamRequests: STATS.streamRequests,
+        rdStreamRequests: STATS.rdStreamRequests || 0,
+        freeStreamRequests: STATS.freeStreamRequests || 0,
         subtitleRequests: STATS.subtitleRequests || 0,
         youtubeSearches: STATS.youtubeSearches,
         tvGuideRequests: STATS.tvGuideRequests || 0,
         drmFreeRequests: STATS.drmFreeRequests || 0,
         estimatedInstalls: Math.max(STATS.estimatedInstalls, STATS.uniqueClients.size),
+        rdClientsCount: STATS.rdClients ? STATS.rdClients.size : 0,
+        freeClientsCount: STATS.freeClients ? STATS.freeClients.size : 0,
         uniqueClientHashes: Array.from(STATS.uniqueClients).slice(-5000),
+        rdClientHashes: Array.from(STATS.rdClients || []).slice(-2000),
+        freeClientHashes: Array.from(STATS.freeClients || []).slice(-5000),
         lastRequestAt: STATS.lastRequestAt,
         savedAt: new Date().toISOString()
       };
@@ -1196,14 +1210,25 @@ function persistStats() {
   }, 3000);
 }
 
-function recordClient(req) {
+function recordClient(req, userConfig = DEFAULT_USER_CONFIG) {
   const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket?.remoteAddress || 'unknown';
   const ua = req.headers['user-agent'] || 'unknown';
   const hash = crypto.createHash('sha256').update(ip + ua + STATS_SALT).digest('hex').slice(0, 16);
+  if (!STATS.uniqueClients) STATS.uniqueClients = new Set();
+  if (!STATS.rdClients) STATS.rdClients = new Set();
+  if (!STATS.freeClients) STATS.freeClients = new Set();
+
   STATS.uniqueClients.add(hash);
   STATS.totalRequests++;
   STATS.lastRequestAt = new Date().toISOString();
   STATS.estimatedInstalls = Math.max(STATS.estimatedInstalls, STATS.uniqueClients.size);
+
+  const hasRd = Boolean(userConfig && userConfig.realDebrid);
+  if (hasRd) {
+    STATS.rdClients.add(hash);
+  } else {
+    STATS.freeClients.add(hash);
+  }
 }
 
 function formatUptime(ms) {
@@ -3037,7 +3062,7 @@ export async function handleRequest(req, res) {
   const baseUrl = configSegment ? `${rootUrl}/${configSegment}` : rootUrl;
 
   try {
-    recordClient(req);
+    recordClient(req, userConfig);
 
     // Static files: /icon.png & /background.png
     if (pathname === '/icon.png' || pathname === '/logo.png') {
@@ -3086,14 +3111,28 @@ export async function handleRequest(req, res) {
     if (pathname === '/api/stats') {
       res.setHeader('Cache-Control', 'no-store, max-age=0');
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      const totalActive = STATS.uniqueClients ? STATS.uniqueClients.size : 0;
+      const rdCount = STATS.rdClients ? STATS.rdClients.size : 0;
+      const freeCount = STATS.freeClients ? STATS.freeClients.size : 0;
       res.end(JSON.stringify({
         addon: 'NightKnight Cinema',
         version: ADDON_VERSION,
         status: 'online',
         uptime: formatUptime(Date.now() - SERVER_BOOT_TIME),
         startedAt: STATS.startedAt,
-        estimatedInstalls: Math.max(STATS.estimatedInstalls, STATS.uniqueClients.size),
-        uniqueActiveClients: STATS.uniqueClients.size,
+        estimatedInstalls: Math.max(STATS.estimatedInstalls, totalActive),
+        uniqueActiveClients: totalActive,
+        userBreakdown: {
+          freeTierUsers: freeCount,
+          realDebridUsers: rdCount,
+          freeTierPercentage: totalActive > 0 ? `${Math.round((freeCount / totalActive) * 100)}%` : '0%',
+          realDebridPercentage: totalActive > 0 ? `${Math.round((rdCount / totalActive) * 100)}%` : '0%'
+        },
+        streamBreakdown: {
+          totalStreamRequests: STATS.streamRequests,
+          realDebridStreams: STATS.rdStreamRequests || 0,
+          freeTorrentioStreams: STATS.freeStreamRequests || 0
+        },
         manifestRequests: STATS.manifestRequests,
         totalRequests: STATS.totalRequests,
         catalogRequests: STATS.catalogRequests,
@@ -3104,7 +3143,7 @@ export async function handleRequest(req, res) {
         tvGuideRequests: STATS.tvGuideRequests || 0,
         drmFreeRequests: STATS.drmFreeRequests || 0,
         lastRequestAt: STATS.lastRequestAt,
-        privacy: '100% Zero-Knowledge Anonymized (No IP addresses stored)'
+        privacy: '100% Zero-Knowledge Anonymized (No personal tokens or IP addresses stored)'
       }, null, 2));
       return;
     }
@@ -3204,6 +3243,11 @@ export async function handleRequest(req, res) {
     const streamMatch = pathname.match(/^\/stream\/(movie|series|channel)\/([^\/]+)\.json$/);
     if (streamMatch) {
       STATS.streamRequests++;
+      if (userConfig && userConfig.realDebrid) {
+        STATS.rdStreamRequests = (STATS.rdStreamRequests || 0) + 1;
+      } else {
+        STATS.freeStreamRequests = (STATS.freeStreamRequests || 0) + 1;
+      }
       persistStats();
       const [, type, id] = streamMatch;
       const streams = await handleStream(type, id, userConfig);
