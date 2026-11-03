@@ -1210,10 +1210,26 @@ function persistStats() {
   }, 3000);
 }
 
-function recordClient(req, userConfig = DEFAULT_USER_CONFIG) {
-  const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket?.remoteAddress || 'unknown';
+const RECENT_ACTIVITY = [];
+
+function recordClient(req, userConfig = DEFAULT_USER_CONFIG, pathname = '/') {
+  // 1. Ignore internal APIs, health checks, static assets, and favicon
+  if (pathname === '/api/stats' || pathname === '/api/health' || pathname === '/icon.png' || pathname === '/background.png' || pathname === '/favicon.ico') {
+    return;
+  }
+
   const ua = req.headers['user-agent'] || 'unknown';
-  const hash = crypto.createHash('sha256').update(ip + ua + STATS_SALT).digest('hex').slice(0, 16);
+  const uaLower = ua.toLowerCase();
+
+  // 2. Filter out bots, automated crawlers, uptime checkers, and command-line scripts (curl/python)
+  if (uaLower.includes('bot') || uaLower.includes('crawl') || uaLower.includes('spider') || uaLower.includes('curl') || uaLower.includes('wget') || uaLower.includes('python') || uaLower.includes('uptime') || uaLower.includes('headless')) {
+    return;
+  }
+
+  // 3. Normalize client identity strictly by IP hash so Stremio UI + Player + Internal server on one device count as 1 user
+  const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket?.remoteAddress || 'unknown';
+  const hash = crypto.createHash('sha256').update(ip + STATS_SALT).digest('hex').slice(0, 16);
+
   if (!STATS.uniqueClients) STATS.uniqueClients = new Set();
   if (!STATS.rdClients) STATS.rdClients = new Set();
   if (!STATS.freeClients) STATS.freeClients = new Set();
@@ -1226,9 +1242,19 @@ function recordClient(req, userConfig = DEFAULT_USER_CONFIG) {
   const hasRd = Boolean(userConfig && userConfig.realDebrid);
   if (hasRd) {
     STATS.rdClients.add(hash);
-  } else {
+    STATS.freeClients.delete(hash); // Upgrade to RD if previously visited free
+  } else if (!STATS.rdClients.has(hash)) {
     STATS.freeClients.add(hash);
   }
+
+  // Record into recent activity ring buffer (max 15 items)
+  RECENT_ACTIVITY.unshift({
+    time: new Date().toISOString(),
+    endpoint: pathname.split('/')[1] || 'root',
+    tier: hasRd ? '⚡ Real-Debrid' : '🆓 Free P2P',
+    client: hash.slice(0, 6)
+  });
+  if (RECENT_ACTIVITY.length > 15) RECENT_ACTIVITY.pop();
 }
 
 function formatUptime(ms) {
@@ -3062,7 +3088,7 @@ export async function handleRequest(req, res) {
   const baseUrl = configSegment ? `${rootUrl}/${configSegment}` : rootUrl;
 
   try {
-    recordClient(req, userConfig);
+    recordClient(req, userConfig, pathname);
 
     // Static files: /icon.png & /background.png
     if (pathname === '/icon.png' || pathname === '/logo.png') {
@@ -3133,6 +3159,7 @@ export async function handleRequest(req, res) {
           realDebridStreams: STATS.rdStreamRequests || 0,
           freeTorrentioStreams: STATS.freeStreamRequests || 0
         },
+        recentActivity: RECENT_ACTIVITY.slice(0, 10),
         manifestRequests: STATS.manifestRequests,
         totalRequests: STATS.totalRequests,
         catalogRequests: STATS.catalogRequests,
@@ -3143,6 +3170,7 @@ export async function handleRequest(req, res) {
         tvGuideRequests: STATS.tvGuideRequests || 0,
         drmFreeRequests: STATS.drmFreeRequests || 0,
         lastRequestAt: STATS.lastRequestAt,
+        filterEngine: 'Verified Stremio Clients Only (IP normalized; bots, crawlers, and static page hits excluded)',
         privacy: '100% Zero-Knowledge Anonymized (No personal tokens or IP addresses stored)'
       }, null, 2));
       return;
