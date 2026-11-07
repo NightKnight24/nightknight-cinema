@@ -15,7 +15,7 @@ const TMDB_API_KEY = process.env.TMDB_API_KEY || '3157bd6dacbc3a653ae2e5a3b19beb
 const PORT = process.env.PORT || 7000;
 const HOST = process.env.HOST || (process.env.PORT ? '0.0.0.0' : '127.0.0.1');
 
-const ADDON_VERSION = '1.12.7';
+const ADDON_VERSION = '1.12.8';
 
 // Load server-wide DEFAULTS (read-only). Per-user settings live in the install URL, never on the server.
 function loadConfig() {
@@ -2141,6 +2141,48 @@ function formatMetaPreview(item, type, isLandscape = false) {
   };
 }
 
+// -------------------------------------------------------------
+// TMDb-to-IMDb Resolver & Catalog Enrichment Engine
+// Bridges TMDb IDs to IMDb (tt...) IDs so Stremio's native UI, Cinemeta,
+// and third-party streaming scrapers (Torrentio, Debrid) recognize items seamlessly.
+// -------------------------------------------------------------
+const TMDB_TO_IMDB = new Map();
+
+async function resolveImdbId(type, tmdbId) {
+  if (!tmdbId) return null;
+  const key = `${type}:${tmdbId}`;
+  if (TMDB_TO_IMDB.has(key)) return TMDB_TO_IMDB.get(key);
+
+  try {
+    const endpoint = type === 'movie' ? `/movie/${tmdbId}` : `/tv/${tmdbId}`;
+    const data = await fetchTmdb(endpoint, { append_to_response: 'external_ids' });
+    const imdbId = data?.external_ids?.imdb_id || data?.imdb_id;
+    if (imdbId && typeof imdbId === 'string' && imdbId.startsWith('tt')) {
+      TMDB_TO_IMDB.set(key, imdbId);
+      return imdbId;
+    }
+  } catch (e) {
+    // Fallback gracefully on timeout/error
+  }
+  return null;
+}
+
+async function enrichMetasWithImdb(metas, defaultType) {
+  if (!Array.isArray(metas) || metas.length === 0) return metas;
+  return await Promise.all(metas.map(async (m) => {
+    if (!m || !m.id) return m;
+    if (typeof m.id === 'string' && m.id.startsWith('tmdb:')) {
+      const tmdbId = m.id.replace('tmdb:', '');
+      const itemType = m.type || defaultType || 'movie';
+      const imdbId = await resolveImdbId(itemType, tmdbId);
+      if (imdbId) {
+        return { ...m, id: imdbId };
+      }
+    }
+    return m;
+  }));
+}
+
 // YouTube Search & Video Scraper (Zero-Auth, DRM-Free & BYOA)
 async function searchYouTube(query = 'Trending', skip = 0) {
   const cacheKey = `yt:query:${query}`;
@@ -3856,21 +3898,8 @@ async function handleMeta(type, id) {
       trailers: (data.videos?.results || [])
         .filter(v => v.site === 'YouTube' && v.type === 'Trailer')
         .map(v => ({ source: v.key, type: 'Trailer' })),
-      videos: data.release_date ? [
-        {
-          id: `${isImdb ? id : `tmdb:${tmdbId}`}`,
-          title: `${data.title} (${(data.release_date || '').slice(0, 4)})`,
-          name: `${data.title} (${(data.release_date || '').slice(0, 4)})`,
-          released: new Date(data.release_date).toISOString(),
-          firstAired: new Date(data.release_date).toISOString(),
-          thumbnail: data.backdrop_path ? `https://image.tmdb.org/t/p/w780${data.backdrop_path}` : (data.poster_path ? `https://image.tmdb.org/t/p/w500${data.poster_path}` : undefined),
-          episode: 1,
-          number: 1,
-          season: 1
-        }
-      ] : undefined,
       behaviorHints: {
-        defaultVideoId: isImdb ? id : `tmdb:${tmdbId}`,
+        defaultVideoId: isImdb ? id : (imdbId || `tmdb:${tmdbId}`),
         hasScheduledVideos: Boolean(data.release_date && new Date(data.release_date) > new Date())
       }
     };
@@ -4883,7 +4912,8 @@ export async function handleRequest(req, res) {
       if (catalogId === 'upcoming_movies') {
         const tmdbPage = Math.floor(skip / 20) + 1;
         const resData = await fetchTmdb('/movie/upcoming', { page: tmdbPage });
-        const metas = (resData.results || []).map(item => formatMetaPreview(item, 'movie', true));
+        let metas = (resData.results || []).map(item => formatMetaPreview(item, 'movie', true));
+        metas = await enrichMetasWithImdb(metas, 'movie');
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
         res.end(JSON.stringify({ metas }));
         return;
@@ -4893,7 +4923,8 @@ export async function handleRequest(req, res) {
       if (catalogId === 'on_the_air_series') {
         const tmdbPage = Math.floor(skip / 20) + 1;
         const resData = await fetchTmdb('/tv/on_the_air', { page: tmdbPage });
-        const metas = (resData.results || []).map(item => formatMetaPreview(item, 'series', true));
+        let metas = (resData.results || []).map(item => formatMetaPreview(item, 'series', true));
+        metas = await enrichMetasWithImdb(metas, 'series');
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
         res.end(JSON.stringify({ metas }));
         return;
@@ -4902,7 +4933,8 @@ export async function handleRequest(req, res) {
       // Handle Dedicated Streaming Hub Catalogs (Netflix, Apple TV+, Max, Disney+, Prime, Paramount+, Crunchyroll)
       if (catalogId === 'streaming_hub_movies' || catalogId === 'streaming_hub_series') {
         const genre = extra.genre || 'Netflix';
-        const metas = await handleGenreCatalog(type, genre, skip, userConfig);
+        let metas = await handleGenreCatalog(type, genre, skip, userConfig);
+        metas = await enrichMetasWithImdb(metas, type);
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
         res.end(JSON.stringify({ metas }));
         return;
@@ -4911,7 +4943,8 @@ export async function handleRequest(req, res) {
       // Handle Dedicated Anime Series & Anime Movies Catalogs (with full Genre & Subgenre filtering)
       if (catalogId === 'anime_series' || catalogId === 'anime_movies') {
         const genre = extra.genre || 'Popular Anime';
-        const metas = await handleAnimeCatalog(type, genre, skip, userConfig);
+        let metas = await handleAnimeCatalog(type, genre, skip, userConfig);
+        metas = await enrichMetasWithImdb(metas, type);
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
         res.end(JSON.stringify({ metas }));
         return;
@@ -4924,7 +4957,8 @@ export async function handleRequest(req, res) {
         catalogId.startsWith('decades_') ||
         DECADE_CATALOG_RANGES[catalogId]
       ) {
-        const metas = await handleSortedOrDecadeCatalog(catalogId, type, extra.genre, skip);
+        let metas = await handleSortedOrDecadeCatalog(catalogId, type, extra.genre, skip);
+        metas = await enrichMetasWithImdb(metas, type);
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
         res.end(JSON.stringify({ metas }));
         return;
@@ -4939,6 +4973,7 @@ export async function handleRequest(req, res) {
         metas = await handleGenreCatalog(type, genre, skip, userConfig);
       }
 
+      metas = await enrichMetasWithImdb(metas, type);
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
       res.end(JSON.stringify({ metas }));
       return;
