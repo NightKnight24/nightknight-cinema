@@ -15,7 +15,7 @@ const TMDB_API_KEY = process.env.TMDB_API_KEY || '3157bd6dacbc3a653ae2e5a3b19beb
 const PORT = process.env.PORT || 7000;
 const HOST = process.env.HOST || (process.env.PORT ? '0.0.0.0' : '127.0.0.1');
 
-const ADDON_VERSION = '1.12.3';
+const ADDON_VERSION = '1.12.4';
 
 // Load server-wide DEFAULTS (read-only). Per-user settings live in the install URL, never on the server.
 function loadConfig() {
@@ -1539,6 +1539,99 @@ function getManifest(baseUrl, userConfig = DEFAULT_USER_CONFIG, rootUrl = baseUr
         ]
       },
       {
+        type: 'series',
+        id: 'anime_series',
+        name: 'Anime Series (NightKnight)',
+        pageSize: 20,
+        extra: [
+          {
+            name: 'genre',
+            options: [
+              'Popular Anime',
+              'Airing Now',
+              'Top Rated Anime',
+              'Crunchyroll',
+              // Demographics
+              'Shonen',
+              'Seinen',
+              'Shojo',
+              'Josei',
+              // Anime Subgenres & Genres
+              'Isekai & Reincarnation',
+              'Action & Adventure',
+              'Dark Fantasy',
+              'Fantasy & Magic',
+              'Romance & Rom-Com',
+              'Comedy',
+              'Slice of Life',
+              'Mecha & Giant Robots',
+              'Sci-Fi & Cyberpunk',
+              'Supernatural & Demons',
+              'Horror & Thriller',
+              'Mystery & Psychological',
+              'Sports',
+              'Music & Idol',
+              'School Life',
+              'Martial Arts & Samurai',
+              'Dungeon & RPG',
+              'Magical Girl',
+              'Boys Love (BL)',
+              'Girls Love (GL / Yuri)',
+              'Donghua (Chinese Anime)'
+            ],
+            isRequired: false
+          },
+          { name: 'skip', isRequired: false }
+        ]
+      },
+      {
+        type: 'movie',
+        id: 'anime_movies',
+        name: 'Anime Movies (NightKnight)',
+        pageSize: 20,
+        extra: [
+          {
+            name: 'genre',
+            options: [
+              'Popular Anime',
+              'New & Upcoming Anime',
+              'Top Rated Anime',
+              'Studio Ghibli',
+              'Crunchyroll',
+              // Demographics
+              'Shonen',
+              'Seinen',
+              'Shojo',
+              'Josei',
+              // Anime Subgenres & Genres
+              'Isekai & Reincarnation',
+              'Action & Adventure',
+              'Dark Fantasy',
+              'Fantasy & Magic',
+              'Romance & Rom-Com',
+              'Comedy',
+              'Slice of Life',
+              'Mecha & Giant Robots',
+              'Sci-Fi & Cyberpunk',
+              'Supernatural & Demons',
+              'Horror & Thriller',
+              'Mystery & Psychological',
+              'Sports',
+              'Music & Idol',
+              'School Life',
+              'Martial Arts & Samurai',
+              'Dungeon & RPG',
+              'Magical Girl',
+              'Boys Love (BL)',
+              'Girls Love (GL / Yuri)',
+              'Donghua (Chinese Anime)'
+            ],
+            isRequired: false
+          },
+          { name: 'skip', isRequired: false }
+        ]
+      },
+      {
         type: 'movie',
         id: 'streaming_hub_movies',
         name: 'Streaming Networks (Movies)',
@@ -1546,7 +1639,7 @@ function getManifest(baseUrl, userConfig = DEFAULT_USER_CONFIG, rootUrl = baseUr
         extra: [
           {
             name: 'genre',
-            options: ['Netflix', 'Apple TV+', 'Max (HBO)', 'Disney+', 'Amazon Prime', 'Paramount+'],
+            options: ['Netflix', 'Apple TV+', 'Max (HBO)', 'Disney+', 'Amazon Prime', 'Paramount+', 'Crunchyroll'],
             isRequired: false
           },
           { name: 'skip', isRequired: false }
@@ -1560,7 +1653,7 @@ function getManifest(baseUrl, userConfig = DEFAULT_USER_CONFIG, rootUrl = baseUr
         extra: [
           {
             name: 'genre',
-            options: ['Netflix', 'Apple TV+', 'Max (HBO)', 'Disney+', 'Amazon Prime', 'Paramount+'],
+            options: ['Netflix', 'Apple TV+', 'Max (HBO)', 'Disney+', 'Amazon Prime', 'Paramount+', 'Crunchyroll'],
             isRequired: false
           },
           { name: 'skip', isRequired: false }
@@ -1895,7 +1988,7 @@ const SEARCH_GENRE_MAP = {
   animation: { movie: 16, tv: 16 },
   cartoons: { movie: 16, tv: 16 },
   cartoon: { movie: 16, tv: 16 },
-  anime: { movie: 16, tv: 16, lang: 'ja', keyword: '210024' },
+  anime: { movie: 16, tv: 16, lang: 'ja' },
   comedy: { movie: 35, tv: 35 },
   comedies: { movie: 35, tv: 35 },
   crime: { movie: 80, tv: 80 },
@@ -2035,7 +2128,39 @@ const SEARCH_GENRE_MAP = {
     tvKw: '250845|283297',
     tvLang: 'en',
     tvBlendTitle: 'Got Talent'
-  }
+  },
+
+  // Anime Demographics, Subgenres & Tropes
+  shonen: { movie: 16, tv: 16, lang: 'ja', keyword: '207826' },
+  seinen: { movie: 16, tv: 16, lang: 'ja', keyword: '195668' },
+  shojo: { movie: 16, tv: 16, lang: 'ja', keyword: '206437' },
+  josei: { movie: 16, tv: 16, lang: 'ja', keyword: '229074' },
+  isekai: { movie: 16, tv: 16, lang: 'ja', keyword: '237451|291482|5484' },
+  reincarnation: { movie: 16, tv: 16, lang: 'ja', keyword: '5484|237451|383852' },
+  mecha: { movie: 16, tv: 16, lang: 'ja', keyword: '10046|10891|207473|291181' },
+  'slice of life': { movie: 16, tv: 16, lang: 'ja', keyword: '9914|291483' },
+  iyashikei: { movie: 16, tv: 16, lang: 'ja', keyword: '291483|9914' },
+  'magical girl': { movie: 16, tv: 16, lang: 'ja', keyword: '292887|382274|358020' },
+  'dark fantasy': { keyword: '177895|15001' },
+  harem: { movie: 16, tv: 16, lang: 'ja', keyword: '9194|238374' },
+  'reverse harem': { movie: 16, tv: 16, lang: 'ja', keyword: '238374' },
+  ecchi: { movie: 16, tv: 16, lang: 'ja', keyword: '195669' },
+  'boys love': { movie: 16, tv: 16, lang: 'ja', keyword: '289844|384569|365317|353318' },
+  'girls love': { movie: 16, tv: 16, lang: 'ja', keyword: '280003|383699|214564|207469' },
+  idol: { movie: 16, tv: 16, lang: 'ja', keyword: '290799|287664|251523' },
+  yokai: { movie: 16, tv: 16, lang: 'ja', keyword: '196509' },
+  demon: { keyword: '15001|308000|299325' },
+  samurai: { keyword: '1462|334793' },
+  ninja: { keyword: '10278|3075' },
+  supernatural: { keyword: '6152|196509|15001|162846' },
+  psychological: { keyword: '272553|12565|301541' },
+  'school life': { keyword: '190116|6270|317537' },
+  'high school': { keyword: '6270|190116' },
+  villainess: { movie: 16, tv: 16, lang: 'ja', keyword: '9990|287938' },
+  otome: { movie: 16, tv: 16, lang: 'ja', keyword: '287938|347667|9990' },
+  donghua: { movie: 16, tv: 16, lang: 'zh' },
+  cultivation: { movie: 16, tv: 16, lang: 'zh', keyword: '377550|291991' },
+  aeni: { movie: 16, tv: 16, lang: 'ko' }
 };
 
 // Lightweight English plural-to-singular stemmer for theme/keyword fallback
@@ -2071,12 +2196,34 @@ function normalizeSearchQuery(rawQuery) {
   q = q.replace(/\bvideo\s+games?\b/g, 'video game');
   q = q.replace(/\b(?:rom[\s\-]?coms?|romantic\s+comed(?:y|ies))\b/g, 'rom-com');
   q = q.replace(/\bk[\s\-]?dramas?\b/g, 'k-drama');
+  q = q.replace(/\bchinese\s+animes?\b|\bdonghuas?\b/g, 'donghua');
+  q = q.replace(/\bkorean\s+animes?\b|\baenis?\b/g, 'aeni');
   q = q.replace(/\bkorean(?:\s+(?:dramas?|cinema))?\b/g, 'korean');
   q = q.replace(/\bbollywood(?:\s+cinema)?\b/g, 'bollywood');
   q = q.replace(/\b(?:film|neo)[\s\-]?noir\b|\bnoir\b/g, 'noir');
   q = q.replace(/\b(?:dark|black)\s+comed(?:y|ies)\b/g, 'dark comedy');
+  q = q.replace(/\bdark\s+fantas(?:y|ies)\b/g, 'dark fantasy');
   q = q.replace(/\bpsychological\s+thrillers?\b/g, 'psychological thriller');
   q = q.replace(/\btrue\s+crime\b/g, 'true crime');
+  q = q.replace(/\bmahou\s+shou?jo\b|\bmagical\s+girls?\b/g, 'magical girl');
+  q = q.replace(/\bslice[\s\-]+of[\s\-]+life\b/g, 'slice of life');
+  q = q.replace(/\b(?:boys?'?\s+love|boy's\s+love|shou?nen[\s\-]+ai|yaoi)\b/g, 'boys love');
+  q = q.replace(/\bbl(?=\s+(?:animes?|series|tv\s*series|shows?|movies?|films?)\b)/g, 'boys love');
+  q = q.replace(/\b(?:girls?'?\s+love|girl's\s+love|shou?jo[\s\-]+ai|yuri)\b/g, 'girls love');
+  q = q.replace(/\bgl(?=\s+(?:animes?|series|tv\s*series|shows?|movies?|films?)\b)/g, 'girls love');
+  q = q.replace(/\breverse\s+isekais?\b|\bisekais?\b/g, 'isekai');
+  q = q.replace(/\breverse\s+harems?\b/g, 'reverse harem');
+  q = q.replace(/\bharems?\b/g, 'harem');
+  q = q.replace(/\bshou?nen\b/g, 'shonen');
+  q = q.replace(/\bshou?jo\b/g, 'shojo');
+  q = q.replace(/\bgiant\s+robots?\b|\bmechas?\b/g, 'mecha');
+  q = q.replace(/\byou?kais?\b/g, 'yokai');
+  q = q.replace(/\bdemons?\b/g, 'demon');
+  q = q.replace(/\bsamurais?\b/g, 'samurai');
+  q = q.replace(/\bninjas?\b|\bshinobis?\b/g, 'ninja');
+  q = q.replace(/\bidols?\b/g, 'idol');
+  q = q.replace(/\bschool\s+life\b/g, 'school life');
+  q = q.replace(/\bhigh\s+schools?\b/g, 'high school');
 
   // 2. Correct common typos, plurals, and phonetic variants
   q = q.replace(/\bzomm+bies?\b/g, 'zombie');
@@ -2125,10 +2272,116 @@ function normalizeSearchQuery(rawQuery) {
   return { raw, cleaned: cleaned || q };
 }
 
-// Detect whether user appended a media/genre trigger suffix ("movies", "films", "shows", "series", "tv series") onto a query
+// Detect whether user appended a media/genre trigger suffix ("movies", "films", "shows", "series", "tv series", "anime") onto a query
 function hasGenreTriggerSuffix(rawQuery) {
   const trimmed = (rawQuery || '').trim();
-  return /(?:\S+\s+(?:movies?|films?|tv\s*series|series|tv\s*shows?|shows?|cinema)|\bgameshows?)\s*$/i.test(trimmed);
+  return /(?:\S+\s+(?:movies?|films?|tv\s*series|series|tv\s*shows?|shows?|cinema|animes?|donghuas?)|\b(?:gameshows?|animes|donghuas?))\s*$/i.test(trimmed);
+}
+
+// Helper: discover Anime filtered by any genre, subgenre, compound genre, or thematic keyword
+async function resolveAnimeDiscover(subQuery, isMovie, tmdbPage = 1) {
+  const sub = (subQuery || '').trim();
+  const baseParams = {
+    with_genres: '16',
+    with_original_language: 'ja',
+    sort_by: 'popularity.desc',
+    include_adult: false,
+    page: tmdbPage
+  };
+
+  if (!sub) {
+    const res = await fetchTmdb(`/discover/${isMovie ? 'movie' : 'tv'}`, baseParams).catch(() => ({ results: [] }));
+    return res.results || [];
+  }
+
+  if (sub === 'donghua' || sub === 'chinese') {
+    const res = await fetchTmdb(`/discover/${isMovie ? 'movie' : 'tv'}`, { ...baseParams, with_original_language: 'zh' }).catch(() => ({ results: [] }));
+    return res.results || [];
+  }
+  if (sub === 'aeni' || sub === 'korean') {
+    const res = await fetchTmdb(`/discover/${isMovie ? 'movie' : 'tv'}`, { ...baseParams, with_original_language: 'ko' }).catch(() => ({ results: [] }));
+    return res.results || [];
+  }
+
+  const subSing = singularizeWord(sub);
+  const directEntry = SEARCH_GENRE_MAP[sub] || SEARCH_GENRE_MAP[subSing];
+  if (directEntry) {
+    const gId = isMovie ? directEntry.movie : directEntry.tv;
+    const eKw = isMovie ? (directEntry.movieKw || directEntry.keyword) : (directEntry.tvKw || directEntry.keyword);
+    const eLang = directEntry.lang === 'zh' || directEntry.lang === 'ko' ? directEntry.lang : 'ja';
+    const genreSet = new Set(['16']);
+    // Combine extra genre ID unless it's TV Drama (18) used only as a wrapper for a TV keyword like Romance (9840)
+    if (gId) {
+      for (const idPart of String(gId).split(',')) {
+        if (idPart && idPart !== '16' && !(!isMovie && idPart === '18' && eKw)) {
+          genreSet.add(idPart);
+        }
+      }
+    }
+    const params = {
+      ...baseParams,
+      with_genres: Array.from(genreSet).join(','),
+      with_original_language: eLang
+    };
+    if (eKw) params.with_keywords = eKw;
+    const res = await fetchTmdb(`/discover/${isMovie ? 'movie' : 'tv'}`, params).catch(() => ({ results: [] }));
+    if (res.results?.length > 0) return res.results;
+  }
+
+  // Compound Anime Multi-Genre (e.g. "action and romance anime", "horror comedy anime")
+  const hasAnd = sub.includes(' and ');
+  const tokens = !hasAnd ? sub.split(/\s+/).filter(Boolean) : [];
+  const isTwo = tokens.length === 2 && tokens.every(t => SEARCH_GENRE_MAP[t] || SEARCH_GENRE_MAP[singularizeWord(t)]);
+  if (hasAnd || isTwo) {
+    const parts = hasAnd ? sub.split(/\s+and\s+/).map(p => p.trim()).filter(Boolean) : tokens;
+    const genreSet = new Set(['16']);
+    const kwList = [];
+    for (const p of parts) {
+      const pSing = singularizeWord(p);
+      const entry = SEARCH_GENRE_MAP[p] || SEARCH_GENRE_MAP[pSing];
+      if (entry) {
+        const gId = isMovie ? entry.movie : entry.tv;
+        const eKw = isMovie ? (entry.movieKw || entry.keyword) : (entry.tvKw || entry.keyword);
+        if (eKw) kwList.push(String(eKw).split('|')[0]);
+        else if (gId) {
+          for (const idPart of String(gId).split(',')) {
+            if (idPart && idPart !== '16') genreSet.add(idPart);
+          }
+        }
+      } else {
+        const kwLookup = await fetchTmdb('/search/keyword', { query: pSing }).catch(() => ({ results: [] }));
+        if (kwLookup.results?.length > 0) kwList.push(String(kwLookup.results[0].id));
+      }
+    }
+    const params = { ...baseParams, with_genres: Array.from(genreSet).join(',') };
+    if (kwList.length > 0) params.with_keywords = [...new Set(kwList)].join('|');
+    const res = await fetchTmdb(`/discover/${isMovie ? 'movie' : 'tv'}`, params).catch(() => ({ results: [] }));
+    if (res.results?.length > 0) return res.results;
+  }
+
+  // Arbitrary Theme + Anime via TMDb Keyword Lookup (e.g. "zombie anime", "vampire anime", "pirate anime", "cooking anime")
+  let kwRes = await fetchTmdb('/search/keyword', { query: sub }).catch(() => ({ results: [] }));
+  let keywordId = null;
+  if (kwRes.results?.length > 0) {
+    const exact = kwRes.results.find(k => k.name.toLowerCase() === sub || k.name.toLowerCase() === subSing);
+    keywordId = exact ? exact.id : null;
+  }
+  if (!keywordId && subSing !== sub) {
+    const singRes = await fetchTmdb('/search/keyword', { query: subSing }).catch(() => ({ results: [] }));
+    if (singRes.results?.length > 0) {
+      const exactSing = singRes.results.find(k => k.name.toLowerCase() === subSing);
+      keywordId = exactSing ? exactSing.id : singRes.results[0].id;
+    }
+  }
+  if (!keywordId && kwRes.results?.length > 0) {
+    keywordId = kwRes.results[0].id;
+  }
+  if (keywordId) {
+    const res = await fetchTmdb(`/discover/${isMovie ? 'movie' : 'tv'}`, { ...baseParams, with_keywords: keywordId }).catch(() => ({ results: [] }));
+    if (res.results?.length > 0) return res.results;
+  }
+
+  return [];
 }
 
 // Helper: fetch an actor/director's sorted filmography
@@ -2186,6 +2439,15 @@ async function handleSearch(type, query, skip = 0) {
   const topNorm = normTitle(topRaw?.title || topRaw?.name || '');
   if (topRaw && rawNorm && topNorm === rawNorm && (topRaw.vote_count || 0) >= 250) {
     return rawResults.map(m => formatMetaPreview(m, type));
+  }
+
+  // 1.5. Dedicated Anime Genre, Subgenre & Theme Discovery (e.g. "isekai anime", "romance anime series", "zombie anime", "horror anime movies")
+  if (/\banimes?\b/i.test(raw)) {
+    const subAnime = cleaned.replace(/\banimes?\b/g, '').replace(/\s+/g, ' ').trim();
+    const animeResults = await resolveAnimeDiscover(subAnime, isMovie, tmdbPage);
+    if (animeResults.length > 0) {
+      return animeResults.slice(0, 20).map(m => formatMetaPreview(m, type));
+    }
   }
 
   // 2. Curated Genre & Subgenre Recognition (e.g. "horror films", "comedy series", "dungeon movies", "game shows", "soap operas series")
@@ -2487,7 +2749,8 @@ async function handleGenreCatalog(type, genre, skip = 0, userConfig = DEFAULT_US
     'Max (HBO)': '1899|384',
     'Disney+': '337',
     'Amazon Prime': '9|119',
-    'Paramount+': '531'
+    'Paramount+': '531',
+    'Crunchyroll': '283'
   };
   if (providerMap[genre]) {
     const watchRegion = REGIONS[userConfig?.region] ? userConfig.region : 'GB';
@@ -2643,6 +2906,125 @@ async function handleGenreCatalog(type, genre, skip = 0, userConfig = DEFAULT_US
   };
   if (genreId) {
     params.with_genres = genreId;
+  }
+
+  const res = await fetchTmdb(`/discover/${isMovie ? 'movie' : 'tv'}`, params);
+  return (res.results || []).map(item => formatMetaPreview(item, type));
+}
+
+// Handle Dedicated Anime Series & Anime Movies Genre / Subgenre Filtering
+async function handleAnimeCatalog(type, genre = 'Popular Anime', skip = 0, userConfig = DEFAULT_USER_CONFIG) {
+  const isMovie = type === 'movie';
+  const tmdbPage = Math.floor(skip / 20) + 1;
+  const today = new Date().toISOString().slice(0, 10);
+  const baseParams = {
+    with_genres: '16',
+    with_original_language: 'ja',
+    sort_by: 'popularity.desc',
+    include_adult: false,
+    page: tmdbPage
+  };
+
+  if (genre === 'Airing Now' && !isMovie) {
+    const monthAgo = new Date(Date.now() - 45 * 86400000).toISOString().slice(0, 10);
+    const nextSixMonths = new Date(Date.now() + 180 * 86400000).toISOString().slice(0, 10);
+    const res = await fetchTmdb('/discover/tv', {
+      ...baseParams,
+      'air_date.gte': monthAgo,
+      'air_date.lte': nextSixMonths,
+      'first_air_date.lte': today
+    });
+    return (res.results || []).map(item => formatMetaPreview(item, 'series'));
+  }
+
+  if (genre === 'New & Upcoming Anime' && isMovie) {
+    const sixMonthsAgo = new Date(Date.now() - 180 * 86400000).toISOString().slice(0, 10);
+    const res = await fetchTmdb('/discover/movie', {
+      ...baseParams,
+      'primary_release_date.gte': sixMonthsAgo
+    });
+    return (res.results || []).map(item => formatMetaPreview(item, 'movie'));
+  }
+
+  if (genre === 'Top Rated Anime') {
+    const res = await fetchTmdb(`/discover/${isMovie ? 'movie' : 'tv'}`, {
+      ...baseParams,
+      'vote_count.gte': 150,
+      sort_by: 'vote_average.desc'
+    });
+    return (res.results || []).map(item => formatMetaPreview(item, type));
+  }
+
+  if (genre === 'Studio Ghibli' && isMovie) {
+    const res = await fetchTmdb('/discover/movie', {
+      with_companies: '10342',
+      sort_by: 'popularity.desc',
+      page: tmdbPage
+    });
+    return (res.results || []).map(item => formatMetaPreview(item, 'movie'));
+  }
+
+  if (genre === 'Crunchyroll') {
+    const watchRegion = REGIONS[userConfig?.region] ? userConfig.region : 'GB';
+    let res = await fetchTmdb(`/discover/${isMovie ? 'movie' : 'tv'}`, {
+      with_genres: '16',
+      with_watch_providers: '283',
+      watch_region: watchRegion,
+      sort_by: 'popularity.desc',
+      page: tmdbPage
+    });
+    if ((!res.results || res.results.length === 0) && watchRegion !== 'US') {
+      res = await fetchTmdb(`/discover/${isMovie ? 'movie' : 'tv'}`, {
+        with_genres: '16',
+        with_watch_providers: '283',
+        watch_region: 'US',
+        sort_by: 'popularity.desc',
+        page: tmdbPage
+      });
+    }
+    return (res.results || []).map(item => formatMetaPreview(item, type));
+  }
+
+  if (genre === 'Donghua (Chinese Anime)') {
+    const res = await fetchTmdb(`/discover/${isMovie ? 'movie' : 'tv'}`, {
+      ...baseParams,
+      with_original_language: 'zh'
+    });
+    return (res.results || []).map(item => formatMetaPreview(item, type));
+  }
+
+  const animeSubgenreFilters = {
+    'Shonen': { kw: '207826' },
+    'Seinen': { kw: '195668' },
+    'Shojo': { kw: '206437' },
+    'Josei': { kw: '229074' },
+    'Isekai & Reincarnation': { kw: '237451|291482|5484' },
+    'Action & Adventure': { genres: isMovie ? '16,28' : '16,10759' },
+    'Dark Fantasy': { kw: '177895|15001' },
+    'Fantasy & Magic': { genres: isMovie ? '16,14' : '16,10765' },
+    'Romance & Rom-Com': isMovie ? { genres: '16,10749' } : { kw: '9840|9799' },
+    'Comedy': { genres: '16,35' },
+    'Slice of Life': { kw: '9914|291483' },
+    'Mecha & Giant Robots': { kw: '10046|10891|207473|291181' },
+    'Sci-Fi & Cyberpunk': isMovie ? { genres: '16,878' } : { kw: '12190|4565|9882|10046' },
+    'Supernatural & Demons': { kw: '6152|15001|196509|308000' },
+    'Horror & Thriller': isMovie ? { genres: '16,27' } : { kw: '315058|12339|162846|12377|3133|12565' },
+    'Mystery & Psychological': { genres: '16,9648' },
+    'Sports': { kw: '6075|333328' },
+    'Music & Idol': { kw: '290799|287664|251523|283297|4344' },
+    'School Life': { kw: '190116|6270|317537' },
+    'Martial Arts & Samurai': { kw: '779|780|1462|10278' },
+    'Dungeon & RPG': { kw: '34137|278238|364081|385589|18360|211227' },
+    'Magical Girl': { kw: '292887|382274|358020' },
+    'Boys Love (BL)': { kw: '289844|384569|365317|353318' },
+    'Girls Love (GL / Yuri)': { kw: '280003|383699|214564|207469' }
+  };
+
+  const filterCfg = animeSubgenreFilters[genre];
+  const params = { ...baseParams };
+  if (filterCfg) {
+    if (filterCfg.genres) params.with_genres = filterCfg.genres;
+    if (filterCfg.kw) params.with_keywords = filterCfg.kw;
   }
 
   const res = await fetchTmdb(`/discover/${isMovie ? 'movie' : 'tv'}`, params);
@@ -3468,13 +3850,20 @@ export async function handleRequest(req, res) {
     incomingPath = incomingPath.slice('/api'.length) || '/';
   }
 
-  let rawPathname = decodeURIComponent(incomingPath);
+  let rawPathname = incomingPath;
+  try {
+    rawPathname = decodeURIComponent(incomingPath);
+  } catch (_) {
+    rawPathname = incomingPath;
+  }
 
   // Strip optional user config segment from path (Stremio standard: /:config?/...)
   let userConfig = DEFAULT_USER_CONFIG;
   let configSegment = '';
   let pathname = rawPathname;
+  let rawRoutePath = incomingPath;
 
+  const rawSegments = incomingPath.split('/').filter(Boolean);
   const segments = rawPathname.split('/').filter(Boolean);
   if (segments.length > 0) {
     const first = segments[0];
@@ -3482,6 +3871,7 @@ export async function handleRequest(req, res) {
       configSegment = first;
       userConfig = decodeUserConfig(configSegment);
       pathname = '/' + segments.slice(1).join('/');
+      rawRoutePath = '/' + rawSegments.slice(1).join('/');
     }
   }
 
@@ -3703,16 +4093,25 @@ export async function handleRequest(req, res) {
     }
 
     // 3. Catalog: /catalog/:type/:id/:extra?.json
-    const catalogMatch = pathname.match(/^\/catalog\/(movie|series|channel)\/([^\/]+)(?:\/(.+))?\.json$/);
+    const catalogMatch = rawRoutePath.match(/^\/catalog\/(movie|series|channel)\/([^\/]+)(?:\/(.+))?\.json$/);
     if (catalogMatch) {
       res.setHeader('Cache-Control', 'public, max-age=1800');
       STATS.catalogRequests++;
-      const [, type, catalogId, extraStr] = catalogMatch;
+      const [, type, rawCatalogId, extraRaw] = catalogMatch;
+      const catalogId = decodeURIComponent(rawCatalogId);
       let extra = {};
-      if (extraStr) {
-        const searchParams = new URLSearchParams(extraStr.replace(/\//g, '&'));
-        for (const [k, v] of searchParams.entries()) {
-          extra[k] = v;
+      if (extraRaw) {
+        const parts = extraRaw.split(/(?:\/|&)(?=(?:genre|search|skip|calendarVideosIds)=)/);
+        for (const part of parts) {
+          const eqIdx = part.indexOf('=');
+          if (eqIdx > 0) {
+            const k = decodeURIComponent(part.slice(0, eqIdx));
+            let v = part.slice(eqIdx + 1);
+            try {
+              v = decodeURIComponent(v);
+            } catch (_) {}
+            extra[k] = v;
+          }
         }
       }
 
@@ -3876,10 +4275,19 @@ export async function handleRequest(req, res) {
         return;
       }
 
-      // Handle Dedicated Streaming Hub Catalogs (Netflix, Apple TV+, Max, Disney+, Prime, Paramount+)
+      // Handle Dedicated Streaming Hub Catalogs (Netflix, Apple TV+, Max, Disney+, Prime, Paramount+, Crunchyroll)
       if (catalogId === 'streaming_hub_movies' || catalogId === 'streaming_hub_series') {
         const genre = extra.genre || 'Netflix';
         const metas = await handleGenreCatalog(type, genre, skip, userConfig);
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        res.end(JSON.stringify({ metas }));
+        return;
+      }
+
+      // Handle Dedicated Anime Series & Anime Movies Catalogs (with full Genre & Subgenre filtering)
+      if (catalogId === 'anime_series' || catalogId === 'anime_movies') {
+        const genre = extra.genre || 'Popular Anime';
+        const metas = await handleAnimeCatalog(type, genre, skip, userConfig);
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
         res.end(JSON.stringify({ metas }));
         return;
