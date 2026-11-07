@@ -15,7 +15,7 @@ const TMDB_API_KEY = process.env.TMDB_API_KEY || '3157bd6dacbc3a653ae2e5a3b19beb
 const PORT = process.env.PORT || 7000;
 const HOST = process.env.HOST || (process.env.PORT ? '0.0.0.0' : '127.0.0.1');
 
-const ADDON_VERSION = '1.12.5';
+const ADDON_VERSION = '1.12.6';
 
 // Load server-wide DEFAULTS (read-only). Per-user settings live in the install URL, never on the server.
 function loadConfig() {
@@ -733,7 +733,6 @@ const REGIONAL_CHANNELS = {
       background: 'https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?w=1280&q=80',
       genres: ['Movies & Drama', 'Bollywood & Music', 'Live TV'],
       streamUrl: 'https://cdn-uw2-prod.tsv2.amagi.tv/linear/amg00864-shemarooenterta-shemabollywood-ono/playlist.m3u8',
-      backupUrl: 'https://mumt03.tangotv.in/Dsly5z3HGOLDMINESBOLLYWOOD/index.m3u8',
       summary: '24/7 1080p Bollywood cinema showcase featuring iconic Hindi blockbusters, golden classics, comedies, and superstars.',
       network: 'Shemaroo Entertainment',
       guideSchedule: [
@@ -3639,15 +3638,18 @@ async function fetchTmdbSeasonVideos(tmdbId, seasonNumber, imdbId) {
     if (!sData?.episodes) return [];
     return sData.episodes.map(ep => {
       const airDate = ep.air_date ? new Date(ep.air_date).toISOString() : null;
+      const title = ep.name || `Episode ${ep.episode_number}`;
       return {
         id: imdbId ? `${imdbId}:${ep.season_number}:${ep.episode_number}` : `tmdb:${tmdbId}:${ep.season_number}:${ep.episode_number}`,
-        name: ep.name || `Episode ${ep.episode_number}`,
+        name: title,
+        title: title,
         season: ep.season_number,
         number: ep.episode_number,
         episode: ep.episode_number,
         firstAired: airDate,
         released: airDate,
         overview: ep.overview || '',
+        description: ep.overview || '',
         thumbnail: ep.still_path ? `https://image.tmdb.org/t/p/w500${ep.still_path}` : null
       };
     });
@@ -3854,12 +3856,14 @@ async function handleMeta(type, id) {
       trailers: (data.videos?.results || [])
         .filter(v => v.site === 'YouTube' && v.type === 'Trailer')
         .map(v => ({ source: v.key, type: 'Trailer' })),
-      videos: (data.release_date && new Date(data.release_date) > new Date()) ? [
+      videos: data.release_date ? [
         {
           id: `${imdbId || `tmdb:${tmdbId}`}`,
-          title: `${data.title} — Theatrical Premiere`,
+          title: `${data.title} (${(data.release_date || '').slice(0, 4)})`,
+          name: `${data.title} (${(data.release_date || '').slice(0, 4)})`,
           released: new Date(data.release_date).toISOString(),
-          thumbnail: data.backdrop_path ? `https://image.tmdb.org/t/p/w780${data.backdrop_path}` : undefined,
+          firstAired: new Date(data.release_date).toISOString(),
+          thumbnail: data.backdrop_path ? `https://image.tmdb.org/t/p/w780${data.backdrop_path}` : (data.poster_path ? `https://image.tmdb.org/t/p/w500${data.poster_path}` : undefined),
           episode: 1,
           number: 1,
           season: 1
@@ -3913,6 +3917,22 @@ async function handleMeta(type, id) {
       }
     }
 
+    const normalizedVideos = (videos || []).map(v => {
+      const epNum = typeof v.episode === 'number' ? v.episode : (typeof v.number === 'number' ? v.number : (parseInt(v.episode || v.number, 10) || 1));
+      const sNum = typeof v.season === 'number' ? v.season : (parseInt(v.season, 10) || 1);
+      const title = v.title || v.name || `Episode ${epNum}`;
+      return {
+        ...v,
+        name: title,
+        title: title,
+        season: sNum,
+        episode: epNum,
+        number: epNum,
+        released: v.released || v.firstAired || null,
+        firstAired: v.firstAired || v.released || null
+      };
+    });
+
     const imdbScore = cinData?.meta?.imdbRating || null;
     const tmdbScore = data.vote_average ? data.vote_average.toFixed(1) : null;
     const tmdbPercent = data.vote_average ? Math.round(data.vote_average * 10) : null;
@@ -3939,7 +3959,7 @@ async function handleMeta(type, id) {
       releaseInfo: (data.first_air_date || '').slice(0, 4),
       imdbRating: imdbScore || undefined,
       cast: (data.credits?.cast || []).slice(0, 10).map(c => c.name),
-      videos: videos,
+      videos: normalizedVideos,
       trailers: (data.videos?.results || [])
         .filter(v => v.site === 'YouTube' && v.type === 'Trailer')
         .map(v => ({ source: v.key, type: 'Trailer' })),
@@ -4813,23 +4833,22 @@ export async function handleRequest(req, res) {
       if (catalogId === 'calendar-videos' || catalogId === 'calendar-movies') {
         const idsStr = extra.calendarVideosIds || '';
         const ids = idsStr.split(',').map(s => s.trim()).filter(Boolean);
-        const metasDetailed = [];
 
-        for (const rawId of ids) {
+        const results = await Promise.all(ids.map(async (rawId) => {
           try {
             let tmdbId = null;
-            let itemType = type || 'series';
+            let itemType = type || (catalogId === 'calendar-movies' ? 'movie' : 'series');
 
             if (rawId.startsWith('tmdb:')) {
               tmdbId = rawId.slice(5);
             } else if (rawId.startsWith('tt')) {
               const findRes = await fetchTmdb(`/find/${rawId}`, { external_source: 'imdb_id' });
-              if (itemType === 'movie' && findRes.movie_results?.length > 0) {
+              if (itemType === 'movie' && findRes?.movie_results?.length > 0) {
                 tmdbId = findRes.movie_results[0].id;
-              } else if (findRes.tv_results?.length > 0) {
+              } else if (findRes?.tv_results?.length > 0) {
                 tmdbId = findRes.tv_results[0].id;
                 itemType = 'series';
-              } else if (findRes.movie_results?.length > 0) {
+              } else if (findRes?.movie_results?.length > 0) {
                 tmdbId = findRes.movie_results[0].id;
                 itemType = 'movie';
               }
@@ -4840,19 +4859,21 @@ export async function handleRequest(req, res) {
             if (tmdbId) {
               const meta = await handleMeta(itemType, `tmdb:${tmdbId}`);
               if (meta) {
-                metasDetailed.push({
+                return {
                   ...meta,
                   id: rawId
-                });
+                };
               }
             }
           } catch (e) {
             console.error(`Error loading calendar meta for ${rawId}:`, e.message);
           }
-        }
+          return null;
+        }));
 
+        const metasDetailed = results.filter(Boolean);
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
-        res.end(JSON.stringify({ metasDetailed }));
+        res.end(JSON.stringify({ metas: metasDetailed, metasDetailed }));
         return;
       }
 
