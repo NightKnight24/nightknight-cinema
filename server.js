@@ -15,7 +15,7 @@ const TMDB_API_KEY = process.env.TMDB_API_KEY || '3157bd6dacbc3a653ae2e5a3b19beb
 const PORT = process.env.PORT || 7000;
 const HOST = process.env.HOST || (process.env.PORT ? '0.0.0.0' : '127.0.0.1');
 
-const ADDON_VERSION = '1.12.1';
+const ADDON_VERSION = '1.12.2';
 
 // Load server-wide DEFAULTS (read-only). Per-user settings live in the install URL, never on the server.
 function loadConfig() {
@@ -1911,17 +1911,20 @@ const SEARCH_GENRE_MAP = {
   historical: { movie: 36, tv: 18 },
   horror: { movie: 27, tvKw: '315058|12339|162846|6152|12377|3133', tvBlendTitle: 'American Horror Story' },
   scary: { movie: 27, tvKw: '315058|12339|162846|6152|12377|3133', tvBlendTitle: 'American Horror Story' },
-  music: { movie: 10402, tv: 10402 },
-  musical: { movie: 10402, tv: 10402 },
+  music: { movie: 10402, tvKw: '283297|4344' },
+  musical: { movie: 10402, movieKw: '4344', tvKw: '4344' },
   mystery: { movie: 9648, tv: 9648, movieBlendTitle: 'Knives Out' },
-  romance: { movie: 10749, tv: 10749 },
-  romantic: { movie: 10749, tv: 10749 },
+  news: { movieKw: '917|195240', tv: 10763, tvLang: 'en' },
+  romance: { movie: 10749, tv: 18, tvKw: '9840' },
+  romantic: { movie: 10749, tv: 18, tvKw: '9840' },
+  'rom-com': { movie: '35,10749', tv: 35, tvKw: '9799|9840' },
   'sci-fi': { movie: 878, tv: 10765 },
   scifi: { movie: 878, tv: 10765 },
   'science fiction': { movie: 878, tv: 10765 },
   thriller: { movie: 53, tv: 9648 },
   suspense: { movie: 53, tv: 9648 },
   war: { movie: 10752, tv: 10768 },
+  politics: { movieKw: '6078', tv: 10768 },
   western: { movie: 37, tv: 37 },
   westerns: { movie: 37, tv: 37 },
   cyberpunk: { keyword: '12190' },
@@ -1932,8 +1935,19 @@ const SEARCH_GENRE_MAP = {
   'stand up comedy': { keyword: '9716' },
   'stand-up': { keyword: '9716' },
   'stand up': { keyword: '9716' },
-  'film-noir': { keyword: '9807' },
-  noir: { keyword: '9807' },
+  noir: { movieKw: '9807|207268', tvKw: '207268|9807' },
+  'k-drama': { lang: 'ko', tv: 18 },
+  korean: { lang: 'ko' },
+  bollywood: { lang: 'hi' },
+  hindi: { lang: 'hi' },
+  dystopia: { keyword: '4565|12190' },
+  'post-apocalyptic': { keyword: '4458|12332|359337' },
+  biography: { keyword: '5565|360939' },
+  'true crime': { movieKw: '33722|10714', tv: '99,80', tvKw: '33722|10714' },
+  'dark comedy': { movie: 35, tv: 35, keyword: '10123' },
+  'psychological thriller': { movie: 53, tv: 9648, keyword: '12565' },
+  sitcom: { movie: 35, tv: 35, tvKw: '193171', movieBlendTitle: 'Friends' },
+  sport: { keyword: '6075|333328' },
 
   // Curated deep thematic & TV genres (Dungeon, Game, Monsters, Soap Operas, Murder Mystery, Game Shows, etc.)
   dungeon: {
@@ -1993,14 +2007,34 @@ const SEARCH_GENRE_MAP = {
     tvBlendTitle: 'Wheel of Fortune'
   },
   'talk show': {
-    movieKw: '4326',
+    movieKw: '3741',
     tv: 10767,
     tvLang: 'en'
   },
   'reality show': {
-    movieKw: '250845',
+    movieKw: '250845|12100',
     tv: 10764,
     tvLang: 'en'
+  },
+  'cooking show': {
+    movieKw: '1918|227635|182282',
+    tv: 10764,
+    tvKw: '1918|227635|182282|240810',
+    tvLang: 'en'
+  },
+  'dating show': {
+    movie: '35,10749',
+    tv: 10764,
+    tvKw: '215119|9840',
+    tvLang: 'en',
+    tvBlendTitle: 'Love Island'
+  },
+  'talent show': {
+    movieKw: '250845|4344',
+    tv: 10764,
+    tvKw: '250845|283297',
+    tvLang: 'en',
+    tvBlendTitle: 'Got Talent'
   }
 };
 
@@ -2025,6 +2059,9 @@ function normalizeSearchQuery(rawQuery) {
   q = q.replace(/\b(?:game|quiz|trivia)\s+shows?\b/g, 'game show');
   q = q.replace(/\bgameshows?\b/g, 'game show');
   q = q.replace(/\btalk\s+shows?\b/g, 'talk show');
+  q = q.replace(/\b(?:cooking|baking)\s+shows?\b/g, 'cooking show');
+  q = q.replace(/\bdating\s+shows?\b/g, 'dating show');
+  q = q.replace(/\btalent\s+shows?\b/g, 'talent show');
   q = q.replace(/\breality(?:\s+tv)?(?:\s+(?:shows?|series))?\b/g, 'reality show');
   q = q.replace(/\bsoap(?:\s+operas?)?\b|\bsoaps\b/g, 'soap opera');
   q = q.replace(/\bmurder\s+(?:and\s+)?myster(?:y|ies)\b/g, 'murder mystery');
@@ -2032,6 +2069,14 @@ function normalizeSearchQuery(rawQuery) {
   q = q.replace(/\bdungeons?(?:\s+and\s+dragons?)?\b/g, 'dungeon');
   q = q.replace(/\bd\s+and\s+d\b/g, 'dungeon');
   q = q.replace(/\bvideo\s+games?\b/g, 'video game');
+  q = q.replace(/\b(?:rom[\s\-]?coms?|romantic\s+comed(?:y|ies))\b/g, 'rom-com');
+  q = q.replace(/\bk[\s\-]?dramas?\b/g, 'k-drama');
+  q = q.replace(/\bkorean(?:\s+(?:dramas?|cinema))?\b/g, 'korean');
+  q = q.replace(/\bbollywood(?:\s+cinema)?\b/g, 'bollywood');
+  q = q.replace(/\b(?:film|neo)[\s\-]?noir\b|\bnoir\b/g, 'noir');
+  q = q.replace(/\b(?:dark|black)\s+comed(?:y|ies)\b/g, 'dark comedy');
+  q = q.replace(/\bpsychological\s+thrillers?\b/g, 'psychological thriller');
+  q = q.replace(/\btrue\s+crime\b/g, 'true crime');
 
   // 2. Correct common typos, plurals, and phonetic variants
   q = q.replace(/\bzomm+bies?\b/g, 'zombie');
@@ -2059,16 +2104,20 @@ function normalizeSearchQuery(rawQuery) {
   q = q.replace(/\bhistorical\b/g, 'history');
   q = q.replace(/\bscary\b/g, 'horror');
   q = q.replace(/\bsuspense\b/g, 'thriller');
+  q = q.replace(/\bdystopian\b/g, 'dystopia');
+  q = q.replace(/\b(?:biopics?|biograph(?:y|ies|ical))\b/g, 'biography');
+  q = q.replace(/\bsitcoms?\b/g, 'sitcom');
+  q = q.replace(/\bsports?\b/g, 'sport');
   q = q.replace(/\bstand[\s\-]?up(?:\s+comedy)?\b/g, 'stand-up');
-  q = q.replace(/\b(?:film[\s\-]?)?noir\b/g, 'film-noir');
   q = q.replace(/\baction\s+and\s+adventure\b/g, 'action adventure');
-  q = q.replace(/\bpost[\s\-]apocalyp(?:se|tic)\b/g, 'post-apocalyptic');
+  q = q.replace(/\bwar\s+and\s+politics\b/g, 'war');
+  q = q.replace(/\b(?:post[\s\-]?)?apocalyp(?:se|tic)\b/g, 'post-apocalyptic');
   q = q.replace(/\btime[\s\-]travel\b/g, 'time travel');
 
   // 3. Strip format / media-type fillers while preserving protected "<type> show" phrases
   let cleaned = q
     .replace(/\b(?:films?|movies?|tv\s*series|series|tv\s*shows?|cinema|seasons?)\b/gi, '')
-    .replace(/(?<!\bgame\s)(?<!\btalk\s)(?<!\breality\s)\bshows?\b/gi, '')
+    .replace(/(?<!\bgame\s)(?<!\btalk\s)(?<!\breality\s)(?<!\bcooking\s)(?<!\bdating\s)(?<!\btalent\s)\bshows?\b/gi, '')
     .replace(/\b(?:best|top|good|popular|new|latest|watch)\b/gi, '')
     .replace(/\s+/g, ' ')
     .trim();
@@ -2137,9 +2186,12 @@ async function handleSearch(type, query, skip = 0) {
     }
   }
 
-  // 2. Compound "X and Y" Multi-Genre / Multi-Theme Queries (e.g. "horror and comedy", "zombies and aliens")
-  if (cleaned.includes(' and ')) {
-    const parts = cleaned.split(/\s+and\s+/).map(p => p.trim()).filter(Boolean);
+  // 2. Compound Multi-Genre / Multi-Theme Queries (both "X and Y" AND space-separated two-genre queries like "action comedy", "sci-fi horror")
+  const hasExplicitAnd = cleaned.includes(' and ');
+  const spaceTokens = !hasExplicitAnd ? cleaned.split(/\s+/).filter(Boolean) : [];
+  const isTwoKnownGenres = spaceTokens.length === 2 && spaceTokens.every(t => SEARCH_GENRE_MAP[t] || SEARCH_GENRE_MAP[singularizeWord(t)]);
+  if (hasExplicitAnd || isTwoKnownGenres) {
+    const parts = hasExplicitAnd ? cleaned.split(/\s+and\s+/).map(p => p.trim()).filter(Boolean) : spaceTokens;
     if (parts.length === 2) {
       const genreIds = [];
       const kwIds = [];
@@ -2161,8 +2213,8 @@ async function handleSearch(type, query, skip = 0) {
       }
       if (genreIds.length + kwIds.length >= 2) {
         const compoundParams = { sort_by: 'popularity.desc', include_adult: false, page: tmdbPage };
-        if (genreIds.length > 0) compoundParams.with_genres = genreIds.join(',');
-        if (kwIds.length > 0) compoundParams.with_keywords = kwIds.join('|');
+        if (genreIds.length > 0) compoundParams.with_genres = [...new Set(genreIds)].join(',');
+        if (kwIds.length > 0) compoundParams.with_keywords = [...new Set(kwIds)].join('|');
         const compoundRes = await fetchTmdb(`/discover/${isMovie ? 'movie' : 'tv'}`, compoundParams).catch(() => ({ results: [] }));
         if (compoundRes.results?.length > 0) {
           return compoundRes.results.map(m => formatMetaPreview(m, type));
