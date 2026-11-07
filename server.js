@@ -15,7 +15,7 @@ const TMDB_API_KEY = process.env.TMDB_API_KEY || '3157bd6dacbc3a653ae2e5a3b19beb
 const PORT = process.env.PORT || 7000;
 const HOST = process.env.HOST || (process.env.PORT ? '0.0.0.0' : '127.0.0.1');
 
-const ADDON_VERSION = '1.12.4';
+const ADDON_VERSION = '1.12.5';
 
 // Load server-wide DEFAULTS (read-only). Per-user settings live in the install URL, never on the server.
 function loadConfig() {
@@ -1388,6 +1388,141 @@ const TV_GENRES = {
   'Western': 37
 };
 
+const SORTABLE_MOVIE_GENRES = [
+  'All Genres',
+  'Action',
+  'Adventure',
+  'Animation',
+  'Anime',
+  'Isekai Anime',
+  'Shonen Anime',
+  'Mecha Anime',
+  'Slice of Life Anime',
+  'Comedy',
+  'Crime',
+  'Cyberpunk',
+  'Dark Fantasy',
+  'Documentary',
+  'Drama',
+  'Dungeon & RPG',
+  'Family',
+  'Fantasy',
+  'Film-Noir',
+  'History',
+  'Horror',
+  'Korean Cinema',
+  'Martial Arts',
+  'Monsters',
+  'Murder Mystery',
+  'Music',
+  'Mystery',
+  'Romance',
+  'Rom-Com',
+  'Science Fiction',
+  'Sports',
+  'Stand-Up Comedy',
+  'Superhero',
+  'Thriller',
+  'True Crime',
+  'War',
+  'Western'
+];
+
+const SORTABLE_SERIES_GENRES = [
+  'All Genres',
+  'Action & Adventure',
+  'Animation',
+  'Anime',
+  'Isekai Anime',
+  'Shonen Anime',
+  'Mecha Anime',
+  'Slice of Life Anime',
+  'Comedy',
+  'Crime',
+  'Cyberpunk',
+  'Dark Fantasy',
+  'Documentary',
+  'Drama',
+  'Dungeon & RPG',
+  'Family',
+  'Fantasy',
+  'Game Shows',
+  'Horror',
+  'K-Drama',
+  'Kids',
+  'Martial Arts',
+  'Monsters',
+  'Murder Mystery',
+  'Music',
+  'Mystery',
+  'Reality-TV',
+  'Romance',
+  'Rom-Com',
+  'Science Fiction',
+  'Soap Operas',
+  'Sports',
+  'Stand-Up Comedy',
+  'Superhero',
+  'Thriller',
+  'True Crime',
+  'War & Politics',
+  'Western'
+];
+
+const DECADE_MOVIE_GENRES = ['All Genres (Most Iconic)', 'All Genres (Top Rated)', ...SORTABLE_MOVIE_GENRES.slice(1)];
+const DECADE_SERIES_GENRES = ['All Genres (Most Iconic)', 'All Genres (Top Rated)', ...SORTABLE_SERIES_GENRES.slice(1)];
+
+const DECADE_MOVIE_OVERVIEW_OPTIONS = [
+  '2020s — Most Popular',
+  '2020s — Top Rated',
+  '2020s — Newest Releases',
+  '2010s — All-Time Hits',
+  '2010s — Top Rated',
+  '2000s — All-Time Hits',
+  '2000s — Top Rated',
+  '1990s — All-Time Hits',
+  '1990s — Top Rated',
+  '1980s — All-Time Hits',
+  '1980s — Top Rated',
+  '1970s — All-Time Hits',
+  '1970s — Top Rated',
+  '1960s — All-Time Hits',
+  '1960s — Top Rated',
+  '1950s & Earlier Classics'
+];
+
+const DECADE_SERIES_OVERVIEW_OPTIONS = [
+  '2020s — Most Popular',
+  '2020s — Top Rated',
+  '2020s — Newest Releases',
+  '2010s — All-Time Hits',
+  '2010s — Top Rated',
+  '2000s — All-Time Hits',
+  '2000s — Top Rated',
+  '1990s — All-Time Hits',
+  '1990s — Top Rated',
+  '1980s — All-Time Hits',
+  '1980s — Top Rated',
+  '1970s — All-Time Hits',
+  '1960s & Earlier Classic TV'
+];
+
+const DECADE_CATALOG_RANGES = {
+  decade_2020s_movies: { gte: '2020-01-01', lte: '2029-12-31' },
+  decade_2010s_movies: { gte: '2010-01-01', lte: '2019-12-31' },
+  decade_2000s_movies: { gte: '2000-01-01', lte: '2009-12-31' },
+  decade_1990s_movies: { gte: '1990-01-01', lte: '1999-12-31' },
+  decade_1980s_movies: { gte: '1980-01-01', lte: '1989-12-31' },
+  decade_1970s_movies: { gte: '1970-01-01', lte: '1979-12-31' },
+  decade_classics_movies: { gte: '1920-01-01', lte: '1969-12-31' },
+  decade_2020s_series: { gte: '2020-01-01', lte: '2029-12-31' },
+  decade_2010s_series: { gte: '2010-01-01', lte: '2019-12-31' },
+  decade_2000s_series: { gte: '2000-01-01', lte: '2009-12-31' },
+  decade_1990s_series: { gte: '1990-01-01', lte: '1999-12-31' },
+  decade_1980s_series: { gte: '1980-01-01', lte: '1989-12-31' },
+  decade_classics_series: { gte: '1950-01-01', lte: '1979-12-31' }
+};
+
 function getManifest(baseUrl, userConfig = DEFAULT_USER_CONFIG, rootUrl = baseUrl) {
   const regionCode = (userConfig && userConfig.region) || 'GB';
   const regionName = REGIONS[regionCode] || 'United Kingdom';
@@ -1656,6 +1791,198 @@ function getManifest(baseUrl, userConfig = DEFAULT_USER_CONFIG, rootUrl = baseUr
             options: ['Netflix', 'Apple TV+', 'Max (HBO)', 'Disney+', 'Amazon Prime', 'Paramount+', 'Crunchyroll'],
             isRequired: false
           },
+          { name: 'skip', isRequired: false }
+        ]
+      },
+      // Sort-by-Genre Discover Catalogs (isRequired: true keeps Home Board clean while surfacing in Discover dropdown)
+      {
+        type: 'movie',
+        id: 'top_rated_movies',
+        name: 'Top Rated Movies (By Genre)',
+        pageSize: 20,
+        extra: [
+          { name: 'genre', options: SORTABLE_MOVIE_GENRES, isRequired: true },
+          { name: 'skip', isRequired: false }
+        ]
+      },
+      {
+        type: 'movie',
+        id: 'newest_movies',
+        name: 'Newest Movies (By Genre)',
+        pageSize: 20,
+        extra: [
+          { name: 'genre', options: SORTABLE_MOVIE_GENRES, isRequired: true },
+          { name: 'skip', isRequired: false }
+        ]
+      },
+      {
+        type: 'series',
+        id: 'top_rated_series',
+        name: 'Top Rated Series (By Genre)',
+        pageSize: 20,
+        extra: [
+          { name: 'genre', options: SORTABLE_SERIES_GENRES, isRequired: true },
+          { name: 'skip', isRequired: false }
+        ]
+      },
+      {
+        type: 'series',
+        id: 'newest_series',
+        name: 'Newest Series (By Genre)',
+        pageSize: 20,
+        extra: [
+          { name: 'genre', options: SORTABLE_SERIES_GENRES, isRequired: true },
+          { name: 'skip', isRequired: false }
+        ]
+      },
+      // Decade Overview & Decade-by-Genre Discover Catalogs
+      {
+        type: 'movie',
+        id: 'decades_movies',
+        name: 'Decades Overview (Movies)',
+        pageSize: 20,
+        extra: [
+          { name: 'genre', options: DECADE_MOVIE_OVERVIEW_OPTIONS, isRequired: true },
+          { name: 'skip', isRequired: false }
+        ]
+      },
+      {
+        type: 'movie',
+        id: 'decade_2020s_movies',
+        name: '2020s Movies (By Genre)',
+        pageSize: 20,
+        extra: [
+          { name: 'genre', options: DECADE_MOVIE_GENRES, isRequired: true },
+          { name: 'skip', isRequired: false }
+        ]
+      },
+      {
+        type: 'movie',
+        id: 'decade_2010s_movies',
+        name: '2010s Movies (By Genre)',
+        pageSize: 20,
+        extra: [
+          { name: 'genre', options: DECADE_MOVIE_GENRES, isRequired: true },
+          { name: 'skip', isRequired: false }
+        ]
+      },
+      {
+        type: 'movie',
+        id: 'decade_2000s_movies',
+        name: '2000s Movies (By Genre)',
+        pageSize: 20,
+        extra: [
+          { name: 'genre', options: DECADE_MOVIE_GENRES, isRequired: true },
+          { name: 'skip', isRequired: false }
+        ]
+      },
+      {
+        type: 'movie',
+        id: 'decade_1990s_movies',
+        name: '1990s Movies (By Genre)',
+        pageSize: 20,
+        extra: [
+          { name: 'genre', options: DECADE_MOVIE_GENRES, isRequired: true },
+          { name: 'skip', isRequired: false }
+        ]
+      },
+      {
+        type: 'movie',
+        id: 'decade_1980s_movies',
+        name: '1980s Movies (By Genre)',
+        pageSize: 20,
+        extra: [
+          { name: 'genre', options: DECADE_MOVIE_GENRES, isRequired: true },
+          { name: 'skip', isRequired: false }
+        ]
+      },
+      {
+        type: 'movie',
+        id: 'decade_1970s_movies',
+        name: '1970s Movies (By Genre)',
+        pageSize: 20,
+        extra: [
+          { name: 'genre', options: DECADE_MOVIE_GENRES, isRequired: true },
+          { name: 'skip', isRequired: false }
+        ]
+      },
+      {
+        type: 'movie',
+        id: 'decade_classics_movies',
+        name: '50s & 60s Classics (By Genre)',
+        pageSize: 20,
+        extra: [
+          { name: 'genre', options: DECADE_MOVIE_GENRES, isRequired: true },
+          { name: 'skip', isRequired: false }
+        ]
+      },
+      {
+        type: 'series',
+        id: 'decades_series',
+        name: 'Decades Overview (Series)',
+        pageSize: 20,
+        extra: [
+          { name: 'genre', options: DECADE_SERIES_OVERVIEW_OPTIONS, isRequired: true },
+          { name: 'skip', isRequired: false }
+        ]
+      },
+      {
+        type: 'series',
+        id: 'decade_2020s_series',
+        name: '2020s Series (By Genre)',
+        pageSize: 20,
+        extra: [
+          { name: 'genre', options: DECADE_SERIES_GENRES, isRequired: true },
+          { name: 'skip', isRequired: false }
+        ]
+      },
+      {
+        type: 'series',
+        id: 'decade_2010s_series',
+        name: '2010s Series (By Genre)',
+        pageSize: 20,
+        extra: [
+          { name: 'genre', options: DECADE_SERIES_GENRES, isRequired: true },
+          { name: 'skip', isRequired: false }
+        ]
+      },
+      {
+        type: 'series',
+        id: 'decade_2000s_series',
+        name: '2000s Series (By Genre)',
+        pageSize: 20,
+        extra: [
+          { name: 'genre', options: DECADE_SERIES_GENRES, isRequired: true },
+          { name: 'skip', isRequired: false }
+        ]
+      },
+      {
+        type: 'series',
+        id: 'decade_1990s_series',
+        name: '1990s Series (By Genre)',
+        pageSize: 20,
+        extra: [
+          { name: 'genre', options: DECADE_SERIES_GENRES, isRequired: true },
+          { name: 'skip', isRequired: false }
+        ]
+      },
+      {
+        type: 'series',
+        id: 'decade_1980s_series',
+        name: '1980s Series (By Genre)',
+        pageSize: 20,
+        extra: [
+          { name: 'genre', options: DECADE_SERIES_GENRES, isRequired: true },
+          { name: 'skip', isRequired: false }
+        ]
+      },
+      {
+        type: 'series',
+        id: 'decade_classics_series',
+        name: '60s & 70s Classic TV (By Genre)',
+        pageSize: 20,
+        extra: [
+          { name: 'genre', options: DECADE_SERIES_GENRES, isRequired: true },
           { name: 'skip', isRequired: false }
         ]
       },
@@ -2261,15 +2588,103 @@ function normalizeSearchQuery(rawQuery) {
   q = q.replace(/\b(?:post[\s\-]?)?apocalyp(?:se|tic)\b/g, 'post-apocalyptic');
   q = q.replace(/\btime[\s\-]travel\b/g, 'time travel');
 
-  // 3. Strip format / media-type fillers while preserving protected "<type> show" phrases
+  // 3. Strip format / media-type fillers and sort/decade/year modifiers while preserving protected "<type> show" phrases
   let cleaned = q
     .replace(/\b(?:films?|movies?|tv\s*series|series|tv\s*shows?|cinema|seasons?)\b/gi, '')
     .replace(/(?<!\bgame\s)(?<!\btalk\s)(?<!\breality\s)(?<!\bcooking\s)(?<!\bdating\s)(?<!\btalent\s)\bshows?\b/gi, '')
-    .replace(/\b(?:best|top|good|popular|new|latest|watch)\b/gi, '')
+    .replace(/\b(?:top[\s\-]+rated|highest[\s\-]+rated|most[\s\-]+voted|most[\s\-]+popular|recently\s+released|all[\s\-]+time)\b/gi, '')
+    .replace(/\b(?:19[2-9]0|20[0-2]0)s\b/gi, '')
+    .replace(/\b(?:[2-9]0|00|10)s\b/gi, '')
+    .replace(/\b(?:19[2-9]\d|20[0-2]\d)\b/g, '')
+    .replace(/\btop\b(?!\s+gun\b)/gi, '')
+    .replace(/\b(?:best|good|popular|trending|newest|latest|new|recent|oldest|old|classics?|vintage|retro|iconic|acclaimed|watch)\b/gi, '')
     .replace(/\s+/g, ' ')
     .trim();
 
-  return { raw, cleaned: cleaned || q };
+  return { raw, cleaned };
+}
+
+// Extract natural-language sort mode ("newest", "top_rated", "oldest", "classic", "popular") & decade/year filters from search query
+function extractSearchModifiers(rawQuery) {
+  const q = (rawQuery || '').toLowerCase();
+  let sortMode = 'popular';
+  let isClassicEra = false;
+  let dateRange = null;
+
+  if (/\b(?:top[\s\-]+rated|highest[\s\-]+rated|best|acclaimed)\b/.test(q) || /\btop\b(?!\s+gun\b)/.test(q)) {
+    sortMode = 'top_rated';
+  } else if (/\b(?:newest|latest|new|recent|recently\s+released)\b/.test(q)) {
+    sortMode = 'newest';
+  } else if (/\boldest\b/.test(q)) {
+    sortMode = 'oldest';
+  } else if (/\b(?:classics?|old|vintage|retro|most[\s\-]+voted|iconic|all[\s\-]+time)\b/.test(q)) {
+    sortMode = 'classic';
+    if (/\b(?:classics?|old|vintage|retro)\b/.test(q)) isClassicEra = true;
+  }
+
+  const dec4 = q.match(/\b(19[2-9]0|20[0-2]0)s\b/);
+  const dec2 = !dec4 ? q.match(/\b([2-9]0|00|10)s\b/) : null;
+  const yr4 = (!dec4 && !dec2) ? q.match(/\b(19[2-9]\d|20[0-2]\d)\b/) : null;
+
+  if (dec4) {
+    const startYr = Number(dec4[1]);
+    dateRange = { gte: `${startYr}-01-01`, lte: `${startYr + 9}-12-31` };
+  } else if (dec2) {
+    const d = dec2[1];
+    const startYr = (d === '00' || d === '10' || d === '20') ? 2000 + Number(d) : 1900 + Number(d);
+    dateRange = { gte: `${startYr}-01-01`, lte: `${startYr + 9}-12-31` };
+  } else if (yr4) {
+    dateRange = { gte: `${yr4[1]}-01-01`, lte: `${yr4[1]}-12-31` };
+  }
+
+  const hasCustomModifiers = sortMode !== 'popular' || Boolean(dateRange) || isClassicEra;
+  return { sortMode, dateRange, isClassicEra, hasCustomModifiers };
+}
+
+// Apply sort order and release-date era bounds onto TMDb /discover params
+function applySortAndEraParams(baseParams, isMovie, modifiers = {}, isNiche = false) {
+  const params = { ...baseParams };
+  const { sortMode = 'popular', dateRange = null, isClassicEra = false } = modifiers;
+  const dateField = isMovie ? 'primary_release_date' : 'first_air_date';
+  const today = new Date().toISOString().slice(0, 10);
+
+  if (dateRange) {
+    params[`${dateField}.gte`] = dateRange.gte;
+    params[`${dateField}.lte`] = (sortMode === 'newest' && dateRange.lte > today) ? today : dateRange.lte;
+  } else if (isClassicEra) {
+    params[`${dateField}.lte`] = '2004-12-31';
+  }
+
+  if (sortMode === 'newest') {
+    params.sort_by = `${dateField}.desc`;
+    if (!params[`${dateField}.lte`] || params[`${dateField}.lte`] > today) {
+      params[`${dateField}.lte`] = today;
+    }
+    params['vote_count.gte'] = Math.max(Number(params['vote_count.gte'] || 0), isNiche ? 2 : 5);
+  } else if (sortMode === 'top_rated') {
+    params.sort_by = 'vote_average.desc';
+    params['vote_count.gte'] = Math.max(Number(params['vote_count.gte'] || 0), isNiche ? 40 : (isMovie ? 450 : 150));
+  } else if (sortMode === 'oldest') {
+    params.sort_by = `${dateField}.asc`;
+    params['vote_count.gte'] = Math.max(Number(params['vote_count.gte'] || 0), isNiche ? 15 : 50);
+  } else if (sortMode === 'classic') {
+    params.sort_by = 'vote_count.desc';
+  } else {
+    params.sort_by = (dateRange && dateRange.lte < '2020-01-01') ? 'vote_count.desc' : 'popularity.desc';
+  }
+
+  return params;
+}
+
+// Execute TMDb /discover with automatic vote_count floor relaxation if a niche era/subgenre returns 0 items
+async function fetchSortedDiscover(isMovie, params) {
+  let res = await fetchTmdb(`/discover/${isMovie ? 'movie' : 'tv'}`, params).catch(() => ({ results: [] }));
+  if ((!res.results || res.results.length === 0) && params['vote_count.gte']) {
+    const relaxed = { ...params };
+    delete relaxed['vote_count.gte'];
+    res = await fetchTmdb(`/discover/${isMovie ? 'movie' : 'tv'}`, relaxed).catch(() => ({ results: [] }));
+  }
+  return res;
 }
 
 // Detect whether user appended a media/genre trigger suffix ("movies", "films", "shows", "series", "tv series", "anime") onto a query
@@ -2278,28 +2693,27 @@ function hasGenreTriggerSuffix(rawQuery) {
   return /(?:\S+\s+(?:movies?|films?|tv\s*series|series|tv\s*shows?|shows?|cinema|animes?|donghuas?)|\b(?:gameshows?|animes|donghuas?))\s*$/i.test(trimmed);
 }
 
-// Helper: discover Anime filtered by any genre, subgenre, compound genre, or thematic keyword
-async function resolveAnimeDiscover(subQuery, isMovie, tmdbPage = 1) {
+// Helper: discover Anime filtered by any genre, subgenre, compound genre, or thematic keyword (with sort & decade support)
+async function resolveAnimeDiscover(subQuery, isMovie, tmdbPage = 1, modifiers = {}) {
   const sub = (subQuery || '').trim();
-  const baseParams = {
+  const baseParams = applySortAndEraParams({
     with_genres: '16',
     with_original_language: 'ja',
-    sort_by: 'popularity.desc',
     include_adult: false,
     page: tmdbPage
-  };
+  }, isMovie, modifiers, true);
 
   if (!sub) {
-    const res = await fetchTmdb(`/discover/${isMovie ? 'movie' : 'tv'}`, baseParams).catch(() => ({ results: [] }));
+    const res = await fetchSortedDiscover(isMovie, baseParams);
     return res.results || [];
   }
 
   if (sub === 'donghua' || sub === 'chinese') {
-    const res = await fetchTmdb(`/discover/${isMovie ? 'movie' : 'tv'}`, { ...baseParams, with_original_language: 'zh' }).catch(() => ({ results: [] }));
+    const res = await fetchSortedDiscover(isMovie, { ...baseParams, with_original_language: 'zh' });
     return res.results || [];
   }
   if (sub === 'aeni' || sub === 'korean') {
-    const res = await fetchTmdb(`/discover/${isMovie ? 'movie' : 'tv'}`, { ...baseParams, with_original_language: 'ko' }).catch(() => ({ results: [] }));
+    const res = await fetchSortedDiscover(isMovie, { ...baseParams, with_original_language: 'ko' });
     return res.results || [];
   }
 
@@ -2310,7 +2724,6 @@ async function resolveAnimeDiscover(subQuery, isMovie, tmdbPage = 1) {
     const eKw = isMovie ? (directEntry.movieKw || directEntry.keyword) : (directEntry.tvKw || directEntry.keyword);
     const eLang = directEntry.lang === 'zh' || directEntry.lang === 'ko' ? directEntry.lang : 'ja';
     const genreSet = new Set(['16']);
-    // Combine extra genre ID unless it's TV Drama (18) used only as a wrapper for a TV keyword like Romance (9840)
     if (gId) {
       for (const idPart of String(gId).split(',')) {
         if (idPart && idPart !== '16' && !(!isMovie && idPart === '18' && eKw)) {
@@ -2324,7 +2737,7 @@ async function resolveAnimeDiscover(subQuery, isMovie, tmdbPage = 1) {
       with_original_language: eLang
     };
     if (eKw) params.with_keywords = eKw;
-    const res = await fetchTmdb(`/discover/${isMovie ? 'movie' : 'tv'}`, params).catch(() => ({ results: [] }));
+    const res = await fetchSortedDiscover(isMovie, params);
     if (res.results?.length > 0) return res.results;
   }
 
@@ -2355,7 +2768,7 @@ async function resolveAnimeDiscover(subQuery, isMovie, tmdbPage = 1) {
     }
     const params = { ...baseParams, with_genres: Array.from(genreSet).join(',') };
     if (kwList.length > 0) params.with_keywords = [...new Set(kwList)].join('|');
-    const res = await fetchTmdb(`/discover/${isMovie ? 'movie' : 'tv'}`, params).catch(() => ({ results: [] }));
+    const res = await fetchSortedDiscover(isMovie, params);
     if (res.results?.length > 0) return res.results;
   }
 
@@ -2377,15 +2790,19 @@ async function resolveAnimeDiscover(subQuery, isMovie, tmdbPage = 1) {
     keywordId = kwRes.results[0].id;
   }
   if (keywordId) {
-    const res = await fetchTmdb(`/discover/${isMovie ? 'movie' : 'tv'}`, { ...baseParams, with_keywords: keywordId }).catch(() => ({ results: [] }));
+    const res = await fetchSortedDiscover(isMovie, { ...baseParams, with_keywords: keywordId });
     if (res.results?.length > 0) return res.results;
   }
 
   return [];
 }
 
-// Helper: fetch an actor/director's sorted filmography
-async function fetchPersonFilmography(personId, isMovie, skip = 0) {
+// Helper: fetch an actor/director's sorted filmography (with optional sort/decade modifiers)
+async function fetchPersonFilmography(personId, isMovie, skip = 0, modifiers = {}) {
+  const { sortMode = 'popular', dateRange = null, isClassicEra = false } = modifiers;
+  const today = new Date().toISOString().slice(0, 10);
+  let items = [];
+
   if (isMovie) {
     const creditsRes = await fetchTmdb(`/person/${personId}/movie_credits`).catch(() => ({}));
     const cast = creditsRes.cast || [];
@@ -2394,19 +2811,51 @@ async function fetchPersonFilmography(personId, isMovie, skip = 0) {
     for (const m of [...cast, ...crew]) {
       if (!movieMap.has(m.id)) movieMap.set(m.id, m);
     }
-    const sorted = Array.from(movieMap.values()).sort((a, b) => (b.vote_count || 0) - (a.vote_count || 0));
-    return sorted.slice(skip, skip + 20).map(m => formatMetaPreview(m, 'movie'));
+    items = Array.from(movieMap.values());
+  } else {
+    const creditsRes = await fetchTmdb(`/person/${personId}/tv_credits`).catch(() => ({}));
+    const cast = creditsRes.cast || [];
+    let filtered = cast.filter(s => !(s.genre_ids || []).includes(10767));
+    if (filtered.length === 0) filtered = cast;
+    const showMap = new Map();
+    for (const s of filtered) {
+      if (!showMap.has(s.id)) showMap.set(s.id, s);
+    }
+    items = Array.from(showMap.values());
   }
-  const creditsRes = await fetchTmdb(`/person/${personId}/tv_credits`).catch(() => ({}));
-  const cast = creditsRes.cast || [];
-  let filtered = cast.filter(s => !(s.genre_ids || []).includes(10767));
-  if (filtered.length === 0) filtered = cast;
-  const showMap = new Map();
-  for (const s of filtered) {
-    if (!showMap.has(s.id)) showMap.set(s.id, s);
+
+  if (dateRange) {
+    items = items.filter(i => {
+      const d = i.release_date || i.first_air_date || '';
+      return d >= dateRange.gte && d <= dateRange.lte;
+    });
+  } else if (isClassicEra) {
+    items = items.filter(i => {
+      const d = i.release_date || i.first_air_date || '';
+      return d && d <= '2004-12-31';
+    });
   }
-  const sorted = Array.from(showMap.values()).sort((a, b) => (b.vote_count || 0) - (a.vote_count || 0));
-  return sorted.slice(skip, skip + 20).map(s => formatMetaPreview(s, 'series'));
+
+  if (sortMode === 'newest') {
+    items = items
+      .filter(i => {
+        const d = i.release_date || i.first_air_date || '';
+        return d && d <= today;
+      })
+      .sort((a, b) => (b.release_date || b.first_air_date || '').localeCompare(a.release_date || a.first_air_date || ''));
+  } else if (sortMode === 'oldest') {
+    items = items
+      .filter(i => Boolean(i.release_date || i.first_air_date))
+      .sort((a, b) => (a.release_date || a.first_air_date || '').localeCompare(b.release_date || b.first_air_date || ''));
+  } else if (sortMode === 'top_rated') {
+    items = items
+      .filter(i => (i.vote_count || 0) >= 25)
+      .sort((a, b) => (b.vote_average || 0) - (a.vote_average || 0));
+  } else {
+    items.sort((a, b) => (b.vote_count || 0) - (a.vote_count || 0));
+  }
+
+  return items.slice(skip, skip + 20).map(m => formatMetaPreview(m, isMovie ? 'movie' : 'series'));
 }
 
 // Catalog Search: Normal Title/Actor search by default; Smart Genre/Theme Discovery when user appends movies/films/shows/tv series
@@ -2426,11 +2875,13 @@ async function handleSearch(type, query, skip = 0) {
     return (res.results || []).map(m => formatMetaPreview(m, type));
   }
 
-  // MODE B: Genre / Thematic Discovery triggered by ending with movies, films, shows, series, or tv series
+  // MODE B: Genre / Thematic Discovery triggered by ending with movies, films, shows, series, tv series, or anime
   const { raw, cleaned } = normalizeSearchQuery(rawQuery);
+  const modifiers = extractSearchModifiers(raw);
+  const { hasCustomModifiers } = modifiers;
   const singularCleaned = singularizeWord(cleaned);
 
-  // 1. Exact Real Title Guard FIRST (protects real titles ending in Movie/Film/Show/Series like "Scary Movie", "The Lego Movie", "The Truman Show", "Quiz Show")
+  // 1. Exact Real Title Guard FIRST (protects real titles ending in Movie/Film/Show/Series like "Scary Movie", "The Lego Movie", "The Truman Show", "That '70s Show")
   const rawTitleRes = await fetchTmdb(`/search/${isMovie ? 'movie' : 'tv'}`, { query: raw, page: tmdbPage, include_adult: false }).catch(() => ({ results: [] }));
   const rawResults = rawTitleRes.results || [];
   const topRaw = rawResults[0];
@@ -2441,17 +2892,26 @@ async function handleSearch(type, query, skip = 0) {
     return rawResults.map(m => formatMetaPreview(m, type));
   }
 
-  // 1.5. Dedicated Anime Genre, Subgenre & Theme Discovery (e.g. "isekai anime", "romance anime series", "zombie anime", "horror anime movies")
+  // 1.5. Dedicated Anime Genre, Subgenre & Theme Discovery (e.g. "isekai anime", "new isekai anime", "90s anime", "best horror anime movies")
   if (/\banimes?\b/i.test(raw)) {
     const subAnime = cleaned.replace(/\banimes?\b/g, '').replace(/\s+/g, ' ').trim();
-    const animeResults = await resolveAnimeDiscover(subAnime, isMovie, tmdbPage);
+    const animeResults = await resolveAnimeDiscover(subAnime, isMovie, tmdbPage, modifiers);
     if (animeResults.length > 0) {
       return animeResults.slice(0, 20).map(m => formatMetaPreview(m, type));
     }
   }
 
-  // 2. Curated Genre & Subgenre Recognition (e.g. "horror films", "comedy series", "dungeon movies", "game shows", "soap operas series")
-  const genreEntry = SEARCH_GENRE_MAP[cleaned] || SEARCH_GENRE_MAP[singularCleaned];
+  // 1.8. Pure Sort / Decade / Year Search with no specific genre (e.g. "80s movies", "new movies", "top rated tv series", "2025 films")
+  if (!cleaned && hasCustomModifiers) {
+    const pureParams = applySortAndEraParams({ include_adult: false, page: tmdbPage }, isMovie, modifiers, false);
+    const pureRes = await fetchSortedDiscover(isMovie, pureParams);
+    return (pureRes.results || []).map(m => formatMetaPreview(m, type));
+  }
+
+  const effectiveCleaned = cleaned || raw.toLowerCase();
+
+  // 2. Curated Genre & Subgenre Recognition (e.g. "horror films", "new horror movies", "80s comedy series", "best dungeon movies")
+  const genreEntry = SEARCH_GENRE_MAP[effectiveCleaned] || SEARCH_GENRE_MAP[singularCleaned];
   if (genreEntry) {
     const genreId = isMovie ? genreEntry.movie : genreEntry.tv;
     const kw = isMovie ? (genreEntry.movieKw || genreEntry.keyword) : (genreEntry.tvKw || genreEntry.keyword);
@@ -2461,8 +2921,7 @@ async function handleSearch(type, query, skip = 0) {
     const voteCountGte = isMovie ? genreEntry.movieVoteCountGte : genreEntry.tvVoteCountGte;
     const blendTitle = isMovie ? genreEntry.movieBlendTitle : genreEntry.tvBlendTitle;
 
-    const params = {
-      sort_by: 'popularity.desc',
+    let params = {
       include_adult: false,
       page: tmdbPage
     };
@@ -2472,6 +2931,15 @@ async function handleSearch(type, query, skip = 0) {
     if (withoutGenres) params.without_genres = withoutGenres;
     if (withoutKw) params.without_keywords = withoutKw;
     if (voteCountGte) params['vote_count.gte'] = voteCountGte;
+    params = applySortAndEraParams(params, isMovie, modifiers, Boolean(kw));
+
+    // When custom sort or decade filter is requested, preserve strict TMDb sort order without blending unsorted titles
+    if (hasCustomModifiers) {
+      const sortedRes = await fetchSortedDiscover(isMovie, params);
+      if (sortedRes.results?.length > 0) {
+        return sortedRes.results.slice(0, 20).map(m => formatMetaPreview(m, type));
+      }
+    }
 
     const [genreDiscover, blendRes] = await Promise.all([
       fetchTmdb(`/discover/${isMovie ? 'movie' : 'tv'}`, params).catch(() => ({ results: [] })),
@@ -2504,12 +2972,12 @@ async function handleSearch(type, query, skip = 0) {
     }
   }
 
-  // 3. Compound Multi-Genre / Multi-Theme Queries (e.g. "horror and comedy films", "action comedy movies", "sci-fi horror series")
-  const hasExplicitAnd = cleaned.includes(' and ');
-  const spaceTokens = !hasExplicitAnd ? cleaned.split(/\s+/).filter(Boolean) : [];
+  // 3. Compound Multi-Genre / Multi-Theme Queries (e.g. "horror and comedy films", "80s action comedy movies", "best sci-fi horror series")
+  const hasExplicitAnd = effectiveCleaned.includes(' and ');
+  const spaceTokens = !hasExplicitAnd ? effectiveCleaned.split(/\s+/).filter(Boolean) : [];
   const isTwoKnownGenres = spaceTokens.length === 2 && spaceTokens.every(t => SEARCH_GENRE_MAP[t] || SEARCH_GENRE_MAP[singularizeWord(t)]);
   if (hasExplicitAnd || isTwoKnownGenres) {
-    const parts = hasExplicitAnd ? cleaned.split(/\s+and\s+/).map(p => p.trim()).filter(Boolean) : spaceTokens;
+    const parts = hasExplicitAnd ? effectiveCleaned.split(/\s+and\s+/).map(p => p.trim()).filter(Boolean) : spaceTokens;
     if (parts.length === 2) {
       const genreIds = [];
       const kwIds = [];
@@ -2530,10 +2998,11 @@ async function handleSearch(type, query, skip = 0) {
         }
       }
       if (genreIds.length + kwIds.length >= 2) {
-        const compoundParams = { sort_by: 'popularity.desc', include_adult: false, page: tmdbPage };
+        let compoundParams = { include_adult: false, page: tmdbPage };
         if (genreIds.length > 0) compoundParams.with_genres = [...new Set(genreIds)].join(',');
         if (kwIds.length > 0) compoundParams.with_keywords = [...new Set(kwIds)].join('|');
-        const compoundRes = await fetchTmdb(`/discover/${isMovie ? 'movie' : 'tv'}`, compoundParams).catch(() => ({ results: [] }));
+        compoundParams = applySortAndEraParams(compoundParams, isMovie, modifiers, kwIds.length > 0);
+        const compoundRes = await fetchSortedDiscover(isMovie, compoundParams);
         if (compoundRes.results?.length > 0) {
           return compoundRes.results.map(m => formatMetaPreview(m, type));
         }
@@ -2541,20 +3010,22 @@ async function handleSearch(type, query, skip = 0) {
     }
   }
 
-  // 4. Actor / Director + Suffix (e.g. "Tom Cruise movies", "Christopher Nolan films")
-  const personRes = await fetchTmdb('/search/person', { query: cleaned, include_adult: false }).catch(() => null);
-  if (personRes?.results?.length > 0 && personRes.results[0].popularity > 2.0) {
-    return fetchPersonFilmography(personRes.results[0].id, isMovie, skip);
+  // 4. Actor / Director + Suffix (e.g. "Tom Cruise movies", "80s Tom Cruise movies", "newest Christopher Nolan films")
+  if (effectiveCleaned) {
+    const personRes = await fetchTmdb('/search/person', { query: effectiveCleaned, include_adult: false }).catch(() => null);
+    if (personRes?.results?.length > 0 && personRes.results[0].popularity > 2.0) {
+      return fetchPersonFilmography(personRes.results[0].id, isMovie, skip, modifiers);
+    }
   }
 
-  // 5. Thematic Keyword Discover (e.g. "zommbie films", "alien movies", "vampire series", "dragons movies")
-  let kwRes = await fetchTmdb('/search/keyword', { query: cleaned }).catch(() => ({ results: [] }));
+  // 5. Thematic Keyword Discover (e.g. "zommbie films", "new zombie movies", "80s alien movies", "best vampire series")
+  let kwRes = await fetchTmdb('/search/keyword', { query: effectiveCleaned }).catch(() => ({ results: [] }));
   let keywordId = null;
   if (kwRes.results && kwRes.results.length > 0) {
-    const exactKw = kwRes.results.find(k => k.name.toLowerCase() === cleaned || k.name.toLowerCase() === singularCleaned);
+    const exactKw = kwRes.results.find(k => k.name.toLowerCase() === effectiveCleaned || k.name.toLowerCase() === singularCleaned);
     keywordId = exactKw ? exactKw.id : null;
   }
-  if (!keywordId && singularCleaned !== cleaned) {
+  if (!keywordId && singularCleaned !== effectiveCleaned) {
     const singKwRes = await fetchTmdb('/search/keyword', { query: singularCleaned }).catch(() => ({ results: [] }));
     if (singKwRes.results && singKwRes.results.length > 0) {
       const exactSing = singKwRes.results.find(k => k.name.toLowerCase() === singularCleaned);
@@ -2565,9 +3036,17 @@ async function handleSearch(type, query, skip = 0) {
     keywordId = kwRes.results[0].id;
   }
 
+  if (hasCustomModifiers && keywordId) {
+    const kwParams = applySortAndEraParams({ with_keywords: keywordId, include_adult: false, page: tmdbPage }, isMovie, modifiers, true);
+    const sortedKwRes = await fetchSortedDiscover(isMovie, kwParams);
+    if (sortedKwRes.results?.length > 0) {
+      return sortedKwRes.results.slice(0, 20).map(m => formatMetaPreview(m, type));
+    }
+  }
+
   const [kwDiscover, cleanTitleRes] = await Promise.all([
     keywordId ? fetchTmdb(`/discover/${isMovie ? 'movie' : 'tv'}`, { with_keywords: keywordId, sort_by: 'popularity.desc', include_adult: false, page: tmdbPage }).catch(() => ({ results: [] })) : { results: [] },
-    fetchTmdb(`/search/${isMovie ? 'movie' : 'tv'}`, { query: cleaned, page: tmdbPage, include_adult: false }).catch(() => ({ results: [] }))
+    fetchTmdb(`/search/${isMovie ? 'movie' : 'tv'}`, { query: effectiveCleaned, page: tmdbPage, include_adult: false }).catch(() => ({ results: [] }))
   ]);
 
   const candidateMap = new Map();
@@ -2909,6 +3388,128 @@ async function handleGenreCatalog(type, genre, skip = 0, userConfig = DEFAULT_US
   }
 
   const res = await fetchTmdb(`/discover/${isMovie ? 'movie' : 'tv'}`, params);
+  return (res.results || []).map(item => formatMetaPreview(item, type));
+}
+
+// Map Discover dropdown genre labels to SEARCH_GENRE_MAP keys
+const SORTABLE_LABEL_TO_KEY = {
+  'Action': 'action',
+  'Adventure': 'adventure',
+  'Action & Adventure': 'action adventure',
+  'Animation': 'animation',
+  'Anime': 'anime',
+  'Isekai Anime': 'isekai',
+  'Shonen Anime': 'shonen',
+  'Mecha Anime': 'mecha',
+  'Slice of Life Anime': 'slice of life',
+  'Comedy': 'comedy',
+  'Crime': 'crime',
+  'Cyberpunk': 'cyberpunk',
+  'Dark Fantasy': 'dark fantasy',
+  'Documentary': 'documentary',
+  'Drama': 'drama',
+  'Dungeon & RPG': 'dungeon',
+  'Family': 'family',
+  'Fantasy': 'fantasy',
+  'Film-Noir': 'noir',
+  'Game Shows': 'game show',
+  'History': 'history',
+  'Horror': 'horror',
+  'Korean Cinema': 'korean',
+  'K-Drama': 'k-drama',
+  'Kids': 'kids',
+  'Martial Arts': 'martial arts',
+  'Monsters': 'monster',
+  'Murder Mystery': 'murder mystery',
+  'Music': 'music',
+  'Mystery': 'mystery',
+  'Reality-TV': 'reality show',
+  'Romance': 'romance',
+  'Rom-Com': 'rom-com',
+  'Science Fiction': 'sci-fi',
+  'Soap Operas': 'soap opera',
+  'Sports': 'sport',
+  'Stand-Up Comedy': 'stand-up',
+  'Superhero': 'superhero',
+  'Thriller': 'thriller',
+  'True Crime': 'true crime',
+  'War': 'war',
+  'War & Politics': 'war',
+  'Western': 'western'
+};
+
+// Handle Top Rated by Genre, Newest by Genre, Decades Overview, and Decade-by-Genre Discover Catalogs
+async function handleSortedOrDecadeCatalog(catalogId, type, selectedOption, skip = 0) {
+  const isMovie = type === 'movie';
+  const tmdbPage = Math.floor(skip / 20) + 1;
+
+  // 1. Decades Overview Catalogs ("2020s — Most Popular", "1990s — Top Rated", "1980s — All-Time Hits", etc.)
+  if (catalogId === 'decades_movies' || catalogId === 'decades_series') {
+    const opt = selectedOption || '2020s — Most Popular';
+    let dateRange = { gte: '2020-01-01', lte: '2029-12-31' };
+    if (opt.startsWith('2010s')) dateRange = { gte: '2010-01-01', lte: '2019-12-31' };
+    else if (opt.startsWith('2000s')) dateRange = { gte: '2000-01-01', lte: '2009-12-31' };
+    else if (opt.startsWith('1990s')) dateRange = { gte: '1990-01-01', lte: '1999-12-31' };
+    else if (opt.startsWith('1980s')) dateRange = { gte: '1980-01-01', lte: '1989-12-31' };
+    else if (opt.startsWith('1970s')) dateRange = { gte: '1970-01-01', lte: '1979-12-31' };
+    else if (opt.startsWith('1960s & Earlier')) dateRange = { gte: '1940-01-01', lte: '1969-12-31' };
+    else if (opt.startsWith('1960s')) dateRange = { gte: '1960-01-01', lte: '1969-12-31' };
+    else if (opt.startsWith('1950s')) dateRange = { gte: '1910-01-01', lte: '1959-12-31' };
+
+    let sortMode = 'classic';
+    if (opt.includes('Top Rated')) sortMode = 'top_rated';
+    else if (opt.includes('Newest')) sortMode = 'newest';
+    else if (opt.includes('Most Popular')) sortMode = 'popular';
+
+    const params = applySortAndEraParams({ include_adult: false, page: tmdbPage }, isMovie, { sortMode, dateRange }, false);
+    const res = await fetchSortedDiscover(isMovie, params);
+    return (res.results || []).map(item => formatMetaPreview(item, type));
+  }
+
+  // 2. Determine Sort Mode & Decade Range for Top Rated / Newest / Decade-by-Genre Catalogs
+  let sortMode = 'popular';
+  let dateRange = DECADE_CATALOG_RANGES[catalogId] || null;
+
+  if (catalogId.startsWith('top_rated_')) {
+    sortMode = 'top_rated';
+  } else if (catalogId.startsWith('newest_')) {
+    sortMode = 'newest';
+  } else if (dateRange) {
+    if (selectedOption === 'All Genres (Top Rated)') {
+      sortMode = 'top_rated';
+    } else if (catalogId.includes('2020s')) {
+      sortMode = selectedOption === 'All Genres (Most Iconic)' ? 'classic' : 'popular';
+    } else {
+      sortMode = 'classic';
+    }
+  }
+
+  const mapKey = SORTABLE_LABEL_TO_KEY[selectedOption];
+  const entry = mapKey ? SEARCH_GENRE_MAP[mapKey] : null;
+  let params = { include_adult: false, page: tmdbPage };
+  let isNiche = false;
+
+  if (entry) {
+    const genreId = isMovie ? entry.movie : entry.tv;
+    const kw = isMovie ? (entry.movieKw || entry.keyword) : (entry.tvKw || entry.keyword);
+    const lang = isMovie ? (entry.movieLang || entry.lang) : (entry.tvLang || entry.lang);
+    const withoutGenres = isMovie ? entry.movieWithoutGenres : entry.tvWithoutGenres;
+    const withoutKw = isMovie ? entry.movieWithoutKw : entry.tvWithoutKw;
+    if (genreId) params.with_genres = genreId;
+    if (kw) {
+      params.with_keywords = kw;
+      isNiche = true;
+    }
+    if (lang) {
+      params.with_original_language = lang;
+      if (lang !== 'en') isNiche = true;
+    }
+    if (withoutGenres) params.without_genres = withoutGenres;
+    if (withoutKw) params.without_keywords = withoutKw;
+  }
+
+  params = applySortAndEraParams(params, isMovie, { sortMode, dateRange }, isNiche);
+  const res = await fetchSortedDiscover(isMovie, params);
   return (res.results || []).map(item => formatMetaPreview(item, type));
 }
 
@@ -4288,6 +4889,19 @@ export async function handleRequest(req, res) {
       if (catalogId === 'anime_series' || catalogId === 'anime_movies') {
         const genre = extra.genre || 'Popular Anime';
         const metas = await handleAnimeCatalog(type, genre, skip, userConfig);
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        res.end(JSON.stringify({ metas }));
+        return;
+      }
+
+      // Handle Sort-by-Genre & Decade Sort Catalogs (Top Rated, Newest, Decades Overview, Decade-by-Genre)
+      if (
+        catalogId.startsWith('top_rated_') ||
+        catalogId.startsWith('newest_') ||
+        catalogId.startsWith('decades_') ||
+        DECADE_CATALOG_RANGES[catalogId]
+      ) {
+        const metas = await handleSortedOrDecadeCatalog(catalogId, type, extra.genre, skip);
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
         res.end(JSON.stringify({ metas }));
         return;
