@@ -15,7 +15,7 @@ const TMDB_API_KEY = process.env.TMDB_API_KEY || '3157bd6dacbc3a653ae2e5a3b19beb
 const PORT = process.env.PORT || 7000;
 const HOST = process.env.HOST || (process.env.PORT ? '0.0.0.0' : '127.0.0.1');
 
-const ADDON_VERSION = '1.11.0';
+const ADDON_VERSION = '1.12.0';
 
 // Load server-wide DEFAULTS (read-only). Per-user settings live in the install URL, never on the server.
 function loadConfig() {
@@ -852,7 +852,7 @@ const DRM_FREE_MOVIES = [
     imdbRating: '7.8',
     poster: 'https://images.metahub.space/poster/medium/tt0063350/img',
     background: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=1280&q=80',
-    synopsis: 'A ragtag group of Pennsylvanians barricade themselves in an old farmhouse to remain safe from a bloodthirsty horde of flesh-eating ghouls ravaging the East Coast. A genre-defining horror masterpiece.',
+    synopsis: 'A ragtag group of Pennsylvanians barricade themselves in an old farmhouse to remain safe from a bloodthirsty horde of flesh-eating zombie ghouls and living dead ravaging the East Coast. The legendary genre-defining zombie horror masterpiece.',
     streamUrl: 'https://dn801208.us.archive.org/0/items/Night.Of.The.Living.Dead_1080p/NightOfTheLivingDead.mp4',
     backupUrl: 'https://upload.wikimedia.org/wikipedia/commons/2/24/Night_of_the_Living_Dead_%281968%29.webm',
     sourceUrl: 'https://archive.org/details/Night.Of.The.Living.Dead_1080p'
@@ -1887,17 +1887,105 @@ async function fetchByoaStreams(type, tmdbId, title, region = 'GB') {
   }
 }
 
-// Handle Actor Filmography & Title Searches
+// Genre and thematic alias mapping for intelligent catalog search
+const SEARCH_GENRE_MAP = {
+  action: { movie: 28, tv: 10759 },
+  adventure: { movie: 12, tv: 10759 },
+  animation: { movie: 16, tv: 16 },
+  cartoons: { movie: 16, tv: 16 },
+  cartoon: { movie: 16, tv: 16 },
+  anime: { movie: 16, tv: 16, lang: 'ja', keyword: '210024' },
+  comedy: { movie: 35, tv: 35 },
+  comedies: { movie: 35, tv: 35 },
+  crime: { movie: 80, tv: 80 },
+  documentary: { movie: 99, tv: 99 },
+  documentaries: { movie: 99, tv: 99 },
+  doc: { movie: 99, tv: 99 },
+  docs: { movie: 99, tv: 99 },
+  drama: { movie: 18, tv: 18 },
+  family: { movie: 10751, tv: 10751 },
+  kids: { movie: 10751, tv: 10762 },
+  fantasy: { movie: 14, tv: 10765 },
+  history: { movie: 36, tv: 18 },
+  historical: { movie: 36, tv: 18 },
+  horror: { movie: 27, tv: null, keyword: '9882' },
+  scary: { movie: 27, tv: null, keyword: '9882' },
+  music: { movie: 10402, tv: 10402 },
+  musical: { movie: 10402, tv: 10402 },
+  mystery: { movie: 9648, tv: 9648 },
+  romance: { movie: 10749, tv: 10749 },
+  romantic: { movie: 10749, tv: 10749 },
+  'sci-fi': { movie: 878, tv: 10765 },
+  scifi: { movie: 878, tv: 10765 },
+  'science fiction': { movie: 878, tv: 10765 },
+  thriller: { movie: 53, tv: 9648 },
+  suspense: { movie: 53, tv: 9648 },
+  war: { movie: 10752, tv: 10768 },
+  western: { movie: 37, tv: 37 },
+  westerns: { movie: 37, tv: 37 },
+  cyberpunk: { keyword: '12190' },
+  'martial arts': { keyword: '779|780' },
+  superhero: { keyword: '9715|180547' },
+  superheroes: { keyword: '9715|180547' },
+  'stand-up comedy': { keyword: '9716' },
+  'stand up comedy': { keyword: '9716' },
+  'stand-up': { keyword: '9716' },
+  'stand up': { keyword: '9716' },
+  'film-noir': { keyword: '9807' },
+  noir: { keyword: '9807' }
+};
+
+// Normalize search queries: fix common typos and strip format fillers ("films", "movies", "series")
+function normalizeSearchQuery(rawQuery) {
+  const raw = (rawQuery || '').trim();
+  let q = raw.toLowerCase();
+
+  // 1. Correct common typos and phonetic variants
+  q = q.replace(/\bzomm+bies?\b/g, 'zombie');
+  q = q.replace(/\bzombies?\b/g, 'zombie');
+  q = q.replace(/\baliens?\b/g, 'alien');
+  q = q.replace(/\bvampires?\b/g, 'vampire');
+  q = q.replace(/\bsci[\s\-]?fi\b/g, 'sci-fi');
+  q = q.replace(/\bscience[\s\-]fiction\b/g, 'sci-fi');
+  q = q.replace(/\bsuper[\s\-]?heroes?\b/g, 'superhero');
+  q = q.replace(/\bcomedies\b/g, 'comedy');
+  q = q.replace(/\bcartoons?\b/g, 'animation');
+  q = q.replace(/\bdocu(mentaries)?\b/g, 'documentary');
+  q = q.replace(/\bwesterns?\b/g, 'western');
+  q = q.replace(/\bpost[\s\-]apocalyp(se|tic)\b/g, 'post-apocalyptic');
+  q = q.replace(/\btime[\s\-]travel\b/g, 'time travel');
+
+  // 2. Strip format / media-type fillers and search noise
+  let cleaned = q
+    .replace(/\b(films?|movies?|series|tv\s*series|tv\s*shows?|shows?|cinema|season|seasons)\b/gi, '')
+    .replace(/\b(best|top|good|popular|new|latest|watch)\b/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return { raw, cleaned: cleaned || q };
+}
+
+// Enhanced Smart Catalog Search (Actors, Specific Titles, Genres, Thematic Keywords)
 async function handleSearch(type, query, skip = 0) {
   const isMovie = type === 'movie';
-  
-  // 1. Search if query matches a Person (Actor, Director)
-  const personRes = await fetchTmdb('/search/person', { query, include_adult: false });
-  const person = personRes.results && personRes.results.length > 0 ? personRes.results[0] : null;
+  const tmdbPage = Math.floor(skip / 20) + 1;
+  const { raw, cleaned } = normalizeSearchQuery(query);
 
-  if (person && person.popularity > 2.0) {
+  // 1. Search if query matches a Person (Actor, Director)
+  let person = null;
+  const personRes = await fetchTmdb('/search/person', { query: cleaned, include_adult: false }).catch(() => null);
+  if (personRes?.results?.length > 0 && personRes.results[0].popularity > 2.0) {
+    person = personRes.results[0];
+  } else if (raw !== cleaned) {
+    const rawPersonRes = await fetchTmdb('/search/person', { query: raw, include_adult: false }).catch(() => null);
+    if (rawPersonRes?.results?.length > 0 && rawPersonRes.results[0].popularity > 2.0) {
+      person = rawPersonRes.results[0];
+    }
+  }
+
+  if (person) {
     if (isMovie) {
-      const creditsRes = await fetchTmdb(`/person/${person.id}/movie_credits`);
+      const creditsRes = await fetchTmdb(`/person/${person.id}/movie_credits`).catch(() => ({}));
       const cast = creditsRes.cast || [];
       const crew = (creditsRes.crew || []).filter(c => c.job === 'Director');
       
@@ -1914,7 +2002,7 @@ async function handleSearch(type, query, skip = 0) {
       const page = sorted.slice(skip, skip + 20);
       return page.map(m => formatMetaPreview(m, 'movie'));
     } else {
-      const creditsRes = await fetchTmdb(`/person/${person.id}/tv_credits`);
+      const creditsRes = await fetchTmdb(`/person/${person.id}/tv_credits`).catch(() => ({}));
       const cast = creditsRes.cast || [];
       
       let filtered = cast.filter(s => !(s.genre_ids || []).includes(10767));
@@ -1933,16 +2021,90 @@ async function handleSearch(type, query, skip = 0) {
     }
   }
 
-  // 2. Fallback to standard Movie/TV title search if no actor matched
-  if (isMovie) {
-    const tmdbPage = Math.floor(skip / 20) + 1;
-    const res = await fetchTmdb('/search/movie', { query, page: tmdbPage, include_adult: false });
-    return (res.results || []).map(m => formatMetaPreview(m, 'movie'));
-  } else {
-    const tmdbPage = Math.floor(skip / 20) + 1;
-    const res = await fetchTmdb('/search/tv', { query, page: tmdbPage, include_adult: false });
-    return (res.results || []).map(s => formatMetaPreview(s, 'series'));
+  // 2. Direct Title Search on raw query (e.g. "The Lego Movie", "Scary Movie")
+  const rawTitleRes = await fetchTmdb(`/search/${isMovie ? 'movie' : 'tv'}`, { query: raw, page: tmdbPage, include_adult: false }).catch(() => ({ results: [] }));
+  const rawResults = rawTitleRes.results || [];
+  const topRaw = rawResults[0];
+  const isHighConfidenceTitle = topRaw && (topRaw.vote_count > 100 || topRaw.popularity > 20) &&
+    (topRaw.title || topRaw.name || '').toLowerCase().replace(/[^a-z0-9]/g, '').includes(raw.toLowerCase().replace(/[^a-z0-9]/g, ''));
+
+  if (isHighConfidenceTitle) {
+    return rawResults.map(m => formatMetaPreview(m, type));
   }
+
+  // 3. Genre Recognition (e.g. "horror movies", "comedy series", "action films")
+  const genreEntry = SEARCH_GENRE_MAP[cleaned];
+  if (genreEntry) {
+    const genreId = isMovie ? genreEntry.movie : genreEntry.tv;
+    const kw = genreEntry.keyword;
+    const lang = genreEntry.lang;
+
+    const params = {
+      sort_by: 'popularity.desc',
+      page: tmdbPage
+    };
+    if (genreId) params.with_genres = genreId;
+    if (kw) params.with_keywords = kw;
+    if (lang) params.with_original_language = lang;
+
+    const genreDiscover = await fetchTmdb(`/discover/${isMovie ? 'movie' : 'tv'}`, params).catch(() => ({ results: [] }));
+    if (genreDiscover.results && genreDiscover.results.length > 0) {
+      return genreDiscover.results.map(m => formatMetaPreview(m, type));
+    }
+  }
+
+  // 4. Keyword Discover (Themes like "zombie", "alien", "vampire", "cyberpunk", "time travel", etc.)
+  const kwRes = await fetchTmdb('/search/keyword', { query: cleaned }).catch(() => ({ results: [] }));
+  let keywordId = null;
+  if (kwRes.results && kwRes.results.length > 0) {
+    const exactKw = kwRes.results.find(k => k.name.toLowerCase() === cleaned);
+    keywordId = exactKw ? exactKw.id : kwRes.results[0].id;
+  }
+
+  const [kwDiscover, cleanTitleRes] = await Promise.all([
+    keywordId ? fetchTmdb(`/discover/${isMovie ? 'movie' : 'tv'}`, { with_keywords: keywordId, sort_by: 'popularity.desc', page: tmdbPage }).catch(() => ({ results: [] })) : { results: [] },
+    fetchTmdb(`/search/${isMovie ? 'movie' : 'tv'}`, { query: cleaned, page: tmdbPage, include_adult: false }).catch(() => ({ results: [] }))
+  ]);
+
+  const candidateMap = new Map();
+  // Score keyword discover items
+  for (const item of (kwDiscover.results || [])) {
+    candidateMap.set(item.id, {
+      ...item,
+      score: (item.popularity || 0) + Math.min(item.vote_count || 0, 1000) / 10
+    });
+  }
+
+  // Score title items
+  for (const item of (cleanTitleRes.results || [])) {
+    const name = (item.title || item.name || '').toLowerCase();
+    const isExact = name === cleaned;
+    const startsWith = name.startsWith(cleaned);
+    const contains = name.includes(cleaned);
+    const boost = (isExact ? 100 : startsWith ? 60 : contains ? 40 : 15) + Math.min(item.vote_count || 0, 1000) / 10 + (item.popularity || 0);
+
+    const existing = candidateMap.get(item.id);
+    if (existing) {
+      existing.score += boost;
+    } else {
+      candidateMap.set(item.id, { ...item, score: boost });
+    }
+  }
+
+  // If raw results existed, add them with base scoring
+  for (const item of rawResults) {
+    if (!candidateMap.has(item.id)) {
+      candidateMap.set(item.id, { ...item, score: (item.popularity || 0) + Math.min(item.vote_count || 0, 500) / 10 });
+    }
+  }
+
+  if (candidateMap.size > 0) {
+    const sorted = Array.from(candidateMap.values()).sort((a, b) => b.score - a.score);
+    return sorted.slice(0, 20).map(m => formatMetaPreview(m, type));
+  }
+
+  // Fallback to standard movie/tv search on raw query
+  return rawResults.map(m => formatMetaPreview(m, type));
 }
 
 // Handle Genre and Catalog Browsing
@@ -3356,11 +3518,16 @@ export async function handleRequest(req, res) {
           filtered = filtered.filter(m => m.genres.includes(extra.genre));
         }
         if (extra.search) {
-          const q = extra.search.toLowerCase();
+          const { raw, cleaned } = normalizeSearchQuery(extra.search);
+          const qRaw = raw.toLowerCase();
+          const qClean = cleaned.toLowerCase();
           filtered = filtered.filter(m =>
-            m.title.toLowerCase().includes(q) ||
-            m.director.toLowerCase().includes(q) ||
-            m.cast.some(actor => actor.toLowerCase().includes(q))
+            m.title.toLowerCase().includes(qRaw) ||
+            m.title.toLowerCase().includes(qClean) ||
+            m.director.toLowerCase().includes(qClean) ||
+            m.cast.some(actor => actor.toLowerCase().includes(qClean)) ||
+            m.genres.some(g => g.toLowerCase().includes(qClean)) ||
+            (m.synopsis && m.synopsis.toLowerCase().includes(qClean))
           );
         }
 
