@@ -15,7 +15,7 @@ const TMDB_API_KEY = process.env.TMDB_API_KEY || '3157bd6dacbc3a653ae2e5a3b19beb
 const PORT = process.env.PORT || 7000;
 const HOST = process.env.HOST || (process.env.PORT ? '0.0.0.0' : '127.0.0.1');
 
-const ADDON_VERSION = '1.12.6';
+const ADDON_VERSION = '1.12.7';
 
 // Load server-wide DEFAULTS (read-only). Per-user settings live in the install URL, never on the server.
 function loadConfig() {
@@ -3858,7 +3858,7 @@ async function handleMeta(type, id) {
         .map(v => ({ source: v.key, type: 'Trailer' })),
       videos: data.release_date ? [
         {
-          id: `${imdbId || `tmdb:${tmdbId}`}`,
+          id: `${isImdb ? id : `tmdb:${tmdbId}`}`,
           title: `${data.title} (${(data.release_date || '').slice(0, 4)})`,
           name: `${data.title} (${(data.release_date || '').slice(0, 4)})`,
           released: new Date(data.release_date).toISOString(),
@@ -3870,7 +3870,7 @@ async function handleMeta(type, id) {
         }
       ] : undefined,
       behaviorHints: {
-        defaultVideoId: imdbId || `tmdb:${tmdbId}`,
+        defaultVideoId: isImdb ? id : `tmdb:${tmdbId}`,
         hasScheduledVideos: Boolean(data.release_date && new Date(data.release_date) > new Date())
       }
     };
@@ -3917,12 +3917,14 @@ async function handleMeta(type, id) {
       }
     }
 
+    const seriesMetaId = isImdb ? id : `tmdb:${tmdbId}`;
     const normalizedVideos = (videos || []).map(v => {
       const epNum = typeof v.episode === 'number' ? v.episode : (typeof v.number === 'number' ? v.number : (parseInt(v.episode || v.number, 10) || 1));
       const sNum = typeof v.season === 'number' ? v.season : (parseInt(v.season, 10) || 1);
       const title = v.title || v.name || `Episode ${epNum}`;
       return {
         ...v,
+        id: `${seriesMetaId}:${sNum}:${epNum}`,
         name: title,
         title: title,
         season: sNum,
@@ -3947,7 +3949,7 @@ async function handleMeta(type, id) {
     const description = `${badgeHeader}${data.overview || ''}`;
 
     const meta = {
-      id: isImdb ? id : `tmdb:${tmdbId}`,
+      id: seriesMetaId,
       imdb_id: imdbId || (isImdb ? id : undefined),
       type: 'series',
       name: data.name,
