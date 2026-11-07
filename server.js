@@ -15,7 +15,7 @@ const TMDB_API_KEY = process.env.TMDB_API_KEY || '3157bd6dacbc3a653ae2e5a3b19beb
 const PORT = process.env.PORT || 7000;
 const HOST = process.env.HOST || (process.env.PORT ? '0.0.0.0' : '127.0.0.1');
 
-const ADDON_VERSION = '1.12.8';
+const ADDON_VERSION = '1.12.9';
 
 // Load server-wide DEFAULTS (read-only). Per-user settings live in the install URL, never on the server.
 function loadConfig() {
@@ -3683,15 +3683,11 @@ async function fetchTmdbSeasonVideos(tmdbId, seasonNumber, imdbId) {
       const title = ep.name || `Episode ${ep.episode_number}`;
       return {
         id: imdbId ? `${imdbId}:${ep.season_number}:${ep.episode_number}` : `tmdb:${tmdbId}:${ep.season_number}:${ep.episode_number}`,
-        name: title,
         title: title,
         season: ep.season_number,
-        number: ep.episode_number,
         episode: ep.episode_number,
-        firstAired: airDate,
         released: airDate,
         overview: ep.overview || '',
-        description: ep.overview || '',
         thumbnail: ep.still_path ? `https://image.tmdb.org/t/p/w500${ep.still_path}` : null
       };
     });
@@ -3952,15 +3948,13 @@ async function handleMeta(type, id) {
       const sNum = typeof v.season === 'number' ? v.season : (parseInt(v.season, 10) || 1);
       const title = v.title || v.name || `Episode ${epNum}`;
       return {
-        ...v,
         id: `${seriesMetaId}:${sNum}:${epNum}`,
-        name: title,
         title: title,
         season: sNum,
         episode: epNum,
-        number: epNum,
         released: v.released || v.firstAired || null,
-        firstAired: v.firstAired || v.released || null
+        overview: v.overview || v.description || '',
+        thumbnail: v.thumbnail || null
       };
     });
 
