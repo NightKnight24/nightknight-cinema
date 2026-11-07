@@ -15,7 +15,7 @@ const TMDB_API_KEY = process.env.TMDB_API_KEY || '3157bd6dacbc3a653ae2e5a3b19beb
 const PORT = process.env.PORT || 7000;
 const HOST = process.env.HOST || (process.env.PORT ? '0.0.0.0' : '127.0.0.1');
 
-const ADDON_VERSION = '1.12.2';
+const ADDON_VERSION = '1.12.3';
 
 // Load server-wide DEFAULTS (read-only). Per-user settings live in the install URL, never on the server.
 function loadConfig() {
@@ -2125,14 +2125,70 @@ function normalizeSearchQuery(rawQuery) {
   return { raw, cleaned: cleaned || q };
 }
 
-// Enhanced Smart Catalog Search (Genres/Themes, Compound Queries, Actors, Specific Titles, Keywords)
+// Detect whether user appended a media/genre trigger suffix ("movies", "films", "shows", "series", "tv series") onto a query
+function hasGenreTriggerSuffix(rawQuery) {
+  const trimmed = (rawQuery || '').trim();
+  return /(?:\S+\s+(?:movies?|films?|tv\s*series|series|tv\s*shows?|shows?|cinema)|\bgameshows?)\s*$/i.test(trimmed);
+}
+
+// Helper: fetch an actor/director's sorted filmography
+async function fetchPersonFilmography(personId, isMovie, skip = 0) {
+  if (isMovie) {
+    const creditsRes = await fetchTmdb(`/person/${personId}/movie_credits`).catch(() => ({}));
+    const cast = creditsRes.cast || [];
+    const crew = (creditsRes.crew || []).filter(c => c.job === 'Director');
+    const movieMap = new Map();
+    for (const m of [...cast, ...crew]) {
+      if (!movieMap.has(m.id)) movieMap.set(m.id, m);
+    }
+    const sorted = Array.from(movieMap.values()).sort((a, b) => (b.vote_count || 0) - (a.vote_count || 0));
+    return sorted.slice(skip, skip + 20).map(m => formatMetaPreview(m, 'movie'));
+  }
+  const creditsRes = await fetchTmdb(`/person/${personId}/tv_credits`).catch(() => ({}));
+  const cast = creditsRes.cast || [];
+  let filtered = cast.filter(s => !(s.genre_ids || []).includes(10767));
+  if (filtered.length === 0) filtered = cast;
+  const showMap = new Map();
+  for (const s of filtered) {
+    if (!showMap.has(s.id)) showMap.set(s.id, s);
+  }
+  const sorted = Array.from(showMap.values()).sort((a, b) => (b.vote_count || 0) - (a.vote_count || 0));
+  return sorted.slice(skip, skip + 20).map(s => formatMetaPreview(s, 'series'));
+}
+
+// Catalog Search: Normal Title/Actor search by default; Smart Genre/Theme Discovery when user appends movies/films/shows/tv series
 async function handleSearch(type, query, skip = 0) {
   const isMovie = type === 'movie';
   const tmdbPage = Math.floor(skip / 20) + 1;
-  const { raw, cleaned } = normalizeSearchQuery(query);
+  const rawQuery = (query || '').trim();
+
+  // MODE A: Normal Search when no "movies / films / shows / series / tv series" suffix is appended
+  if (!hasGenreTriggerSuffix(rawQuery)) {
+    const personRes = await fetchTmdb('/search/person', { query: rawQuery, include_adult: false }).catch(() => null);
+    const person = personRes?.results?.length > 0 ? personRes.results[0] : null;
+    if (person && person.popularity > 2.0) {
+      return fetchPersonFilmography(person.id, isMovie, skip);
+    }
+    const res = await fetchTmdb(`/search/${isMovie ? 'movie' : 'tv'}`, { query: rawQuery, page: tmdbPage, include_adult: false }).catch(() => ({ results: [] }));
+    return (res.results || []).map(m => formatMetaPreview(m, type));
+  }
+
+  // MODE B: Genre / Thematic Discovery triggered by ending with movies, films, shows, series, or tv series
+  const { raw, cleaned } = normalizeSearchQuery(rawQuery);
   const singularCleaned = singularizeWord(cleaned);
 
-  // 1. Curated Genre & Thematic Recognition FIRST (prevents random single-word title/actor hijacking)
+  // 1. Exact Real Title Guard FIRST (protects real titles ending in Movie/Film/Show/Series like "Scary Movie", "The Lego Movie", "The Truman Show", "Quiz Show")
+  const rawTitleRes = await fetchTmdb(`/search/${isMovie ? 'movie' : 'tv'}`, { query: raw, page: tmdbPage, include_adult: false }).catch(() => ({ results: [] }));
+  const rawResults = rawTitleRes.results || [];
+  const topRaw = rawResults[0];
+  const normTitle = s => (s || '').toLowerCase().replace(/^(?:the|a|an)\s+/i, '').replace(/[^a-z0-9]/g, '');
+  const rawNorm = normTitle(raw);
+  const topNorm = normTitle(topRaw?.title || topRaw?.name || '');
+  if (topRaw && rawNorm && topNorm === rawNorm && (topRaw.vote_count || 0) >= 250) {
+    return rawResults.map(m => formatMetaPreview(m, type));
+  }
+
+  // 2. Curated Genre & Subgenre Recognition (e.g. "horror films", "comedy series", "dungeon movies", "game shows", "soap operas series")
   const genreEntry = SEARCH_GENRE_MAP[cleaned] || SEARCH_GENRE_MAP[singularCleaned];
   if (genreEntry) {
     const genreId = isMovie ? genreEntry.movie : genreEntry.tv;
@@ -2186,7 +2242,7 @@ async function handleSearch(type, query, skip = 0) {
     }
   }
 
-  // 2. Compound Multi-Genre / Multi-Theme Queries (both "X and Y" AND space-separated two-genre queries like "action comedy", "sci-fi horror")
+  // 3. Compound Multi-Genre / Multi-Theme Queries (e.g. "horror and comedy films", "action comedy movies", "sci-fi horror series")
   const hasExplicitAnd = cleaned.includes(' and ');
   const spaceTokens = !hasExplicitAnd ? cleaned.split(/\s+/).filter(Boolean) : [];
   const isTwoKnownGenres = spaceTokens.length === 2 && spaceTokens.every(t => SEARCH_GENRE_MAP[t] || SEARCH_GENRE_MAP[singularizeWord(t)]);
@@ -2223,71 +2279,13 @@ async function handleSearch(type, query, skip = 0) {
     }
   }
 
-  // 3. Search if query matches a Person (Actor, Director)
-  let person = null;
+  // 4. Actor / Director + Suffix (e.g. "Tom Cruise movies", "Christopher Nolan films")
   const personRes = await fetchTmdb('/search/person', { query: cleaned, include_adult: false }).catch(() => null);
   if (personRes?.results?.length > 0 && personRes.results[0].popularity > 2.0) {
-    person = personRes.results[0];
-  } else if (raw !== cleaned) {
-    const rawPersonRes = await fetchTmdb('/search/person', { query: raw, include_adult: false }).catch(() => null);
-    if (rawPersonRes?.results?.length > 0 && rawPersonRes.results[0].popularity > 2.0) {
-      person = rawPersonRes.results[0];
-    }
+    return fetchPersonFilmography(personRes.results[0].id, isMovie, skip);
   }
 
-  if (person) {
-    if (isMovie) {
-      const creditsRes = await fetchTmdb(`/person/${person.id}/movie_credits`).catch(() => ({}));
-      const cast = creditsRes.cast || [];
-      const crew = (creditsRes.crew || []).filter(c => c.job === 'Director');
-
-      const movieMap = new Map();
-      for (const m of [...cast, ...crew]) {
-        if (!movieMap.has(m.id)) {
-          movieMap.set(m.id, m);
-        }
-      }
-
-      const sorted = Array.from(movieMap.values())
-        .sort((a, b) => (b.vote_count || 0) - (a.vote_count || 0));
-
-      const page = sorted.slice(skip, skip + 20);
-      return page.map(m => formatMetaPreview(m, 'movie'));
-    } else {
-      const creditsRes = await fetchTmdb(`/person/${person.id}/tv_credits`).catch(() => ({}));
-      const cast = creditsRes.cast || [];
-
-      let filtered = cast.filter(s => !(s.genre_ids || []).includes(10767));
-      if (filtered.length === 0) filtered = cast;
-
-      const showMap = new Map();
-      for (const s of filtered) {
-        if (!showMap.has(s.id)) showMap.set(s.id, s);
-      }
-
-      const sorted = Array.from(showMap.values())
-        .sort((a, b) => (b.vote_count || 0) - (a.vote_count || 0));
-
-      const page = sorted.slice(skip, skip + 20);
-      return page.map(s => formatMetaPreview(s, 'series'));
-    }
-  }
-
-  // 4. Direct Title Search when a multi-word title literally contains media words (e.g. "The Lego Movie", "Scary Movie", "The Truman Show")
-  const rawTitleRes = await fetchTmdb(`/search/${isMovie ? 'movie' : 'tv'}`, { query: raw, page: tmdbPage, include_adult: false }).catch(() => ({ results: [] }));
-  const rawResults = rawTitleRes.results || [];
-  const topRaw = rawResults[0];
-  const rawNorm = raw.toLowerCase().replace(/[^a-z0-9]/g, '');
-  const topNorm = (topRaw?.title || topRaw?.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-  const isExactMediaTitle = raw.toLowerCase() !== cleaned && raw.trim().split(/\s+/).length >= 2 &&
-    topRaw && (topRaw.vote_count > 100 || topRaw.popularity > 20) &&
-    (topNorm === rawNorm || topNorm.startsWith(rawNorm));
-
-  if (isExactMediaTitle) {
-    return rawResults.map(m => formatMetaPreview(m, type));
-  }
-
-  // 5. Thematic Keyword Discover (with singular stem fallback for plurals like "dragons", "pirates", "witches")
+  // 5. Thematic Keyword Discover (e.g. "zommbie films", "alien movies", "vampire series", "dragons movies")
   let kwRes = await fetchTmdb('/search/keyword', { query: cleaned }).catch(() => ({ results: [] }));
   let keywordId = null;
   if (kwRes.results && kwRes.results.length > 0) {
@@ -3762,14 +3760,23 @@ export async function handleRequest(req, res) {
           filtered = filtered.filter(m => m.genres.includes(extra.genre));
         }
         if (extra.search) {
-          const { raw, cleaned } = normalizeSearchQuery(extra.search);
-          const qRaw = raw.toLowerCase();
-          const qClean = cleaned.toLowerCase();
-          const words = qClean.split(/\s+/).filter(Boolean);
-          filtered = filtered.filter(m => {
-            const haystack = `${m.title} ${m.director} ${m.cast.join(' ')} ${m.genres.join(' ')} ${m.synopsis || ''}`.toLowerCase();
-            return haystack.includes(qRaw) || haystack.includes(qClean) || (words.length > 0 && words.every(w => haystack.includes(w)));
-          });
+          if (!hasGenreTriggerSuffix(extra.search)) {
+            const qNorm = extra.search.toLowerCase().trim();
+            filtered = filtered.filter(m =>
+              m.title.toLowerCase().includes(qNorm) ||
+              m.director.toLowerCase().includes(qNorm) ||
+              m.cast.some(c => c.toLowerCase().includes(qNorm))
+            );
+          } else {
+            const { raw, cleaned } = normalizeSearchQuery(extra.search);
+            const qRaw = raw.toLowerCase();
+            const qClean = cleaned.toLowerCase();
+            const words = qClean.split(/\s+/).filter(Boolean);
+            filtered = filtered.filter(m => {
+              const haystack = `${m.title} ${m.director} ${m.cast.join(' ')} ${m.genres.join(' ')} ${m.synopsis || ''}`.toLowerCase();
+              return haystack.includes(qRaw) || haystack.includes(qClean) || (words.length > 0 && words.every(w => haystack.includes(w)));
+            });
+          }
         }
 
         const metas = filtered.map(m => ({
