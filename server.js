@@ -15,7 +15,7 @@ const TMDB_API_KEY = process.env.TMDB_API_KEY || '3157bd6dacbc3a653ae2e5a3b19beb
 const PORT = process.env.PORT || 7000;
 const HOST = process.env.HOST || (process.env.PORT ? '0.0.0.0' : '127.0.0.1');
 
-const ADDON_VERSION = '1.12.9';
+const ADDON_VERSION = '1.12.10';
 
 // Load server-wide DEFAULTS (read-only). Per-user settings live in the install URL, never on the server.
 function loadConfig() {
@@ -4031,7 +4031,7 @@ function extractCinemaBadges(text = '') {
   return { audio, video, edition };
 }
 
-function optimizeAndRankStreams(rawStreams, userConfig = DEFAULT_USER_CONFIG) {
+function optimizeAndRankStreams(rawStreams, userConfig = DEFAULT_USER_CONFIG, type = '', id = '') {
   if (!Array.isArray(rawStreams) || rawStreams.length === 0) return [];
 
   const parsed = [];
@@ -4162,8 +4162,29 @@ function optimizeAndRankStreams(rawStreams, userConfig = DEFAULT_USER_CONFIG) {
     const qualityLabel = [quality, isDv ? 'DV' : '', isHdr && !isDv ? 'HDR' : ''].filter(Boolean).join(' ');
     const cleanAddonName = (s.name || '').replace(/^Torrentio\n?/i, '').replace(/^\[[^\]]+\]\s*/, '').trim() || qualityLabel || 'Stream';
 
+    // BehaviorHints & BingeGroup for seamless Next Episode / Outro transition
+    const isSeries = type === 'series' || (typeof id === 'string' && id.split(':').length >= 3);
+    const existingHints = s.behaviorHints || {};
+    let bingeGroup = existingHints.bingeGroup;
+
+    if (isSeries) {
+      const providerKey = debridProvider ? debridProvider.toLowerCase().replace(/[^a-z0-9]/g, '') : 'p2p';
+      const qKey = (quality || '1080p').toLowerCase();
+      if (s.infoHash) {
+        bingeGroup = `nightknight|${providerKey}|${qKey}|${s.infoHash.toLowerCase()}`;
+      } else {
+        bingeGroup = `nightknight|${providerKey}|${qKey}`;
+      }
+    }
+
+    const behaviorHints = {
+      ...existingHints,
+      ...(bingeGroup ? { bingeGroup } : {})
+    };
+
     parsed.push({
       ...s,
+      behaviorHints,
       _speedScore: speedScore,
       _seeders: seeders,
       _isDead: isDead,
@@ -4370,7 +4391,7 @@ async function handleStream(type, id, userConfig = DEFAULT_USER_CONFIG) {
       }
     }
 
-    const optimized = optimizeAndRankStreams(rawStreams, userConfig);
+    const optimized = optimizeAndRankStreams(rawStreams, userConfig, type, id);
     const combined = [...byoaStreams, ...optimized];
     setCache(cacheKey, combined, 600);
     return combined;
