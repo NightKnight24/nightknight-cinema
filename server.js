@@ -15,7 +15,7 @@ const TMDB_API_KEY = process.env.TMDB_API_KEY || '3157bd6dacbc3a653ae2e5a3b19beb
 const PORT = process.env.PORT || 7000;
 const HOST = process.env.HOST || (process.env.PORT ? '0.0.0.0' : '127.0.0.1');
 
-const ADDON_VERSION = '1.12.0';
+const ADDON_VERSION = '1.12.1';
 
 // Load server-wide DEFAULTS (read-only). Per-user settings live in the install URL, never on the server.
 function loadConfig() {
@@ -1891,6 +1891,7 @@ async function fetchByoaStreams(type, tmdbId, title, region = 'GB') {
 const SEARCH_GENRE_MAP = {
   action: { movie: 28, tv: 10759 },
   adventure: { movie: 12, tv: 10759 },
+  'action adventure': { movie: '28,12', tv: 10759 },
   animation: { movie: 16, tv: 16 },
   cartoons: { movie: 16, tv: 16 },
   cartoon: { movie: 16, tv: 16 },
@@ -1908,11 +1909,11 @@ const SEARCH_GENRE_MAP = {
   fantasy: { movie: 14, tv: 10765 },
   history: { movie: 36, tv: 18 },
   historical: { movie: 36, tv: 18 },
-  horror: { movie: 27, tv: null, keyword: '9882' },
-  scary: { movie: 27, tv: null, keyword: '9882' },
+  horror: { movie: 27, tvKw: '315058|12339|162846|6152|12377|3133', tvBlendTitle: 'American Horror Story' },
+  scary: { movie: 27, tvKw: '315058|12339|162846|6152|12377|3133', tvBlendTitle: 'American Horror Story' },
   music: { movie: 10402, tv: 10402 },
   musical: { movie: 10402, tv: 10402 },
-  mystery: { movie: 9648, tv: 9648 },
+  mystery: { movie: 9648, tv: 9648, movieBlendTitle: 'Knives Out' },
   romance: { movie: 10749, tv: 10749 },
   romantic: { movie: 10749, tv: 10749 },
   'sci-fi': { movie: 878, tv: 10765 },
@@ -1932,46 +1933,245 @@ const SEARCH_GENRE_MAP = {
   'stand-up': { keyword: '9716' },
   'stand up': { keyword: '9716' },
   'film-noir': { keyword: '9807' },
-  noir: { keyword: '9807' }
+  noir: { keyword: '9807' },
+
+  // Curated deep thematic & TV genres (Dungeon, Game, Monsters, Soap Operas, Murder Mystery, Game Shows, etc.)
+  dungeon: {
+    movieKw: '278238|364081|385589|18360|379300|211227',
+    tvKw: '34137|278238|364081|385589|18360|211227',
+    movieBlendTitle: 'Dungeons & Dragons',
+    tvBlendTitle: 'Dungeon'
+  },
+  rpg: {
+    movieKw: '278238|364081|385589|18360|379300',
+    tvKw: '34137|278238|364081|385589|18360'
+  },
+  game: {
+    movieKw: '282|41645|368262|344283|295702|377367|18360',
+    tvKw: '282|41645|368262|295702|377367|18360',
+    tvWithoutGenres: '10767,10763,10764',
+    movieBlendTitle: 'Game',
+    tvBlendTitle: 'Squid Game'
+  },
+  'video game': {
+    movieKw: '282|41645|368262',
+    tvKw: '282|41645|368262',
+    tvWithoutGenres: '10767,10763,10764'
+  },
+  monster: {
+    movieKw: '1299|11100|161791|13031|158126|380322',
+    tvKw: '1299|11100|161791|13031|68646|380322',
+    movieBlendTitle: 'Monsters',
+    tvBlendTitle: 'Monsters'
+  },
+  'soap opera': {
+    movie: '18,10749',
+    movieWithoutGenres: '16,878,28,27',
+    movieWithoutKw: '155477|190370',
+    movieVoteCountGte: 300,
+    tv: 10766,
+    tvLang: 'en'
+  },
+  murder: {
+    movieKw: '9826|207046|10714|12570',
+    tvKw: '9826|207046|10714|12570',
+    movieBlendTitle: 'Murder',
+    tvBlendTitle: 'Murder'
+  },
+  'murder mystery': {
+    movie: 9648,
+    tv: 9648,
+    movieKw: '207046|12570|703|9826',
+    tvKw: '207046|12570|703|9826',
+    movieBlendTitle: 'Knives Out',
+    tvBlendTitle: 'Murders'
+  },
+  'game show': {
+    movieKw: '4325|12100|279883|6784',
+    tvKw: '4325|279883|6784|160311|310294',
+    tvLang: 'en',
+    tvBlendTitle: 'Wheel of Fortune'
+  },
+  'talk show': {
+    movieKw: '4326',
+    tv: 10767,
+    tvLang: 'en'
+  },
+  'reality show': {
+    movieKw: '250845',
+    tv: 10764,
+    tvLang: 'en'
+  }
 };
 
-// Normalize search queries: fix common typos and strip format fillers ("films", "movies", "series")
+// Lightweight English plural-to-singular stemmer for theme/keyword fallback
+function singularizeWord(w) {
+  if (!w || w.length <= 3) return w;
+  if (/(ss|us|is|os|as)$/.test(w)) return w;
+  if (/ies$/.test(w) && w.length > 4) return w.replace(/ies$/, 'y');
+  if (/wolves$/.test(w)) return w.replace(/wolves$/, 'wolf');
+  if (/ives$/.test(w)) return w.replace(/ives$/, 'ife');
+  if (/(ches|shes|xes|zes)$/.test(w)) return w.replace(/es$/, '');
+  if (/s$/.test(w)) return w.replace(/s$/, '');
+  return w;
+}
+
+// Normalize search queries: preserve compound show types, fix typos/plurals, and strip format fillers
 function normalizeSearchQuery(rawQuery) {
   const raw = (rawQuery || '').trim();
-  let q = raw.toLowerCase();
+  let q = raw.toLowerCase().replace(/&/g, ' and ');
 
-  // 1. Correct common typos and phonetic variants
+  // 1. Protect & normalize compound show/genre phrases BEFORE stripping media suffixes like "shows"
+  q = q.replace(/\b(?:game|quiz|trivia)\s+shows?\b/g, 'game show');
+  q = q.replace(/\bgameshows?\b/g, 'game show');
+  q = q.replace(/\btalk\s+shows?\b/g, 'talk show');
+  q = q.replace(/\breality(?:\s+tv)?(?:\s+(?:shows?|series))?\b/g, 'reality show');
+  q = q.replace(/\bsoap(?:\s+operas?)?\b|\bsoaps\b/g, 'soap opera');
+  q = q.replace(/\bmurder\s+(?:and\s+)?myster(?:y|ies)\b/g, 'murder mystery');
+  q = q.replace(/\bwhodunn?its?\b/g, 'murder mystery');
+  q = q.replace(/\bdungeons?(?:\s+and\s+dragons?)?\b/g, 'dungeon');
+  q = q.replace(/\bd\s+and\s+d\b/g, 'dungeon');
+  q = q.replace(/\bvideo\s+games?\b/g, 'video game');
+
+  // 2. Correct common typos, plurals, and phonetic variants
   q = q.replace(/\bzomm+bies?\b/g, 'zombie');
   q = q.replace(/\bzombies?\b/g, 'zombie');
   q = q.replace(/\baliens?\b/g, 'alien');
   q = q.replace(/\bvampires?\b/g, 'vampire');
+  q = q.replace(/\bmonsters?\b/g, 'monster');
+  q = q.replace(/\bcreatures?\b/g, 'monster');
+  q = q.replace(/\bkaijus?\b/g, 'monster');
+  q = q.replace(/\bgames\b/g, 'game');
+  q = q.replace(/\bmurders\b/g, 'murder');
+  q = q.replace(/\bmysteries\b/g, 'mystery');
   q = q.replace(/\bsci[\s\-]?fi\b/g, 'sci-fi');
   q = q.replace(/\bscience[\s\-]fiction\b/g, 'sci-fi');
   q = q.replace(/\bsuper[\s\-]?heroes?\b/g, 'superhero');
   q = q.replace(/\bcomedies\b/g, 'comedy');
   q = q.replace(/\bcartoons?\b/g, 'animation');
-  q = q.replace(/\bdocu(mentaries)?\b/g, 'documentary');
+  q = q.replace(/\banimes\b/g, 'anime');
+  q = q.replace(/\bdocu(?:mentaries|mentary)?\b/g, 'documentary');
+  q = q.replace(/\bdocs?\b/g, 'documentary');
   q = q.replace(/\bwesterns?\b/g, 'western');
-  q = q.replace(/\bpost[\s\-]apocalyp(se|tic)\b/g, 'post-apocalyptic');
+  q = q.replace(/\bthrillers?\b/g, 'thriller');
+  q = q.replace(/\bromances?\b/g, 'romance');
+  q = q.replace(/\bromantic\b/g, 'romance');
+  q = q.replace(/\bhistorical\b/g, 'history');
+  q = q.replace(/\bscary\b/g, 'horror');
+  q = q.replace(/\bsuspense\b/g, 'thriller');
+  q = q.replace(/\bstand[\s\-]?up(?:\s+comedy)?\b/g, 'stand-up');
+  q = q.replace(/\b(?:film[\s\-]?)?noir\b/g, 'film-noir');
+  q = q.replace(/\baction\s+and\s+adventure\b/g, 'action adventure');
+  q = q.replace(/\bpost[\s\-]apocalyp(?:se|tic)\b/g, 'post-apocalyptic');
   q = q.replace(/\btime[\s\-]travel\b/g, 'time travel');
 
-  // 2. Strip format / media-type fillers and search noise
+  // 3. Strip format / media-type fillers while preserving protected "<type> show" phrases
   let cleaned = q
-    .replace(/\b(films?|movies?|series|tv\s*series|tv\s*shows?|shows?|cinema|season|seasons)\b/gi, '')
-    .replace(/\b(best|top|good|popular|new|latest|watch)\b/gi, '')
+    .replace(/\b(?:films?|movies?|tv\s*series|series|tv\s*shows?|cinema|seasons?)\b/gi, '')
+    .replace(/(?<!\bgame\s)(?<!\btalk\s)(?<!\breality\s)\bshows?\b/gi, '')
+    .replace(/\b(?:best|top|good|popular|new|latest|watch)\b/gi, '')
     .replace(/\s+/g, ' ')
     .trim();
 
   return { raw, cleaned: cleaned || q };
 }
 
-// Enhanced Smart Catalog Search (Actors, Specific Titles, Genres, Thematic Keywords)
+// Enhanced Smart Catalog Search (Genres/Themes, Compound Queries, Actors, Specific Titles, Keywords)
 async function handleSearch(type, query, skip = 0) {
   const isMovie = type === 'movie';
   const tmdbPage = Math.floor(skip / 20) + 1;
   const { raw, cleaned } = normalizeSearchQuery(query);
+  const singularCleaned = singularizeWord(cleaned);
 
-  // 1. Search if query matches a Person (Actor, Director)
+  // 1. Curated Genre & Thematic Recognition FIRST (prevents random single-word title/actor hijacking)
+  const genreEntry = SEARCH_GENRE_MAP[cleaned] || SEARCH_GENRE_MAP[singularCleaned];
+  if (genreEntry) {
+    const genreId = isMovie ? genreEntry.movie : genreEntry.tv;
+    const kw = isMovie ? (genreEntry.movieKw || genreEntry.keyword) : (genreEntry.tvKw || genreEntry.keyword);
+    const lang = isMovie ? (genreEntry.movieLang || genreEntry.lang) : (genreEntry.tvLang || genreEntry.lang);
+    const withoutGenres = isMovie ? genreEntry.movieWithoutGenres : genreEntry.tvWithoutGenres;
+    const withoutKw = isMovie ? genreEntry.movieWithoutKw : genreEntry.tvWithoutKw;
+    const voteCountGte = isMovie ? genreEntry.movieVoteCountGte : genreEntry.tvVoteCountGte;
+    const blendTitle = isMovie ? genreEntry.movieBlendTitle : genreEntry.tvBlendTitle;
+
+    const params = {
+      sort_by: 'popularity.desc',
+      include_adult: false,
+      page: tmdbPage
+    };
+    if (genreId) params.with_genres = genreId;
+    if (kw) params.with_keywords = kw;
+    if (lang) params.with_original_language = lang;
+    if (withoutGenres) params.without_genres = withoutGenres;
+    if (withoutKw) params.without_keywords = withoutKw;
+    if (voteCountGte) params['vote_count.gte'] = voteCountGte;
+
+    const [genreDiscover, blendRes] = await Promise.all([
+      fetchTmdb(`/discover/${isMovie ? 'movie' : 'tv'}`, params).catch(() => ({ results: [] })),
+      blendTitle
+        ? fetchTmdb(`/search/${isMovie ? 'movie' : 'tv'}`, { query: blendTitle, page: tmdbPage, include_adult: false }).catch(() => ({ results: [] }))
+        : Promise.resolve({ results: [] })
+    ]);
+
+    const merged = new Map();
+    for (const item of (genreDiscover.results || [])) {
+      merged.set(item.id, {
+        ...item,
+        _score: (item.popularity || 0) + Math.min(item.vote_count || 0, 2000) / 10
+      });
+    }
+    for (const item of (blendRes.results || [])) {
+      if ((item.vote_count || 0) >= 50 || (item.popularity || 0) >= 15) {
+        const existing = merged.get(item.id);
+        const boost = 80 + (item.popularity || 0) + Math.min(item.vote_count || 0, 2000) / 10;
+        if (existing) existing._score += 80;
+        else merged.set(item.id, { ...item, _score: boost });
+      }
+    }
+
+    if (merged.size > 0) {
+      return Array.from(merged.values())
+        .sort((a, b) => b._score - a._score)
+        .slice(0, 20)
+        .map(m => formatMetaPreview(m, type));
+    }
+  }
+
+  // 2. Compound "X and Y" Multi-Genre / Multi-Theme Queries (e.g. "horror and comedy", "zombies and aliens")
+  if (cleaned.includes(' and ')) {
+    const parts = cleaned.split(/\s+and\s+/).map(p => p.trim()).filter(Boolean);
+    if (parts.length === 2) {
+      const genreIds = [];
+      const kwIds = [];
+      for (const p of parts) {
+        const pSing = singularizeWord(p);
+        const entry = SEARCH_GENRE_MAP[p] || SEARCH_GENRE_MAP[pSing];
+        if (entry) {
+          const gId = isMovie ? entry.movie : entry.tv;
+          const eKw = isMovie ? (entry.movieKw || entry.keyword) : (entry.tvKw || entry.keyword);
+          if (gId) genreIds.push(String(gId));
+          else if (eKw) kwIds.push(String(eKw).split('|')[0]);
+        } else {
+          const kwLookup = await fetchTmdb('/search/keyword', { query: pSing }).catch(() => ({ results: [] }));
+          if (kwLookup.results?.length > 0) {
+            const exact = kwLookup.results.find(k => k.name.toLowerCase() === pSing || k.name.toLowerCase() === p);
+            kwIds.push(String((exact || kwLookup.results[0]).id));
+          }
+        }
+      }
+      if (genreIds.length + kwIds.length >= 2) {
+        const compoundParams = { sort_by: 'popularity.desc', include_adult: false, page: tmdbPage };
+        if (genreIds.length > 0) compoundParams.with_genres = genreIds.join(',');
+        if (kwIds.length > 0) compoundParams.with_keywords = kwIds.join('|');
+        const compoundRes = await fetchTmdb(`/discover/${isMovie ? 'movie' : 'tv'}`, compoundParams).catch(() => ({ results: [] }));
+        if (compoundRes.results?.length > 0) {
+          return compoundRes.results.map(m => formatMetaPreview(m, type));
+        }
+      }
+    }
+  }
+
+  // 3. Search if query matches a Person (Actor, Director)
   let person = null;
   const personRes = await fetchTmdb('/search/person', { query: cleaned, include_adult: false }).catch(() => null);
   if (personRes?.results?.length > 0 && personRes.results[0].popularity > 2.0) {
@@ -1988,7 +2188,7 @@ async function handleSearch(type, query, skip = 0) {
       const creditsRes = await fetchTmdb(`/person/${person.id}/movie_credits`).catch(() => ({}));
       const cast = creditsRes.cast || [];
       const crew = (creditsRes.crew || []).filter(c => c.job === 'Director');
-      
+
       const movieMap = new Map();
       for (const m of [...cast, ...crew]) {
         if (!movieMap.has(m.id)) {
@@ -2004,7 +2204,7 @@ async function handleSearch(type, query, skip = 0) {
     } else {
       const creditsRes = await fetchTmdb(`/person/${person.id}/tv_credits`).catch(() => ({}));
       const cast = creditsRes.cast || [];
-      
+
       let filtered = cast.filter(s => !(s.genre_ids || []).includes(10767));
       if (filtered.length === 0) filtered = cast;
 
@@ -2021,48 +2221,40 @@ async function handleSearch(type, query, skip = 0) {
     }
   }
 
-  // 2. Direct Title Search on raw query (e.g. "The Lego Movie", "Scary Movie")
+  // 4. Direct Title Search when a multi-word title literally contains media words (e.g. "The Lego Movie", "Scary Movie", "The Truman Show")
   const rawTitleRes = await fetchTmdb(`/search/${isMovie ? 'movie' : 'tv'}`, { query: raw, page: tmdbPage, include_adult: false }).catch(() => ({ results: [] }));
   const rawResults = rawTitleRes.results || [];
   const topRaw = rawResults[0];
-  const isHighConfidenceTitle = topRaw && (topRaw.vote_count > 100 || topRaw.popularity > 20) &&
-    (topRaw.title || topRaw.name || '').toLowerCase().replace(/[^a-z0-9]/g, '').includes(raw.toLowerCase().replace(/[^a-z0-9]/g, ''));
+  const rawNorm = raw.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const topNorm = (topRaw?.title || topRaw?.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const isExactMediaTitle = raw.toLowerCase() !== cleaned && raw.trim().split(/\s+/).length >= 2 &&
+    topRaw && (topRaw.vote_count > 100 || topRaw.popularity > 20) &&
+    (topNorm === rawNorm || topNorm.startsWith(rawNorm));
 
-  if (isHighConfidenceTitle) {
+  if (isExactMediaTitle) {
     return rawResults.map(m => formatMetaPreview(m, type));
   }
 
-  // 3. Genre Recognition (e.g. "horror movies", "comedy series", "action films")
-  const genreEntry = SEARCH_GENRE_MAP[cleaned];
-  if (genreEntry) {
-    const genreId = isMovie ? genreEntry.movie : genreEntry.tv;
-    const kw = genreEntry.keyword;
-    const lang = genreEntry.lang;
-
-    const params = {
-      sort_by: 'popularity.desc',
-      page: tmdbPage
-    };
-    if (genreId) params.with_genres = genreId;
-    if (kw) params.with_keywords = kw;
-    if (lang) params.with_original_language = lang;
-
-    const genreDiscover = await fetchTmdb(`/discover/${isMovie ? 'movie' : 'tv'}`, params).catch(() => ({ results: [] }));
-    if (genreDiscover.results && genreDiscover.results.length > 0) {
-      return genreDiscover.results.map(m => formatMetaPreview(m, type));
-    }
-  }
-
-  // 4. Keyword Discover (Themes like "zombie", "alien", "vampire", "cyberpunk", "time travel", etc.)
-  const kwRes = await fetchTmdb('/search/keyword', { query: cleaned }).catch(() => ({ results: [] }));
+  // 5. Thematic Keyword Discover (with singular stem fallback for plurals like "dragons", "pirates", "witches")
+  let kwRes = await fetchTmdb('/search/keyword', { query: cleaned }).catch(() => ({ results: [] }));
   let keywordId = null;
   if (kwRes.results && kwRes.results.length > 0) {
-    const exactKw = kwRes.results.find(k => k.name.toLowerCase() === cleaned);
-    keywordId = exactKw ? exactKw.id : kwRes.results[0].id;
+    const exactKw = kwRes.results.find(k => k.name.toLowerCase() === cleaned || k.name.toLowerCase() === singularCleaned);
+    keywordId = exactKw ? exactKw.id : null;
+  }
+  if (!keywordId && singularCleaned !== cleaned) {
+    const singKwRes = await fetchTmdb('/search/keyword', { query: singularCleaned }).catch(() => ({ results: [] }));
+    if (singKwRes.results && singKwRes.results.length > 0) {
+      const exactSing = singKwRes.results.find(k => k.name.toLowerCase() === singularCleaned);
+      keywordId = exactSing ? exactSing.id : singKwRes.results[0].id;
+    }
+  }
+  if (!keywordId && kwRes.results && kwRes.results.length > 0) {
+    keywordId = kwRes.results[0].id;
   }
 
   const [kwDiscover, cleanTitleRes] = await Promise.all([
-    keywordId ? fetchTmdb(`/discover/${isMovie ? 'movie' : 'tv'}`, { with_keywords: keywordId, sort_by: 'popularity.desc', page: tmdbPage }).catch(() => ({ results: [] })) : { results: [] },
+    keywordId ? fetchTmdb(`/discover/${isMovie ? 'movie' : 'tv'}`, { with_keywords: keywordId, sort_by: 'popularity.desc', include_adult: false, page: tmdbPage }).catch(() => ({ results: [] })) : { results: [] },
     fetchTmdb(`/search/${isMovie ? 'movie' : 'tv'}`, { query: cleaned, page: tmdbPage, include_adult: false }).catch(() => ({ results: [] }))
   ]);
 
@@ -2078,9 +2270,9 @@ async function handleSearch(type, query, skip = 0) {
   // Score title items
   for (const item of (cleanTitleRes.results || [])) {
     const name = (item.title || item.name || '').toLowerCase();
-    const isExact = name === cleaned;
-    const startsWith = name.startsWith(cleaned);
-    const contains = name.includes(cleaned);
+    const isExact = name === cleaned || name === singularCleaned;
+    const startsWith = name.startsWith(cleaned) || name.startsWith(singularCleaned);
+    const contains = name.includes(cleaned) || name.includes(singularCleaned);
     const boost = (isExact ? 100 : startsWith ? 60 : contains ? 40 : 15) + Math.min(item.vote_count || 0, 1000) / 10 + (item.popularity || 0);
 
     const existing = candidateMap.get(item.id);
@@ -3521,14 +3713,11 @@ export async function handleRequest(req, res) {
           const { raw, cleaned } = normalizeSearchQuery(extra.search);
           const qRaw = raw.toLowerCase();
           const qClean = cleaned.toLowerCase();
-          filtered = filtered.filter(m =>
-            m.title.toLowerCase().includes(qRaw) ||
-            m.title.toLowerCase().includes(qClean) ||
-            m.director.toLowerCase().includes(qClean) ||
-            m.cast.some(actor => actor.toLowerCase().includes(qClean)) ||
-            m.genres.some(g => g.toLowerCase().includes(qClean)) ||
-            (m.synopsis && m.synopsis.toLowerCase().includes(qClean))
-          );
+          const words = qClean.split(/\s+/).filter(Boolean);
+          filtered = filtered.filter(m => {
+            const haystack = `${m.title} ${m.director} ${m.cast.join(' ')} ${m.genres.join(' ')} ${m.synopsis || ''}`.toLowerCase();
+            return haystack.includes(qRaw) || haystack.includes(qClean) || (words.length > 0 && words.every(w => haystack.includes(w)));
+          });
         }
 
         const metas = filtered.map(m => ({
