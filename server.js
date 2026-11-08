@@ -15,7 +15,7 @@ const TMDB_API_KEY = process.env.TMDB_API_KEY || '3157bd6dacbc3a653ae2e5a3b19beb
 const PORT = process.env.PORT || 7000;
 const HOST = process.env.HOST || (process.env.PORT ? '0.0.0.0' : '127.0.0.1');
 
-const ADDON_VERSION = '1.12.10';
+const ADDON_VERSION = '1.12.11';
 
 // Load server-wide DEFAULTS (read-only). Per-user settings live in the install URL, never on the server.
 function loadConfig() {
@@ -1534,7 +1534,7 @@ function getManifest(baseUrl, userConfig = DEFAULT_USER_CONFIG, rootUrl = baseUr
     id: 'org.stremio.nightknight.cinema',
     version: ADDON_VERSION,
     name: hasRd ? 'NightKnight Cinema ⚡ RD' : 'NightKnight Cinema',
-    description: `Created by NightKnight (@NightKnight24). Complete cinema hub: ⚡ Real-Debrid High-Speed Cloud Streams ${hasRd ? 'Active' : '(Click ⚙️ Configure to enable)'}, Native Multi-Language Subtitles Engine (80+ languages), Regional Live TV & TV Guide (EPG), 24/7 Live Music TV & Radios (UK, US, Canada, Australia, Ireland, India), DRM-Free Cinema playback, YouTube in-app player, streaming hubs (BBC iPlayer, ITVX, Netflix, Disney+, Hotstar), franchise viewing orders & speed engine. See my projects: https://github.com/NightKnight24`,
+    description: `Created by NightKnight (@NightKnight24). Complete cinema hub: ⚡ Real-Debrid High-Speed Cloud Streams ${hasRd ? 'Active' : '(Click ⚙️ Configure to enable)'}, Native Multi-Language Subtitles Engine (80+ languages), Regional Live TV & TV Guide (EPG), 24/7 Live Music TV & Radios (UK, US, Canada, Australia, Ireland, India), DRM-Free Cinema playback, YouTube in-app player, streaming hubs (BBC iPlayer, ITVX, Netflix, Disney+, Hotstar), franchise viewing orders & speed engine. Support the developer on Throne: https://throne.com/nightknight24 • Projects: https://github.com/NightKnight24`,
     logo: `${rootUrl}/icon.png`,
     background: `${rootUrl}/background.png`,
     resources: ['catalog', 'meta', 'stream', 'subtitles'],
@@ -5664,9 +5664,22 @@ export async function handleRequest(req, res) {
       </div>
     </div>
 
-    <div style="display: flex; gap: 12px; margin-top: 18px; margin-bottom: 24px; flex-wrap: wrap;">
+    <div style="display: flex; gap: 12px; margin-top: 18px; margin-bottom: 20px; flex-wrap: wrap;">
       <a id="install-btn" href="stremio://${host}/manifest.json" class="btn" style="flex: 1.3; min-width: 200px; margin-bottom: 0;">🚀 Install on Stremio</a>
       <button id="copy-manifest-btn" type="button" class="btn" style="flex: 1; min-width: 180px; margin-bottom: 0; background: linear-gradient(135deg, #334155, #1e293b); border: 1px solid rgba(255,255,255,0.15); box-shadow: none;">📋 Copy Manifest Link</button>
+    </div>
+
+    <div style="background: linear-gradient(135deg, rgba(236, 72, 153, 0.1), rgba(139, 92, 246, 0.1)); border: 1px solid rgba(236, 72, 153, 0.3); border-radius: 12px; padding: 14px 18px; margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
+      <div style="display: flex; align-items: center; gap: 14px;">
+        <div style="font-size: 28px; line-height: 1;">👑</div>
+        <div>
+          <div style="font-weight: 700; font-size: 14px; color: #fdf2f8;">Enjoying NightKnight Cinema?</div>
+          <div style="font-size: 12px; color: #cbd5e1; margin-top: 2px;">Support future updates, request features, or gift tech gear &amp; vouchers via my privacy-protected Throne wishlist!</div>
+        </div>
+      </div>
+      <a href="https://throne.com/nightknight24" target="_blank" style="background: linear-gradient(135deg, #ec4899, #8b5cf6); color: #fff; text-decoration: none; font-weight: 700; font-size: 13px; padding: 10px 18px; border-radius: 8px; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 14px rgba(236, 72, 153, 0.35); white-space: nowrap; transition: transform 0.15s ease;">
+        <span>🎁 Support on Throne Wishlist →</span>
+      </a>
     </div>
 
     <div class="guide-box">
@@ -5787,6 +5800,9 @@ export async function handleRequest(req, res) {
         </div>
       </div>
       <div class="dev-links">
+        <a href="https://throne.com/nightknight24" target="_blank" class="dev-btn" style="background: linear-gradient(135deg, rgba(236,72,153,0.25), rgba(139,92,246,0.25)); border-color: rgba(236,72,153,0.5); color: #f472b6; font-weight: 700;">
+          <span>👑 Throne Wishlist</span>
+        </a>
         <a href="https://github.com/NightKnight24" target="_blank" class="dev-btn primary">
           <span>🐙 View All Projects</span>
         </a>
@@ -5799,7 +5815,7 @@ export async function handleRequest(req, res) {
       </div>
     </div>
 
-    <div class="footer">NightKnight Cinema • v${ADDON_VERSION} • <a href="https://github.com/NightKnight24" target="_blank" class="author-link">Follow @NightKnight24 on GitHub</a></div>
+    <div class="footer">NightKnight Cinema • v${ADDON_VERSION} • <a href="https://throne.com/nightknight24" target="_blank" style="color: #f472b6; text-decoration: underline; margin-right: 8px;">👑 Wishlist on Throne</a> • <a href="https://github.com/NightKnight24" target="_blank" class="author-link">Follow @NightKnight24 on GitHub</a></div>
   </div>
 
   <script>
