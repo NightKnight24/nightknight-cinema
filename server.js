@@ -15,7 +15,7 @@ const TMDB_API_KEY = process.env.TMDB_API_KEY || '3157bd6dacbc3a653ae2e5a3b19beb
 const PORT = process.env.PORT || 7000;
 const HOST = process.env.HOST || (process.env.PORT ? '0.0.0.0' : '127.0.0.1');
 
-const ADDON_VERSION = '1.12.11';
+const ADDON_VERSION = '1.12.12';
 
 // Load server-wide DEFAULTS (read-only). Per-user settings live in the install URL, never on the server.
 function loadConfig() {
@@ -5674,11 +5674,11 @@ export async function handleRequest(req, res) {
         <div style="font-size: 28px; line-height: 1;">👑</div>
         <div>
           <div style="font-weight: 700; font-size: 14px; color: #fdf2f8;">Enjoying NightKnight Cinema?</div>
-          <div style="font-size: 12px; color: #cbd5e1; margin-top: 2px;">Support future updates, request features, or gift tech gear &amp; vouchers via my privacy-protected Throne wishlist!</div>
+          <div style="font-size: 12px; color: #cbd5e1; margin-top: 2px;">Support future updates, send a surprise mystery gift 🎁, or contribute to gaming gear &amp; vouchers via my privacy-protected Throne wishlist!</div>
         </div>
       </div>
       <a href="https://throne.com/nightknight24" target="_blank" style="background: linear-gradient(135deg, #ec4899, #8b5cf6); color: #fff; text-decoration: none; font-weight: 700; font-size: 13px; padding: 10px 18px; border-radius: 8px; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 14px rgba(236, 72, 153, 0.35); white-space: nowrap; transition: transform 0.15s ease;">
-        <span>🎁 Support on Throne Wishlist →</span>
+        <span>🎁 Wishlist &amp; Surprise Gifts →</span>
       </a>
     </div>
 
