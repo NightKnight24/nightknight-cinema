@@ -1,7 +1,7 @@
-# ⚔️ NightKnight Cinema — Stremio Addon (v1.11.0)
+# ⚔️ NightKnight Cinema — Stremio Addon (v1.13.1)
 
 > **Created by NightKnight**  
-> The ultimate all-in-one cinema & media hub: Native Multi-Language Subtitles Engine (80+ languages, zero extra addons required), Torrentio Real-Debrid Integration (Zero-Buffering High-Speed Cloud Caching), Regional Live TV & TV Guide (EPG), Native DRM-Free Cinema, YouTube in-app playback & global search, BYOA streaming hubs (Netflix, BBC iPlayer, ITVX, Channel 4, Disney+, Prime, Max), Curated Franchises in release order, Verified IMDb & TMDb Ratings, Home Theater Audio/Video tags, intelligent stream speed ranking, real-time community feedback & live telemetry.
+> The ultimate all-in-one cinema & media hub: Universal Multi-Language Subtitles Engine (inline playback, 80+ languages, anime & REST fallbacks), Priority Language, Dubbing & Best Stream Sorter (Preferred Audio, Dubbed Priority, Subbed/Original Priority), 2,200+ Free-to-Air & FAST Live Channels with Multi-Server Backup Failover, Interactive Right-Panel Live EPG TV Guide (Now Airing + Up Next), Next-Gen YouTube Hub (Channel pages, video browsing, @handles BYOA subscriptions, calendar sync), Next-Gen Twitch Hub (Live 1080p60 HLS feeds, streamer search, VODs, clips), Real-Time Geographic Telemetry & Trending Leaderboards, Torrentio Real-Debrid Integration (Zero-Buffering High-Speed Cloud Caching), Native DRM-Free Cinema, BYOA streaming hubs (Netflix, BBC iPlayer, ITVX, Channel 4, Disney+, Prime, Max), Curated Franchises in release order, Verified IMDb & TMDb Ratings, Home Theater Audio/Video tags, intelligent stream speed ranking, real-time community feedback & live telemetry.
 
 ---
 
@@ -9,88 +9,78 @@
 
 * 🌐 **Live Web Portal & Configuration**: [https://nightknight-cinema.vercel.app](https://nightknight-cinema.vercel.app)
 * 🚀 **Stremio 1-Click Install**: [`stremio://nightknight-cinema.vercel.app/manifest.json`](stremio://nightknight-cinema.vercel.app/manifest.json)
+* 👑 **Support on Throne (Mystery Gifts & Wishlist)**: [https://throne.com/nightknight24](https://throne.com/nightknight24)
 * 📖 **Step-by-Step User Guide**: [Read Tutorial Below](#-complete-step-by-step-user-guide-how-to-use-everything)
 * 👨‍💻 **Developer Profile & Projects**: [https://github.com/NightKnight24](https://github.com/NightKnight24)
-* 📦 **Official Releases**: [GitHub Releases (v1.11.0)](https://github.com/NightKnight24/nightknight-cinema/releases)
+* 📦 **Official Releases**: [GitHub Releases (v1.13.1)](https://github.com/NightKnight24/nightknight-cinema/releases)
 * 🐳 **Container Packages**: [GitHub Packages (`ghcr.io`)](https://github.com/NightKnight24/nightknight-cinema/pkgs/container/nightknight-cinema)
-* 📊 **Live Anonymized Analytics**: [https://nightknight-cinema.vercel.app/api/stats](https://nightknight-cinema.vercel.app/api/stats)
+* 📊 **Live Anonymized Analytics & Telemetry**: [https://nightknight-cinema.vercel.app/api/stats](https://nightknight-cinema.vercel.app/api/stats)
 * 🐛 **Issue Tracker & Feature Requests**: [GitHub Issues](https://github.com/NightKnight24/nightknight-cinema/issues)
-* 💬 **Community Discussions**: [GitHub Discussions](https://github.com/NightKnight24/nightknight-cinema/discussions) *(Enabled via Repo Settings $\rightarrow$ Features)*
+* 💬 **Community Discussions**: [GitHub Discussions](https://github.com/NightKnight24/nightknight-cinema/discussions)
 
 ---
 
 ## ✨ Core Features & Capabilities
 
-### 1. 📺 Regional Live TV & Electronic Program Guide (EPG)
-* **Tailored Channel Lineup**: Automatically serves high-quality, legal, unencrypted Free-to-Air & FAST broadcast channels and 24/7 live music/radio stations based on your chosen region:
-  * 🇬🇧 **United Kingdom**: XITE Hits UK HD (1080p Top 40 Music Videos), Capital FM UK (Live Radio), Heart UK (Live Radio), GB News (1080p), GREAT! Movies (1080p), GREAT! Romance & Drama (1080p), CNBC UK & Europe (1080p), DW English (1080p), Red Bull TV, NASA & Space Live HD (ISS 1080p).
-  * 🇺🇸 **United States**: California Music Channel (CMC HD 1080p), LiveOne Concerts HD (LIVExLIVE 1080p), ABC News Live (1080p), DW News US (1080p), 30A Classic Movie Channel, NASA & Space Live HD (ISS 1080p), Red Bull TV.
-  * 🇨🇦 **Canada**: Qello Concerts by Stingray HD (1080p Live Arena Tours), Stingray Classic Rock HD (1080p), CityNews Vancouver & West HD, CityNews Toronto (720p), DW English HD (1080p), Red Bull TV, NASA & Space Live HD (ISS 1080p).
-  * 🇦🇺 **Australia**: Qwest TV Australia HD (1080p Jazz/Soul/Funk by Quincy Jones), SBS PopAsia (Live Radio), ABC News Australia (720p), Sky News / News24 Australia (1080p), MovieSphere Australia (1080p), Red Bull TV.
-  * 🇮🇪 **Ireland**: RTÉ 2FM (Live Radio from Dublin), France 24 & Europe News HD (1080p), GREAT! Movies HD, DW English, NASA & Space Live HD (ISS 1080p).
-  * 🇮🇳 **India**: B4U Music HD (1080p Bollywood Music), 9X Jalwa HD (Forever Bollywood Hits), B4U Movies HD (Bollywood Cinema), Shemaroo Bollywood HD (1080p Classic & Hit Films), NDTV 24x7 HD (English News), NDTV India HD (Hindi News), Aaj Tak HD (National News), Radio Mirchi Bollywood Hits (24/7 Live Radio), Bollywood Classics Radio (Golden Era Melodies). *(Strictly displayed when India is chosen).*
-* **Dynamic Hour-by-Hour TV Guide & Reminders**: Opening any channel card displays:
-  * **Now Airing**: Current show title, start time, and synopsis calculated dynamically for the current hour.
-  * **Coming Up Today**: Next consecutive scheduled programs with airtimes.
-  * **Reminders & Library Tracking**: Each scheduled program is provided as an individual trackable video entry with its exact future airtime. Simply click **`+` (Add to Library)** on the channel in Stremio to receive automated desktop and mobile notifications right when your favorite live show or broadcast begins!
-* **100% In-App Playback**: Direct unencrypted HLS (`.m3u8`) streaming right inside Stremio's native media player with backup streams.
+### 1. 💬 Universal Multi-Language Subtitles Engine (v1.13.1)
+* **Zero Missing Subtitles**: Completely resolves missing subtitles across all content types—blockbusters, obscure foreign series, multi-season anime, DRM-Free public domain classics, and YouTube videos.
+* **Inline Subtitles on Every Stream**: Automatically attaches up to 30 top priority-sorted subtitle tracks directly onto each stream object (`stream.subtitles`). Stremio's player loads synchronized subtitles immediately on all platforms without relying solely on external `/subtitles` routing.
+* **Parallel Multi-Source Resolution**: Simultaneously queries exact file hash matches (`videoHash`) and general catalog entries (`opensubtitles-v3.strem.io`), completely eliminating the early-return bug where a single foreign hash match previously hid the rest of the catalog.
+* **Anime & Multi-Season Fallback**: Automatically falls back to Season 1 absolute episode numbering (e.g. *One Piece* `S21E1000` $\to$ `S1E1000`) so anime episodes with non-standard season numbering always have complete subtitle coverage.
+* **Direct OpenSubtitles REST Fallback**: Bridges directly to OpenSubtitles REST API (`https://rest.opensubtitles.org`) and Stremio's UTF-8 SRT conversion CDN (`subs5.strem.io`) whenever upstream catalogs are empty.
+* **DRM-Free & YouTube Subtitles**: Native IMDb mapping for DRM-Free classics and automated `.vtt` caption track extraction for all YouTube videos and channels.
 
-### 2. ⚡ Native DRM-Free Cinema & Public Domain Classics
-* **Direct Stremio Streaming**: Curated collection of cinema masterpieces that stream 100% directly inside Stremio's native player with zero external apps, zero buffering risk, and zero DRM keys required:
-  * 🧟 **Night of the Living Dead (1968)** — George A. Romero's genre-defining horror masterpiece.
-  * 🧛 **Nosferatu: A Symphony of Horror (1922)** — F.W. Murnau's legendary German expressionist gothic masterpiece.
-  * 🚂 **The General (1926)** — Buster Keaton's greatest silent comedy adventure.
-  * 📰 **His Girl Friday (1940)** — Cary Grant & Rosalind Russell in Howard Hawks' rapid-fire screwball comedy.
-  * 🏰 **House on Haunted Hill (1959)** — Vincent Price in William Castle's iconic thriller.
-  * 🕵️ **The Stranger (1946)** — Directed by and starring Orson Welles with Edward G. Robinson.
-  * 🎨 **Gulliver's Travels (1939)** — Max Fleischer's classic animated milestone.
-  * 🪐 **Voyage to the Planet of Prehistoric Women (1967)** — Cult vintage sci-fi.
-  * 🔍 **Sherlock Holmes: Dressed to Kill (1946)** — Basil Rathbone & Nigel Bruce.
-  * 🎯 **Suddenly (1954)** — Gripping suspense noir starring Frank Sinatra.
-* **High-Speed CDN Feeds**: Fast, uncompressed direct video feeds hosted on Wikimedia and open-source public domain archives.
+### 2. 🌍 Priority Language, Dubbing & Best Stream Sorter (v1.13.1)
+* **Preferred Audio & Subtitle Language (`prefLang`)**: Choose from 14 major languages (English, Spanish, French, German, Italian, Portuguese, Hindi, Japanese, Korean, Russian, Dutch, Polish, Turkish, Arabic) or *Any Language*. Subtitles and audio tracks matching your language are placed at the very top.
+* **Smart Dubbing Priority Modes (`dubPref`)**:
+  * ⚡ **Smart Best Match (`dub_or_orig`)**: Balances your preferred language with best speed, Debrid availability, and 1080p/4K resolution.
+  * 🎙️ **Dubbed Priority (`dub_first`)**: Ranks Dubbed & Multi-Audio releases in your preferred language at the very top.
+  * 💬 **Subbed / Original Audio Priority (`sub_orig`)**: Prioritizes clean Original Audio + Multi-Subs releases, demoting heavy voiceover packs.
+* **Intelligent Audio & Dubbing Badges**: Every stream card displays exact language status badges (`🗣️ EN • Dubbed`, `🗣️ EN • Multi-Audio`, `🗣️ EN Audio`, `💬 Multi-Subs`, `🌐 Foreign Dub`).
+* **BingeGroup Language Preservation**: Stremio's auto-play engine automatically preserves your chosen language and dubbing style when seamlessly advancing to the next episode.
 
-### 3. ▶️ YouTube Native In-App Playback & Global Search
-* **Search Everything**: Type any YouTube video, creator, music video, documentary, or podcast directly in Stremio's global search bar or browse the dedicated **YouTube (NightKnight)** catalog.
-* **DRM-Free In-App Player**: Plays video streams directly inside Stremio's native video player window with hardware acceleration.
-* **Dual BYOA Action**: Also provides a **`[YOUTUBE • BYOA]`** option to hand off seamlessly to the official YouTube app/website under your personal Google account.
-* **Rich Metadata**: Automatically resolves authentic titles, channel creators, video durations, and high-resolution thumbnails via YouTube oEmbed.
+### 3. 📡 2,200+ Free-TV / FAST Channels & Multi-Server Backup Engine (v1.13.0)
+* **Massive Global Lineup**: Curates over 2,200+ legal, unencrypted Free-to-Air, FAST, and community broadcast channels sourced from verified Free-TV and IPTV-Org libraries.
+* **Smart Duplicate Merging**: Instead of cluttering Stremio with dozens of duplicate channels, channels are merged into a single clean channel card with **Multi-Server Failover**:
+  * `🟢 Server 1 (Primary Live)`
+  * `🟡 Server 2 (Backup Failover)`
+  * `🟠 Server 3 (Mirror Feed)`
+  If one stream buffers or goes offline, simply switch to the backup server!
+* **Multi-Protocol Stream Dispatcher**: Direct `.m3u8` HLS streams go to Stremio's native player, YouTube Live channels route through the ad-free YouTube player, and Twitch live channels route through the 1080p60 Twitch engine.
 
-### 4. 🇬🇧 UK, Global & 🇮🇳 India BYOA (Bring Your Own Account) Streaming Hubs
-* Automatically detects legal streaming availability with 100% provider ID accuracy:
-  * **UK Free Catch-Up**: **BBC iPlayer**, **ITVX**, **Channel 4**, **My5**, **STV Player**, **S4C Clic**, and **U (Dave / UKTV Play)**.
-  * **India Streaming Hubs**: **Disney+ Hotstar**, **JioCinema**, **ZEE5**, **Sony LIV**, **Sun NXT**, and **aha**.
-  * **Global Subscriptions**: **Sky Go**, **NOW**, **BritBox**, **Amazon Prime Video**, **Disney+**, **Netflix**, **Paramount+**, **Apple TV+**, **Max (HBO)**, **Discovery+**, **Crunchyroll**, **MUBI**, **BFI Player**, and **Hayu**.
-* **Zero-Knowledge Privacy**: 1-click deep-link buttons hand off securely to your official app or web browser where you are already signed in. Zero passwords, tokens, or credentials ever pass through the addon.
+### 4. 📺 Interactive Right-Panel Live EPG TV Guide Layout
+* **Top Item $\to$ Instant Live Stream**: Dynamically named `🔴 LIVE NOW: [Current Show Title]`. Clicking play immediately launches the live broadcast in Stremio's native player.
+* **List Below $\to$ Up Next Timeline**: Displays upcoming programs chronologically (`⏰ [Today/Tomorrow HH:MM] Show Title`) with full plot overviews and future air timestamps.
+* **Library Reminders & Phone Alerts**: Clicking `+ (Add to Library)` on any channel syncs its schedule to your Stremio Calendar and phone calendar app (Apple/Google), alerting you right before your show or match begins!
 
-### 5. 🎬 Official Studio Trailers In-App
-* Detects official studio trailers from TMDb and surfaces an **`🎬 [OFFICIAL TRAILER]`** stream that plays directly inside Stremio's built-in player before starting a film.
+### 5. ▶️ Next-Gen YouTube Hub (BYOA Subscriptions & In-App Playback)
+* **Search Everything**: Search any video, creator, music video, documentary, or podcast directly in Stremio's global search bar or browse the **YouTube (NightKnight)** catalog.
+* **Channel Pages & Video Browsing**: Clicking any creator channel displays their latest uploads, premieres, and a **🔴 LIVE NOW** feed when they are streaming.
+* **BYOA Subscriptions**: Add your favorite creators (e.g. `@MrBeast, @mkbhd, @SkyNews`) in `/configure` to create your own personalized **My Subscriptions (BYOA)** row.
+* **100% Ad-Free**: Direct stream extraction completely bypasses pre-rolls, mid-rolls, and banner ads.
+* **Premiere Calendar Alerts**: Scheduled premieres sync future start times directly to Stremio Calendar.
 
-### 6. 📺 Streaming Platform Catalogs
-* Dedicated rows and filter options for all major streaming services: **Netflix**, **Apple TV+**, **Max (HBO)**, **Disney+**, **Amazon Prime Video**, and **Paramount+**.
+### 6. 🟣 Next-Gen Twitch Hub (Live Streams, Streamer Search & VODs)
+* **Top Live Directory**: Real-time viewer count badges, current game category, and stream status indicator (`🔴 LIVE`) across *Just Chatting*, *GTA V*, *Valorant*, *Sports*, and more.
+* **Streamer Search**: Search any streamer by username (e.g. `KaiCenat`, `shroud`, `blastpremier`).
+* **1080p60 Ad-Free HLS Playback**: Plays raw source feeds directly in Stremio without commercial ad breaks.
+* **Followed Streamers BYOA**: Configure your favorite Twitch creators in `/configure` for a dedicated live feed.
 
-### 7. 🍿 Curated Franchises & Sagas in Viewing Order
-* Instant access to complete film and TV sagas organized chronologically in verified release order:
-  * 🦸 **Marvel Cinematic Universe (MCU)**: Chronological from Iron Man (2008), excluding unreleased placeholders.
-  * 🌌 **Star Wars Saga**: Core episodic films, anthologies (Rogue One, Solo), and live-action/animated series in release order.
-  * ⚡ **Harry Potter & Wizarding World**: Complete collection including Fantastic Beasts.
-  * 💍 **The Lord of the Rings & The Hobbit**: Complete Middle-earth saga.
-  * 🍸 **James Bond (007 Collection)**: Comprehensive viewing order from Dr. No onwards.
-  * 🏮 **Studio Ghibli Masterpieces**: Complete Hayao Miyazaki & Ghibli animated catalog.
-  * 🎬 **Christopher Nolan & Quentin Tarantino Collections**: Full filmographies in chronological order.
+### 7. 📊 Live Geographic Telemetry & Trending Leaderboards
+* **Zero-Knowledge Privacy**: Anonymously tracks country-level trends using salted SHA-256 hashes (100% GDPR-compliant, no personal IPs or search history stored).
+* **"Trending on NightKnight" Leaderboard**: Live rankings on `/configure` showcasing the most popular movies, series, and live channels streamed by the community.
 
-### 8. ⭐ Verified Critic Badges & Awards Recognition
-* Injects authentic IMDb ratings, TMDb audience percentages, and Academy Award / Oscar acknowledgments right above the synopsis:
-  `⭐ IMDb: 9.3/10 • 🎬 TMDb: 8.7/10 (87% • 31k votes) • 🏆 Nominated for 7 Oscars`
-* **Honest Attribution**: TMDb ratings are strictly identified as TMDb and never disguised as IMDb scores.
+### 8. ⚡ Native DRM-Free Cinema & Public Domain Classics
+* Curated collection of verified public domain classics (*Night of the Living Dead*, *Nosferatu*, *The General*, *His Girl Friday*, *House on Haunted Hill*, *The Stranger*, *Suddenly*) that stream 100% inside Stremio with zero buffering risk and full subtitle support.
 
-### 9. 🔊 Home Cinema Audio & Video Stream Badges
-* Automatically inspects stream titles and tags technical specifications:
-  * **Dynamic Range**: `✨ Dolby Vision`, `🌈 HDR10+`, `🌈 HDR`, `10-bit` (strictly distinguished from DVDRip / HDRip).
-  * **Sound Codecs**: `🔊 Dolby Atmos`, `🔊 TrueHD 7.1`, `🔊 DTS-HD MA`, `🔊 DTS:X`, `🔊 5.1 Surround`.
-  * **Editions**: `💎 Lossless Remux`, `🎞️ IMAX Enhanced`, `🎬 Extended / Director's Cut`.
+### 9. 🇬🇧 Regional BYOA Streaming Hubs
+* Deep-links directly to official streaming providers:
+  * **UK Free Catch-Up**: **BBC iPlayer**, **ITVX**, **Channel 4**, **My5**, **STV Player**, **U (Dave / UKTV Play)**.
+  * **India Streaming Hubs**: **Hotstar**, **JioCinema**, **ZEE5**, **Sony LIV**.
+  * **Global Subscriptions**: **Sky Go**, **NOW**, **Netflix**, **Disney+**, **Prime Video**, **Max**, **Apple TV+**, **Paramount+**, **Crunchyroll**.
 
 ### 10. ⚡ Torrentio Real-Debrid Integration & Buffer Shield
-* **User-Provided Real-Debrid Token**: Users can enter their personal Real-Debrid API token directly on the configuration page or in the manifest URL. NightKnight Cinema automatically queries Torrentio Debrid, delivering instant high-speed cloud streams (`🚀 [INSTANT CDN • 0 BUFFER]`) with zero P2P seeding and zero buffering.
+* **User-Provided Real-Debrid Token**: Users can enter their personal Real-Debrid API token directly on `/configure`. NightKnight Cinema automatically queries Torrentio Debrid, delivering instant high-speed cloud streams (`🚀 [INSTANT CDN • 0 BUFFER]`) with zero P2P seeding and zero buffering.
 * **Intelligent Speed Optimizer**: Ranks cached Debrid streams and high-seeder torrents (`⚡ [FASTEST • 600+ 👤]`) at the very top.
 * **Buffer Shield**: Warns against dangerous, massive files with low seeders (`⚠️ [HIGH BUFFER RISK]`) and filters out dead streams (0 seeders).
 * **Automatic P2P Fallback**: If a title has no cached Debrid copies, the addon automatically falls back to public Torrentio streams so viewers are never left stranded.
