@@ -1,7 +1,7 @@
-# ⚔️ NightKnight Cinema — Stremio Addon (v1.13.1)
+# ⚔️ NightKnight Cinema — Stremio Addon (v2.0.0)
 
 > **Created by NightKnight**  
-> The ultimate all-in-one cinema & media hub: Universal Multi-Language Subtitles Engine (inline playback, 80+ languages, anime & REST fallbacks), Priority Language, Dubbing & Best Stream Sorter (Preferred Audio, Dubbed Priority, Subbed/Original Priority), 2,200+ Free-to-Air & FAST Live Channels with Multi-Server Backup Failover, Interactive Right-Panel Live EPG TV Guide (Now Airing + Up Next), Next-Gen YouTube Hub (Channel pages, video browsing, @handles BYOA subscriptions, calendar sync), Next-Gen Twitch Hub (Live 1080p60 HLS feeds, streamer search, VODs, clips), Real-Time Geographic Telemetry & Trending Leaderboards, Torrentio Real-Debrid Integration (Zero-Buffering High-Speed Cloud Caching), Native DRM-Free Cinema, BYOA streaming hubs (Netflix, BBC iPlayer, ITVX, Channel 4, Disney+, Prime, Max), Curated Franchises in release order, Verified IMDb & TMDb Ratings, Home Theater Audio/Video tags, intelligent stream speed ranking, real-time community feedback & live telemetry.
+> The ultimate all-in-one cinema & media hub (**v2.0 Major Release**): Multi-Indexer Stream Failover & Deduplication (`Torrentio` + `ThePirateBay+`), Resolution Priority Selector (`4K / 1080p / Best Available`) + Automatic CAM/TS/Screener Shield, Universal Multi-Language Subtitles Engine (inline playback, 80+ languages, anime & REST fallbacks), Priority Language & Dubbing Stream Sorter (Preferred Audio, Dubbed Priority, Subbed/Original Priority), 2,200+ Free-to-Air, FAST & International Live Radio Channels across UK, US, EU & LATAM with Multi-Server Backup Failover, Interactive Right-Panel Live EPG TV Guide (Now Airing + Up Next), Next-Gen YouTube Hub (Channel pages, video browsing, @handles BYOA subscriptions, calendar sync), Next-Gen Twitch Hub (Live 1080p60 HLS feeds, streamer search, VODs, clips), Global Country Name Telemetry & Trending Leaderboards, Torrentio Real-Debrid Integration (Zero-Buffering High-Speed Cloud Caching), Native DRM-Free Cinema, BYOA streaming hubs (Netflix, BBC iPlayer, ITVX, Channel 4, Disney+, Prime, Max), Curated Franchises in release order, Verified IMDb & TMDb Ratings, Home Theater Audio/Video tags, real-time community feedback & live telemetry.
 
 ---
 
@@ -9,10 +9,10 @@
 
 * 🌐 **Live Web Portal & Configuration**: [https://nightknight-cinema.vercel.app](https://nightknight-cinema.vercel.app)
 * 🚀 **Stremio 1-Click Install**: [`stremio://nightknight-cinema.vercel.app/manifest.json`](stremio://nightknight-cinema.vercel.app/manifest.json)
-* 👑 **Support on Throne (Mystery Gifts & Wishlist)**: [https://throne.com/nightknight24](https://throne.com/nightknight24)
+* 👑 **Support on Throne (Mystery Gifts & Community Goals)**: [https://throne.com/nightknight24](https://throne.com/nightknight24)
 * 📖 **Step-by-Step User Guide**: [Read Tutorial Below](#-complete-step-by-step-user-guide-how-to-use-everything)
 * 👨‍💻 **Developer Profile & Projects**: [https://github.com/NightKnight24](https://github.com/NightKnight24)
-* 📦 **Official Releases**: [GitHub Releases (v1.13.1)](https://github.com/NightKnight24/nightknight-cinema/releases)
+* 📦 **Official Releases**: [GitHub Releases (v2.0.0)](https://github.com/NightKnight24/nightknight-cinema/releases)
 * 🐳 **Container Packages**: [GitHub Packages (`ghcr.io`)](https://github.com/NightKnight24/nightknight-cinema/pkgs/container/nightknight-cinema)
 * 📊 **Live Anonymized Analytics & Telemetry**: [https://nightknight-cinema.vercel.app/api/stats](https://nightknight-cinema.vercel.app/api/stats)
 * 🐛 **Issue Tracker & Feature Requests**: [GitHub Issues](https://github.com/NightKnight24/nightknight-cinema/issues)
@@ -20,9 +20,18 @@
 
 ---
 
+## 🆕 What’s New in v2.0.0
+
+* **🔄 Multi-Indexer Stream Failover & Deduplication**: Whenever a title returns fewer than 3 streams (or upstream times out/rate-limits), NightKnight Cinema automatically aggregates additional verified streams from `ThePirateBay+` and deduplicates by `infoHash`/URL so you are never left without links.
+* **🎯 Resolution Priority Selector (`maxQuality`)**: Choose **Best Available (4K UHD + 1080p)**, **1080p Full HD Priority** (smooth instant loads on Firestick, TV & Mobile without 60GB remuxes), or **4K Ultra HD / Dolby Vision / HDR Priority** for dedicated home theaters.
+* **🛡️ Automatic CAM / Telesync / Screener Shield**: Automatically flags low-quality theater captures (`⚠️ [CAM / THEATER RIP]`) and demotes them below crisp WEB-DL and BluRay encodes.
+* **🌍 Global Country Name Resolution & Expanded EU/LATAM Radio/TV**: Resolves every ISO country code automatically (`Intl.DisplayNames`) on the Global Audience Leaderboard and adds native EPG-backed Live TV & 24/7 radio broadcasts for **Germany (`DE`), France (`FR`), Spain (`ES`), Italy (`IT`), Netherlands (`NL`), Brazil (`BR`), and Mexico (`MX`)**.
+
+---
+
 ## ✨ Core Features & Capabilities
 
-### 1. 💬 Universal Multi-Language Subtitles Engine (v1.13.1)
+### 1. 💬 Universal Multi-Language Subtitles Engine (v1.13.1 + v2.0)
 * **Zero Missing Subtitles**: Completely resolves missing subtitles across all content types—blockbusters, obscure foreign series, multi-season anime, DRM-Free public domain classics, and YouTube videos.
 * **Inline Subtitles on Every Stream**: Automatically attaches up to 30 top priority-sorted subtitle tracks directly onto each stream object (`stream.subtitles`). Stremio's player loads synchronized subtitles immediately on all platforms without relying solely on external `/subtitles` routing.
 * **Parallel Multi-Source Resolution**: Simultaneously queries exact file hash matches (`videoHash`) and general catalog entries (`opensubtitles-v3.strem.io`), completely eliminating the early-return bug where a single foreign hash match previously hid the rest of the catalog.

@@ -16,7 +16,7 @@ const TMDB_API_KEY = process.env.TMDB_API_KEY || '3157bd6dacbc3a653ae2e5a3b19beb
 const PORT = process.env.PORT || 7000;
 const HOST = process.env.HOST || (process.env.PORT ? '0.0.0.0' : '127.0.0.1');
 
-const ADDON_VERSION = '1.13.1';
+const ADDON_VERSION = '2.0.0';
 
 // Load server-wide DEFAULTS (read-only). Per-user settings live in the install URL, never on the server.
 function loadConfig() {
@@ -53,6 +53,79 @@ const REGIONS = {
   BR: 'Brazil',
   MX: 'Mexico',
   ALL: 'Global (All Countries)'
+};
+
+const GENRE_SCHEDULE_TEMPLATES = {
+  news: [
+    { time: '00:00', title: 'Overnight World Briefing', desc: 'Breaking headlines, overnight international developments & weather.' },
+    { time: '04:00', title: 'Early Edition Live', desc: 'Morning newspapers review, global markets & live desk reports.' },
+    { time: '06:00', title: 'Breakfast Live', desc: 'Live morning news, political interviews & commuter headlines.' },
+    { time: '09:00', title: 'Morning Newsroom', desc: 'Continuous live journalism, field correspondents & analysis.' },
+    { time: '12:00', title: 'Midday Live & Business', desc: 'Midday national briefing, stock markets & global stories.' },
+    { time: '15:00', title: 'Afternoon World Desk', desc: 'Live breaking coverage, international affairs & press briefings.' },
+    { time: '18:00', title: 'Evening NewsHour', desc: 'Flagship evening broadcast with special investigative reports.' },
+    { time: '20:00', title: 'Primetime Debate & Analysis', desc: 'In-depth panel discussions on top national and global stories.' },
+    { time: '22:00', title: 'News at Ten & Tonight', desc: 'Late evening full summary and tomorrow’s front pages.' }
+  ],
+  sports: [
+    { time: '00:00', title: 'Overnight Championship Replay', desc: 'Full match and event replay from top international competitions.' },
+    { time: '06:00', title: 'Morning SportsCenter', desc: 'Overnight scores, transfer wire & game-day injury updates.' },
+    { time: '09:00', title: 'Pre-Match Build-Up', desc: 'Live tactical previews, team news & pundit predictions.' },
+    { time: '12:00', title: 'Midday Live Action', desc: 'Live sporting coverage, fixtures & real-time pitchside updates.' },
+    { time: '15:00', title: 'Afternoon Tournament Coverage', desc: 'Live multi-event broadcast and championship qualifiers.' },
+    { time: '18:00', title: 'Goals, Highlights & Analysis', desc: 'Every decisive play broken down with expert studio commentary.' },
+    { time: '20:00', title: 'Primetime Main Event Live', desc: 'Headline evening fixture and live arena broadcast.' },
+    { time: '22:30', title: 'Late Night Post-Game Show', desc: 'Manager reaction, dressing room interviews & league table breakdown.' }
+  ],
+  movies: [
+    { time: '00:00', title: 'Midnight Cult Feature', desc: 'Uncut late-night thriller and cult cinema showcase.' },
+    { time: '03:00', title: 'Late Night Noir', desc: 'Classic mystery and suspense double-bill.' },
+    { time: '06:00', title: 'Early Morning Matinee', desc: 'Feel-good cinema and adventure classics to start the day.' },
+    { time: '09:00', title: 'Morning Family Feature', desc: 'All-ages adventure and comedy movie presentation.' },
+    { time: '12:00', title: 'Noon Action Showcase', desc: 'High-octane action, crime & western double feature.' },
+    { time: '15:00', title: 'Afternoon Drama Feature', desc: 'Critically acclaimed drama and historical biopic.' },
+    { time: '18:00', title: 'Early Evening Thriller', desc: 'Suspense and edge-of-your-seat primetime warm-up.' },
+    { time: '20:00', title: 'Primetime Movie Event', desc: 'Headline evening blockbuster and fan-favorite cinema.' },
+    { time: '22:15', title: 'Late Feature Presentation', desc: 'Horror, sci-fi or action late-night feature film.' }
+  ],
+  music: [
+    { time: '00:00', title: 'Midnight Chill & Ambient Mix', desc: 'Uninterrupted late-night acoustic, lo-fi & downtempo hits.' },
+    { time: '06:00', title: 'Breakfast Feel-Good Hits', desc: 'Upbeat chart toppers and morning anthems to energize your day.' },
+    { time: '10:00', title: 'Daytime Non-Stop Chart', desc: 'Fresh hits, trending singles & throwback favorites.' },
+    { time: '13:00', title: 'Afternoon Throwback Rewind', desc: 'Iconic 90s, 00s & 10s hits back-to-back.' },
+    { time: '16:00', title: 'Drivetime Anthems Live', desc: 'High-energy pop, hip-hop & dance tracks for the commute.' },
+    { time: '19:00', title: 'Evening Live Lounge', desc: 'Live sessions, artist spotlights & acoustic performances.' },
+    { time: '21:00', title: 'Night Club & Dance Session', desc: 'Non-stop DJ mixes and party anthems into the night.' }
+  ],
+  kids: [
+    { time: '00:00', title: 'Bedtime Classics & Lullabies', desc: 'Gentle animated shorts for peaceful late-night viewing.' },
+    { time: '06:00', title: 'Early Risers Cartoons', desc: 'Classic animated comedies and colorful adventures.' },
+    { time: '09:00', title: 'Preschool Playtime', desc: 'Educational stories, songs & friendly characters.' },
+    { time: '12:00', title: 'Midday Animated Adventures', desc: 'Action-packed superhero and fantasy episodes.' },
+    { time: '15:00', title: 'After School Favorites', desc: 'Popular animated series marathon and comedy specials.' },
+    { time: '18:00', title: 'Family Animation Hour', desc: 'Wholesome animated specials for parents and kids together.' },
+    { time: '20:00', title: 'Evening Cartoon Showcase', desc: 'Fan-favorite episodes before bedtime.' }
+  ],
+  documentary: [
+    { time: '00:00', title: 'Deep Space Frontiers', desc: 'Exploring galaxies, exoplanets & cosmic mysteries.' },
+    { time: '06:00', title: 'Dawn of History', desc: 'Ancient civilizations and archaeological discoveries.' },
+    { time: '09:00', title: 'Wild Planet Earth', desc: 'Ultra-HD wildlife cinematography across oceans and jungles.' },
+    { time: '12:00', title: 'Mega Engineering', desc: 'Inside the world’s most ambitious bridges, rockets & cities.' },
+    { time: '15:00', title: 'Secret History Files', desc: 'Declassified archives and untold 20th-century stories.' },
+    { time: '18:00', title: 'Nature & Ocean Mysteries', desc: 'Deep-sea expeditions and endangered ecosystems.' },
+    { time: '20:00', title: 'Primetime Investigation', desc: 'Feature documentary exploring science, crime & culture.' },
+    { time: '22:00', title: 'Frontiers of Technology', desc: 'AI, robotics & the future of human exploration.' }
+  ],
+  entertainment: [
+    { time: '00:00', title: 'Overnight Encore', desc: 'Best highlights, comedy & viral moments replayed overnight.' },
+    { time: '06:00', title: 'Morning Variety & Lifestyle', desc: 'Cooking, home design & morning entertainment magazine.' },
+    { time: '09:00', title: 'Daytime Talk & Culture', desc: 'Celebrity interviews, trends & live studio conversations.' },
+    { time: '12:00', title: 'Midday Reality Showcase', desc: 'Back-to-back competition, talent & travel episodes.' },
+    { time: '15:00', title: 'Afternoon Game Show Hour', desc: 'Fast-paced trivia, studio games & big prizes.' },
+    { time: '18:00', title: 'Early Evening Magazine', desc: 'Daily culture roundup, pop news & comedy sketches.' },
+    { time: '20:00', title: 'Primetime Special Event', desc: 'Flagship evening drama, reality finale or variety special.' },
+    { time: '22:00', title: 'Late Night Comedy & Talk', desc: 'Stand-up, monologue & celebrity guests live.' }
+  ]
 };
 
 // -------------------------------------------------------------
@@ -843,6 +916,273 @@ const REGIONAL_CHANNELS = {
         { time: '22:00', title: 'Chhaya Geet (Late Night Nostalgia)', desc: 'Timeless romantic melodies to end the evening in tranquility.' }
       ]
     }
+  ],
+  DE: [
+    {
+      id: 'tv:de_daserste',
+      name: 'Das Erste (ARD HD)',
+      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/Das_Erste_2014.svg/500px-Das_Erste_2014.svg.png',
+      background: 'https://images.unsplash.com/photo-1467269204594-9661b134dd2b?w=1280&q=80',
+      genres: ['Entertainment', 'News & Info', 'Live TV'],
+      streamUrl: 'https://daserste-live.ard-mcdn.de/daserste/live/hls/de/master.m3u8',
+      backupUrl: 'https://dwamdstream102.akamaized.net/hls/live/2015525/dwstream102/index.m3u8',
+      summary: 'Germany’s flagship public television broadcaster (ARD) featuring Tagesschau news, live sport, Tatort crime drama, and entertainment.',
+      network: 'ARD',
+      guideSchedule: [
+        { time: '06:00', title: 'Morgenmagazin (MoMa)', desc: 'Live morning news, politics, and interviews from Berlin.' },
+        { time: '12:00', title: 'Tagesschau & ARD-Buffet', desc: 'Midday national news bulletin and lifestyle magazine.' },
+        { time: '17:00', title: 'Brisant & Quizduell', desc: 'Afternoon magazine and interactive German quiz show.' },
+        { time: '20:00', title: 'Tagesschau Hauptausgabe', desc: 'Germany’s most-watched 15-minute evening news broadcast.' },
+        { time: '20:15', title: 'Primetime Spielfilm / Tatort', desc: 'Flagship evening drama, thriller, or documentary feature.' }
+      ]
+    },
+    {
+      id: 'tv:de_dw_global',
+      name: 'DW News & Culture HD',
+      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/Deutsche_Welle_symbol_2012.svg/512px-Deutsche_Welle_symbol_2012.svg.png',
+      background: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=1280&q=80',
+      genres: ['News & Info', 'Documentary', 'Live TV'],
+      streamUrl: 'https://dwamdstream102.akamaized.net/hls/live/2015525/dwstream102/index.m3u8',
+      summary: 'Deutsche Welle’s 24-hour international news, European affairs, business analysis, and science/culture documentaries.',
+      network: 'Deutsche Welle',
+      guideSchedule: GENRE_SCHEDULE_TEMPLATES.news
+    },
+    {
+      id: 'tv:de_radio_paradise',
+      name: 'Radio Paradise Eclectic 320k (Live Radio)',
+      logo: 'https://cdn-icons-png.flaticon.com/512/3075/3075908.png',
+      background: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=1280&q=80',
+      genres: ['Radio & Music', 'Live TV'],
+      streamUrl: 'https://stream.radioparadise.com/aac-320',
+      backupUrl: 'https://stream.radioparadise.com/rock-320',
+      summary: 'Commercial-free 24/7 eclectic music radio curated in high bitrate AAC featuring indie, rock, electronic, and world grooves.',
+      network: 'Radio Paradise',
+      guideSchedule: GENRE_SCHEDULE_TEMPLATES.music
+    }
+  ],
+  FR: [
+    {
+      id: 'tv:fr_tv5monde_info',
+      name: 'TV5MONDE Info HD',
+      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/42/TV5_Monde_logo.svg/512px-TV5_Monde_logo.svg.png',
+      background: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=1280&q=80',
+      genres: ['News & Info', 'Live TV'],
+      streamUrl: 'https://ott.tv5monde.com/Content/HLS/Live/channel(info)/index.m3u8',
+      backupUrl: 'https://ott.tv5monde.com/Content/HLS/Live/channel(europe)/index.m3u8',
+      summary: '24/7 French-language international news, cultural reports, and live global journalism from Paris and the Francophone world.',
+      network: 'TV5MONDE',
+      guideSchedule: GENRE_SCHEDULE_TEMPLATES.news
+    },
+    {
+      id: 'tv:fr_bfmtv',
+      name: 'BFMTV Live HD',
+      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/63/BFMTV_logo_2019.svg/512px-BFMTV_logo_2019.svg.png',
+      background: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=1280&q=80',
+      genres: ['News & Info', 'Live TV'],
+      streamUrl: 'https://ncdn-live-bfm.pfd.sfr.net/shls/LIVE$BFM_TV/index.m3u8?end=END&start=LIVE',
+      backupUrl: 'https://ott.tv5monde.com/Content/HLS/Live/channel(info)/index.m3u8',
+      summary: 'France’s most-watched 24-hour breaking news network with live political coverage, economy, sports, and Paris studio debates.',
+      network: 'BFM',
+      guideSchedule: GENRE_SCHEDULE_TEMPLATES.news
+    },
+    {
+      id: 'tv:fr_airconnect_radio',
+      name: 'Air Connect Radio Music TV (Live Radio)',
+      logo: 'https://cdn-icons-png.flaticon.com/512/3075/3075908.png',
+      background: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=1280&q=80',
+      genres: ['Radio & Music', 'Live TV'],
+      streamUrl: 'https://tv.airconnectradio.com/live.m3u8',
+      backupUrl: 'https://stream.radioparadise.com/mellow-flac',
+      summary: 'Non-stop French & international pop, dance, lounge hits, and live music radio visuals broadcasting 24/7.',
+      network: 'Air Connect France',
+      guideSchedule: GENRE_SCHEDULE_TEMPLATES.music
+    }
+  ],
+  ES: [
+    {
+      id: 'tv:es_rtve_la1',
+      name: 'RTVE La 1 HD',
+      logo: 'https://i.imgur.com/NbesiPn.png',
+      background: 'https://images.unsplash.com/photo-1543783207-ec64e4d95325?w=1280&q=80',
+      genres: ['Entertainment', 'Movies & Drama', 'Live TV'],
+      streamUrl: 'https://rtvelivestream.rtve.es/rtvesec/la1/la1_main_dvr.m3u8',
+      backupUrl: 'https://rtvelivestream.rtve.es/rtvesec/24h/24h_main_dvr.m3u8',
+      summary: 'Spain’s #1 flagship public broadcaster featuring Telediario news, MasterChef España, live Copa del Rey football, and cinema.',
+      network: 'RTVE',
+      guideSchedule: GENRE_SCHEDULE_TEMPLATES.entertainment
+    },
+    {
+      id: 'tv:es_rtve_24h',
+      name: 'RTVE Canal 24 Horas HD',
+      logo: 'https://i.imgur.com/ZKR2jKr.png',
+      background: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=1280&q=80',
+      genres: ['News & Info', 'Live TV'],
+      streamUrl: 'https://rtvelivestream.rtve.es/rtvesec/24h/24h_main_dvr.m3u8',
+      backupUrl: 'https://dwamdstream103.akamaized.net/hls/live/2015526/dwstream103/index.m3u8',
+      summary: 'Live 24-hour Spanish breaking news, weather, Parliament broadcasts, and international Latin American/European analysis.',
+      network: 'RTVE',
+      guideSchedule: GENRE_SCHEDULE_TEMPLATES.news
+    },
+    {
+      id: 'tv:es_dw_espanol',
+      name: 'DW Español HD',
+      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/Deutsche_Welle_symbol_2012.svg/512px-Deutsche_Welle_symbol_2012.svg.png',
+      background: 'https://images.unsplash.com/photo-1495020689067-958852a7765e?w=1280&q=80',
+      genres: ['News & Info', 'Documentary', 'Live TV'],
+      streamUrl: 'https://dwamdstream103.akamaized.net/hls/live/2015526/dwstream103/index.m3u8',
+      summary: 'International news, documentaries, technology features, and cultural reports broadcasting 24/7 in Spanish.',
+      network: 'Deutsche Welle',
+      guideSchedule: GENRE_SCHEDULE_TEMPLATES.news
+    }
+  ],
+  IT: [
+    {
+      id: 'tv:it_rai1',
+      name: 'Rai 1 HD',
+      logo: 'https://i.imgur.com/CAx7yRm.png',
+      background: 'https://images.unsplash.com/photo-1515542622106-78bda8ba0e5b?w=1280&q=80',
+      genres: ['Entertainment', 'News & Info', 'Live TV'],
+      streamUrl: 'https://d3k8wzt41aflvx.cloudfront.net/RAI1/Live.m3u8',
+      backupUrl: 'https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8',
+      summary: 'Italy’s iconic flagship television channel broadcasting TG1 news, Italian drama series, Sanremo specials, and national sport.',
+      network: 'RAI',
+      guideSchedule: GENRE_SCHEDULE_TEMPLATES.entertainment
+    },
+    {
+      id: 'tv:it_redbull',
+      name: 'Red Bull TV Italia / Global HD',
+      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/22/Red_Bull_TV_logo.svg/512px-Red_Bull_TV_logo.svg.png',
+      background: 'https://images.unsplash.com/photo-1541625602330-2277a4c46182?w=1280&q=80',
+      genres: ['Sports', 'Documentary', 'Live TV'],
+      streamUrl: 'https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8',
+      summary: 'Non-stop extreme sports, Formula & WRC motorsport features, cycling, cliff diving, and live music festivals.',
+      network: 'Red Bull Media House',
+      guideSchedule: GENRE_SCHEDULE_TEMPLATES.sports
+    },
+    {
+      id: 'tv:it_mellow_radio',
+      name: 'Radio Paradise Mellow & Lounge (Live Radio)',
+      logo: 'https://cdn-icons-png.flaticon.com/512/4430/4430494.png',
+      background: 'https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=1280&q=80',
+      genres: ['Radio & Music', 'Live TV'],
+      streamUrl: 'https://stream.radioparadise.com/mellow-flac',
+      backupUrl: 'https://stream.radioparadise.com/aac-320',
+      summary: 'Smooth, ad-free acoustic, chillout, and melodic lounge radio in lossless/high-bitrate audio 24 hours a day.',
+      network: 'Radio Paradise',
+      guideSchedule: GENRE_SCHEDULE_TEMPLATES.music
+    }
+  ],
+  NL: [
+    {
+      id: 'tv:nl_omrop_fryslan',
+      name: 'Omrop Fryslân TV HD',
+      logo: 'https://i.imgur.com/0VKJLAK.png',
+      background: 'https://images.unsplash.com/photo-1512470876302-972faa2aa9a4?w=1280&q=80',
+      genres: ['News & Info', 'Entertainment', 'Live TV'],
+      streamUrl: 'https://d3pvma9xb2775h.cloudfront.net/live/omropfryslan/f8f68bd5/playlist.m3u8',
+      backupUrl: 'https://media.rtvnoord.nl/live/rtvnoord/tv/playlist.m3u8',
+      summary: 'Dutch regional public television featuring daily local news, documentaries, cultural programs, and live regional events.',
+      network: 'NPO Regional NL',
+      guideSchedule: GENRE_SCHEDULE_TEMPLATES.news
+    },
+    {
+      id: 'tv:nl_rtv_noord',
+      name: 'RTV Noord TV HD',
+      logo: 'https://i.imgur.com/pO5Mexa.png',
+      background: 'https://images.unsplash.com/photo-1534351590666-13e3e96b5017?w=1280&q=80',
+      genres: ['News & Info', 'Live TV'],
+      streamUrl: 'https://media.rtvnoord.nl/live/rtvnoord/tv/playlist.m3u8',
+      backupUrl: 'https://d3pvma9xb2775h.cloudfront.net/live/omropfryslan/f8f68bd5/playlist.m3u8',
+      summary: '24/7 Dutch regional live news, weather, current affairs, and community sports from Groningen and the northern Netherlands.',
+      network: 'RTV Noord',
+      guideSchedule: GENRE_SCHEDULE_TEMPLATES.news
+    },
+    {
+      id: 'tv:nl_rock_radio',
+      name: 'Radio Paradise Rock & Alternative (Live Radio)',
+      logo: 'https://cdn-icons-png.flaticon.com/512/3075/3075908.png',
+      background: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=1280&q=80',
+      genres: ['Radio & Music', 'Live TV'],
+      streamUrl: 'https://stream.radioparadise.com/rock-320',
+      backupUrl: 'https://stream.radioparadise.com/aac-320',
+      summary: 'High-bitrate 320kbps commercial-free rock, indie, alternative, and classic album tracks broadcasting live 24/7.',
+      network: 'Radio Paradise',
+      guideSchedule: GENRE_SCHEDULE_TEMPLATES.music
+    }
+  ],
+  BR: [
+    {
+      id: 'tv:br_com_brasil',
+      name: 'COM Brasil TV HD',
+      logo: 'https://i.imgur.com/c8ztQnF.png',
+      background: 'https://images.unsplash.com/photo-1483729558449-99ef09a8c325?w=1280&q=80',
+      genres: ['Entertainment', 'News & Info', 'Live TV'],
+      streamUrl: 'https://br5093.streamingdevideo.com.br/abc/abc/playlist.m3u8',
+      backupUrl: 'https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8',
+      summary: 'Brazilian national public cultural, community, music, and news programming broadcasting live 24/7 in HD.',
+      network: 'COM Brasil',
+      guideSchedule: GENRE_SCHEDULE_TEMPLATES.entertainment
+    },
+    {
+      id: 'tv:br_redbull',
+      name: 'Red Bull TV Brasil / Sports HD',
+      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/22/Red_Bull_TV_logo.svg/512px-Red_Bull_TV_logo.svg.png',
+      background: 'https://images.unsplash.com/photo-1541625602330-2277a4c46182?w=1280&q=80',
+      genres: ['Sports', 'Documentary', 'Live TV'],
+      streamUrl: 'https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8',
+      summary: 'Skateboarding, surfing, motorsports, music festivals, and global adventure specials live 24 hours a day.',
+      network: 'Red Bull Media House',
+      guideSchedule: GENRE_SCHEDULE_TEMPLATES.sports
+    },
+    {
+      id: 'tv:br_radio_eclectic',
+      name: 'Radio Paradise World & Eclectic (Live Radio)',
+      logo: 'https://cdn-icons-png.flaticon.com/512/3075/3075908.png',
+      background: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=1280&q=80',
+      genres: ['Radio & Music', 'Live TV'],
+      streamUrl: 'https://stream.radioparadise.com/aac-320',
+      backupUrl: 'https://stream.radioparadise.com/mellow-flac',
+      summary: 'Commercial-free 24/7 world music, bossa rhythms, indie, acoustic, and contemporary eclectic tracks.',
+      network: 'Radio Paradise',
+      guideSchedule: GENRE_SCHEDULE_TEMPLATES.music
+    }
+  ],
+  MX: [
+    {
+      id: 'tv:mx_las_estrellas',
+      name: 'Las Estrellas HD',
+      logo: 'https://upload.wikimedia.org/wikipedia/commons/4/41/Las_Estrellas.svg',
+      background: 'https://images.unsplash.com/photo-1518638150340-f706e86654de?w=1280&q=80',
+      genres: ['Entertainment', 'Movies & Drama', 'Live TV'],
+      streamUrl: 'https://channel01-onlymex.akamaized.net/hls/live/2022749/event01/index.m3u8',
+      backupUrl: 'https://mdstrm.com/live-stream-playlist/62f2c855f7981b5a5a2d8763.m3u8',
+      summary: 'Mexico’s premier national entertainment network featuring live morning shows, prime-time telenovelas, comedy, and sports.',
+      network: 'TelevisaUnivision',
+      guideSchedule: GENRE_SCHEDULE_TEMPLATES.entertainment
+    },
+    {
+      id: 'tv:mx_teleformula',
+      name: 'TeleFórmula Noticias HD',
+      logo: 'https://i.imgur.com/jR6taXt.png',
+      background: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=1280&q=80',
+      genres: ['News & Info', 'Live TV'],
+      streamUrl: 'https://mdstrm.com/live-stream-playlist/62f2c855f7981b5a5a2d8763.m3u8',
+      backupUrl: 'https://dwamdstream103.akamaized.net/hls/live/2015526/dwstream103/index.m3u8',
+      summary: 'Mexico’s leading 24-hour news, politics, business commentary, and live radio-television talk simulcast.',
+      network: 'Grupo Fórmula',
+      guideSchedule: GENRE_SCHEDULE_TEMPLATES.news
+    },
+    {
+      id: 'tv:mx_dw_espanol',
+      name: 'DW Español Latinoamérica HD',
+      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/Deutsche_Welle_symbol_2012.svg/512px-Deutsche_Welle_symbol_2012.svg.png',
+      background: 'https://images.unsplash.com/photo-1495020689067-958852a7765e?w=1280&q=80',
+      genres: ['News & Info', 'Documentary', 'Live TV'],
+      streamUrl: 'https://dwamdstream103.akamaized.net/hls/live/2015526/dwstream103/index.m3u8',
+      summary: 'Global news, science, Latin American affairs, and feature documentaries broadcasting 24/7 in Spanish.',
+      network: 'Deutsche Welle',
+      guideSchedule: GENRE_SCHEDULE_TEMPLATES.news
+    }
   ]
 };
 
@@ -1008,79 +1348,6 @@ const DRM_FREE_MOVIES = [
     sourceUrl: 'https://archive.org/details/suddenly'
   }
 ];
-
-const GENRE_SCHEDULE_TEMPLATES = {
-  news: [
-    { time: '00:00', title: 'Overnight World Briefing', desc: 'Breaking headlines, overnight international developments & weather.' },
-    { time: '04:00', title: 'Early Edition Live', desc: 'Morning newspapers review, global markets & live desk reports.' },
-    { time: '06:00', title: 'Breakfast Live', desc: 'Live morning news, political interviews & commuter headlines.' },
-    { time: '09:00', title: 'Morning Newsroom', desc: 'Continuous live journalism, field correspondents & analysis.' },
-    { time: '12:00', title: 'Midday Live & Business', desc: 'Midday national briefing, stock markets & global stories.' },
-    { time: '15:00', title: 'Afternoon World Desk', desc: 'Live breaking coverage, international affairs & press briefings.' },
-    { time: '18:00', title: 'Evening NewsHour', desc: 'Flagship evening broadcast with special investigative reports.' },
-    { time: '20:00', title: 'Primetime Debate & Analysis', desc: 'In-depth panel discussions on top national and global stories.' },
-    { time: '22:00', title: 'News at Ten & Tonight', desc: 'Late evening full summary and tomorrow’s front pages.' }
-  ],
-  sports: [
-    { time: '00:00', title: 'Overnight Championship Replay', desc: 'Full match and event replay from top international competitions.' },
-    { time: '06:00', title: 'Morning SportsCenter', desc: 'Overnight scores, transfer wire & game-day injury updates.' },
-    { time: '09:00', title: 'Pre-Match Build-Up', desc: 'Live tactical previews, team news & pundit predictions.' },
-    { time: '12:00', title: 'Midday Live Action', desc: 'Live sporting coverage, fixtures & real-time pitchside updates.' },
-    { time: '15:00', title: 'Afternoon Tournament Coverage', desc: 'Live multi-event broadcast and championship qualifiers.' },
-    { time: '18:00', title: 'Goals, Highlights & Analysis', desc: 'Every decisive play broken down with expert studio commentary.' },
-    { time: '20:00', title: 'Primetime Main Event Live', desc: 'Headline evening fixture and live arena broadcast.' },
-    { time: '22:30', title: 'Late Night Post-Game Show', desc: 'Manager reaction, dressing room interviews & league table breakdown.' }
-  ],
-  movies: [
-    { time: '00:00', title: 'Midnight Cult Feature', desc: 'Uncut late-night thriller and cult cinema showcase.' },
-    { time: '03:00', title: 'Late Night Noir', desc: 'Classic mystery and suspense double-bill.' },
-    { time: '06:00', title: 'Early Morning Matinee', desc: 'Feel-good cinema and adventure classics to start the day.' },
-    { time: '09:00', title: 'Morning Family Feature', desc: 'All-ages adventure and comedy movie presentation.' },
-    { time: '12:00', title: 'Noon Action Showcase', desc: 'High-octane action, crime & western double feature.' },
-    { time: '15:00', title: 'Afternoon Drama Feature', desc: 'Critically acclaimed drama and historical biopic.' },
-    { time: '18:00', title: 'Early Evening Thriller', desc: 'Suspense and edge-of-your-seat primetime warm-up.' },
-    { time: '20:00', title: 'Primetime Movie Event', desc: 'Headline evening blockbuster and fan-favorite cinema.' },
-    { time: '22:15', title: 'Late Feature Presentation', desc: 'Horror, sci-fi or action late-night feature film.' }
-  ],
-  music: [
-    { time: '00:00', title: 'Midnight Chill & Ambient Mix', desc: 'Uninterrupted late-night acoustic, lo-fi & downtempo hits.' },
-    { time: '06:00', title: 'Breakfast Feel-Good Hits', desc: 'Upbeat chart toppers and morning anthems to energize your day.' },
-    { time: '10:00', title: 'Daytime Non-Stop Chart', desc: 'Fresh hits, trending singles & throwback favorites.' },
-    { time: '13:00', title: 'Afternoon Throwback Rewind', desc: 'Iconic 90s, 00s & 10s hits back-to-back.' },
-    { time: '16:00', title: 'Drivetime Anthems Live', desc: 'High-energy pop, hip-hop & dance tracks for the commute.' },
-    { time: '19:00', title: 'Evening Live Lounge', desc: 'Live sessions, artist spotlights & acoustic performances.' },
-    { time: '21:00', title: 'Night Club & Dance Session', desc: 'Non-stop DJ mixes and party anthems into the night.' }
-  ],
-  kids: [
-    { time: '00:00', title: 'Bedtime Classics & Lullabies', desc: 'Gentle animated shorts for peaceful late-night viewing.' },
-    { time: '06:00', title: 'Early Risers Cartoons', desc: 'Classic animated comedies and colorful adventures.' },
-    { time: '09:00', title: 'Preschool Playtime', desc: 'Educational stories, songs & friendly characters.' },
-    { time: '12:00', title: 'Midday Animated Adventures', desc: 'Action-packed superhero and fantasy episodes.' },
-    { time: '15:00', title: 'After School Favorites', desc: 'Popular animated series marathon and comedy specials.' },
-    { time: '18:00', title: 'Family Animation Hour', desc: 'Wholesome animated specials for parents and kids together.' },
-    { time: '20:00', title: 'Evening Cartoon Showcase', desc: 'Fan-favorite episodes before bedtime.' }
-  ],
-  documentary: [
-    { time: '00:00', title: 'Deep Space Frontiers', desc: 'Exploring galaxies, exoplanets & cosmic mysteries.' },
-    { time: '06:00', title: 'Dawn of History', desc: 'Ancient civilizations and archaeological discoveries.' },
-    { time: '09:00', title: 'Wild Planet Earth', desc: 'Ultra-HD wildlife cinematography across oceans and jungles.' },
-    { time: '12:00', title: 'Mega Engineering', desc: 'Inside the world’s most ambitious bridges, rockets & cities.' },
-    { time: '15:00', title: 'Secret History Files', desc: 'Declassified archives and untold 20th-century stories.' },
-    { time: '18:00', title: 'Nature & Ocean Mysteries', desc: 'Deep-sea expeditions and endangered ecosystems.' },
-    { time: '20:00', title: 'Primetime Investigation', desc: 'Feature documentary exploring science, crime & culture.' },
-    { time: '22:00', title: 'Frontiers of Technology', desc: 'AI, robotics & the future of human exploration.' }
-  ],
-  entertainment: [
-    { time: '00:00', title: 'Overnight Encore', desc: 'Best highlights, comedy & viral moments replayed overnight.' },
-    { time: '06:00', title: 'Morning Variety & Lifestyle', desc: 'Cooking, home design & morning entertainment magazine.' },
-    { time: '09:00', title: 'Daytime Talk & Culture', desc: 'Celebrity interviews, trends & live studio conversations.' },
-    { time: '12:00', title: 'Midday Reality Showcase', desc: 'Back-to-back competition, talent & travel episodes.' },
-    { time: '15:00', title: 'Afternoon Game Show Hour', desc: 'Fast-paced trivia, studio games & big prizes.' },
-    { time: '18:00', title: 'Early Evening Magazine', desc: 'Daily culture roundup, pop news & comedy sketches.' },
-    { time: '20:00', title: 'Primetime Special Event', desc: 'Flagship evening drama, reality finale or variety special.' },
-    { time: '22:00', title: 'Late Night Comedy & Talk', desc: 'Stand-up, monologue & celebrity guests live.' }
-  ]
-};
 
 const EPG_URL_MAP = {
   GB: 'https://epgshare01.online/epgshare01/epg_ripper_UK1.xml.gz',
@@ -1598,6 +1865,7 @@ function isSafeUpstream(u) {
 
 const SUPPORTED_PREF_LANGS = ['en', 'es', 'fr', 'de', 'it', 'pt', 'hi', 'ja', 'ko', 'ru', 'nl', 'pl', 'tr', 'ar', 'any'];
 const SUPPORTED_DUB_PREFS = ['dub_or_orig', 'dub_first', 'sub_orig'];
+const SUPPORTED_MAX_QUALITIES = ['any', '1080p', '4k_only'];
 
 const DEFAULT_USER_CONFIG = {
   upstream: normalizeUpstream(APP_CONFIG.upstreamScraper) || 'https://torrentio.strem.fun',
@@ -1609,7 +1877,8 @@ const DEFAULT_USER_CONFIG = {
   twitchFollows: '',
   twitchClientId: '',
   prefLang: 'en',
-  dubPref: 'dub_or_orig'
+  dubPref: 'dub_or_orig',
+  maxQuality: 'any'
 };
 
 function decodeUserConfig(segment) {
@@ -1642,6 +1911,10 @@ function decodeUserConfig(segment) {
       if (typeof json.dubPref === 'string') {
         const cleanDub = json.dubPref.trim().toLowerCase();
         if (SUPPORTED_DUB_PREFS.includes(cleanDub)) cfg.dubPref = cleanDub;
+      }
+      if (typeof json.maxQuality === 'string') {
+        const cleanQual = json.maxQuality.trim().toLowerCase();
+        if (SUPPORTED_MAX_QUALITIES.includes(cleanQual)) cfg.maxQuality = cleanQual;
       }
       const rawRd = json.realDebrid || json.rdToken || json.debridToken || '';
       if (typeof rawRd === 'string') {
@@ -1738,12 +2011,27 @@ const COUNTRY_METADATA = {
   UNK: { name: 'Unknown / Direct', flag: '🌐' }
 };
 
+const REGION_DISPLAY_NAMES = (() => {
+  try {
+    return new Intl.DisplayNames(['en'], { type: 'region' });
+  } catch (_) {
+    return null;
+  }
+})();
+
 function getCountryInfo(code) {
   const c = String(code || 'UNK').toUpperCase();
   if (COUNTRY_METADATA[c]) return { code: c, ...COUNTRY_METADATA[c] };
   if (/^[A-Z]{2}$/.test(c)) {
     const flag = String.fromCodePoint(...[...c].map(ch => 127397 + ch.charCodeAt(0)));
-    return { code: c, name: c, flag };
+    let resolvedName = c;
+    try {
+      const display = REGION_DISPLAY_NAMES ? REGION_DISPLAY_NAMES.of(c) : '';
+      if (display && display !== c && !/unknown region/i.test(display)) {
+        resolvedName = display;
+      }
+    } catch (_) {}
+    return { code: c, name: resolvedName, flag };
   }
   return { code: 'UNK', name: 'Unknown / Direct', flag: '🌐' };
 }
@@ -2227,7 +2515,7 @@ function getManifest(baseUrl, userConfig = DEFAULT_USER_CONFIG, rootUrl = baseUr
     id: 'org.stremio.nightknight.cinema',
     version: ADDON_VERSION,
     name: hasRd ? 'NightKnight Cinema ⚡ RD' : 'NightKnight Cinema',
-    description: `Created by NightKnight (@NightKnight24). Complete cinema hub: ⚡ Real-Debrid Cloud Streams ${hasRd ? 'Active' : '(Click ⚙️ Configure)'}, 2,200+ Global Live TV Channels & Multi-Server TV Guide (EPG), Next-Gen YouTube Channels & Creators, Twitch Live/VODs/Clips & Ad-Free HLS, Live Country & Trending Analytics, 80+ Language Subtitles, DRM-Free Cinema, Streaming Hubs & Speed Engine. Throne: https://throne.com/nightknight24 • GitHub: https://github.com/NightKnight24`,
+    description: `NightKnight Cinema v2.0 (@NightKnight24) — Complete all-in-one cinema & media hub: Multi-Indexer Stream Failover, Resolution & Language/Dubbing Priority Sorter + CAM Shield, ⚡ Real-Debrid Cloud Streams ${hasRd ? 'Active' : '(Click ⚙️ Configure)'}, 2,200+ Global Live TV Channels & Multi-Server TV Guide (EPG), Next-Gen YouTube Channels & Creators, Twitch Live/VODs/Clips & Ad-Free HLS, Global Country & Trending Telemetry, 80+ Language Subtitles, DRM-Free Cinema & Streaming Hubs. Throne: https://throne.com/nightknight24 • GitHub: https://github.com/NightKnight24`,
     logo: `${rootUrl}/icon.png`,
     background: `${rootUrl}/background.png`,
     resources: ['catalog', 'meta', 'stream', 'subtitles'],
@@ -6083,6 +6371,7 @@ function optimizeAndRankStreams(rawStreams, userConfig = DEFAULT_USER_CONFIG, ty
 
   const prefLang = (userConfig && typeof userConfig === 'object' && userConfig.prefLang) ? userConfig.prefLang : 'en';
   const dubPref = (userConfig && typeof userConfig === 'object' && userConfig.dubPref) ? userConfig.dubPref : 'dub_or_orig';
+  const maxQuality = (userConfig && typeof userConfig === 'object' && userConfig.maxQuality) ? userConfig.maxQuality : 'any';
 
   const parsed = [];
   for (const s of rawStreams) {
@@ -6151,6 +6440,18 @@ function optimizeAndRankStreams(rawStreams, userConfig = DEFAULT_USER_CONFIG, ty
 
     const isHdr = /HDR/i.test(name) || /HDR/i.test(title);
     const isDv = /\b(dolby\s*vision|dovi)\b/i.test(name + ' ' + title) || (/\bdv\b/i.test(name + ' ' + title) && !/dvd/i.test(name + ' ' + title));
+    const isCamOrScreener = /\b(cam|camrip|hdcam|hd-cam|ts|hdts|hd-ts|telesync|telecine|tc|scr|dvdscr|hdscr|screener|workprint|wp)\b/i.test(fullStreamText.replace(/_/g, ' '));
+
+    // Resolution priority score based on user preference (any vs 1080p vs 4k_only)
+    let qualBonus = is4k ? 1000 : (is1080p ? 600 : (is720p ? 420 : 280));
+    if (maxQuality === '1080p') {
+      qualBonus = is1080p ? 1450 : (is720p ? 680 : (is4k ? 350 : 260));
+    } else if (maxQuality === '4k_only') {
+      qualBonus = is4k ? 1750 + ((isDv || isHdr) ? 250 : 0) : (is1080p ? 550 : 250);
+    } else if (isDv || isHdr) {
+      qualBonus += 100;
+    }
+    const camPenalty = isCamOrScreener ? -50000 : 0;
 
     // Extract Home Cinema Badges (Audio/Video/Edition) & Language/Dubbing Priority
     const badgesObj = extractCinemaBadges(fullStreamText);
@@ -6166,17 +6467,23 @@ function optimizeAndRankStreams(rawStreams, userConfig = DEFAULT_USER_CONFIG, ty
     let isBufferRisk = false;
 
     if (isDebrid) {
-      speedScore = 100000 + (is4k ? 1000 : (is1080p ? 600 : 400)) + (isDv || isHdr ? 100 : 0) - (sizeGB * 0.1) + langScoreDelta;
-      speedBadge = '🚀 [INSTANT CDN • 0 BUFFER]';
-      recommendation = `⚡ ${debridProvider} High-Speed Cloud Stream`;
+      speedScore = 100000 + qualBonus - (sizeGB * 0.1) + langScoreDelta + camPenalty;
+      speedBadge = isCamOrScreener ? '⚠️ [CAM • INSTANT CDN]' : '🚀 [INSTANT CDN • 0 BUFFER]';
+      recommendation = isCamOrScreener
+        ? 'Theater recording (CAM/TS) — lower visual & audio quality'
+        : `⚡ ${debridProvider} High-Speed Cloud Stream`;
     } else if (isDirectHttp) {
-      speedScore = 80000 + (is4k ? 1000 : (is1080p ? 600 : 400)) + (isDv || isHdr ? 100 : 0) - (sizeGB * 0.1) + langScoreDelta;
-      speedBadge = '🌐 [DIRECT HTTP • INSTANT]';
-      recommendation = 'Direct HTTP/HTTPS stream • Zero P2P swarm required';
+      speedScore = 80000 + qualBonus - (sizeGB * 0.1) + langScoreDelta + camPenalty;
+      speedBadge = isCamOrScreener ? '⚠️ [CAM • DIRECT HTTP]' : '🌐 [DIRECT HTTP • INSTANT]';
+      recommendation = isCamOrScreener
+        ? 'Theater recording (CAM/TS) — lower visual & audio quality'
+        : 'Direct HTTP/HTTPS stream • Zero P2P swarm required';
     } else if (!hasSeederInfo) {
-      speedScore = 500 + (is4k ? 200 : (is1080p ? 150 : 100)) + langScoreDelta;
-      speedBadge = '🔗 [STREAM READY]';
-      recommendation = 'Direct or unindexed P2P stream';
+      speedScore = 500 + Math.round(qualBonus * 0.25) + langScoreDelta + camPenalty;
+      speedBadge = isCamOrScreener ? '⚠️ [CAM / LOW QUALITY]' : '🔗 [STREAM READY]';
+      recommendation = isCamOrScreener
+        ? 'Theater recording (CAM/TS) — lower visual & audio quality'
+        : 'Direct or unindexed P2P stream';
     } else {
       if (seeders === 0) {
         speedScore = -10000;
@@ -6184,18 +6491,23 @@ function optimizeAndRankStreams(rawStreams, userConfig = DEFAULT_USER_CONFIG, ty
         recommendation = 'Do not stream (No seeders)';
         isDead = true;
       } else if (seeders < 10 && sizeGB > 25) {
-        speedScore = -5000 + seeders + (langScoreDelta * 0.25);
+        speedScore = -5000 + seeders + (langScoreDelta * 0.25) + camPenalty;
         speedBadge = `⚠️ [HIGH BUFFER RISK • ${seeders} 👤]`;
         recommendation = 'High buffering risk (Huge file, low seeders)';
         isBufferRisk = true;
       } else {
-        const qualityWeight = is4k ? 1.2 : (is1080p ? 1.0 : (is720p ? 0.8 : 0.7));
+        let qualityWeight = is4k ? 1.2 : (is1080p ? 1.0 : (is720p ? 0.8 : 0.7));
+        if (maxQuality === '1080p' && is1080p) qualityWeight = 1.25;
+        if (maxQuality === '4k_only' && is4k) qualityWeight = 1.35;
         const seederPoints = seeders * 12;
         const sizePenalty = seeders < 50 ? (sizeGB * 8) : (sizeGB * 2);
 
-        speedScore = ((seederPoints - sizePenalty) * qualityWeight) + langScoreDelta;
+        speedScore = ((seederPoints - sizePenalty) * qualityWeight) + langScoreDelta + Math.round(qualBonus * 0.2) + camPenalty;
 
-        if (seeders >= 150) {
+        if (isCamOrScreener) {
+          speedBadge = `⚠️ [CAM / THEATER RIP • ${seeders} 👤]`;
+          recommendation = 'Theater recording (CAM/TS) — clean HD/WEB streams prioritized above';
+        } else if (seeders >= 150) {
           speedBadge = `⚡ [FASTEST • ${seeders} 👤]`;
           recommendation = 'Instant start • Zero buffering recommended';
         } else if (seeders >= 50) {
@@ -6590,6 +6902,35 @@ async function handleStream(type, id, userConfig = DEFAULT_USER_CONFIG) {
         }
       } catch (fbErr) {
         // Fallback network failure -> proceed
+      }
+    }
+
+    // Multi-Indexer Stream Failover & Aggregation (v2.0):
+    // If primary upstream returned < 3 streams (e.g. rate-limited or rare title), aggregate from secondary indexer
+    if (rawStreams.length < 3 && !scraperBase.includes('thepiratebay-plus')) {
+      try {
+        const secUrl = `https://thepiratebay-plus.strem.fun/stream/${type}/${imdbTarget}.json`;
+        const secRes = await fetch(secUrl, {
+          headers: { 'User-Agent': 'Stremio/4.4.168' },
+          signal: AbortSignal.timeout(4500)
+        });
+        if (secRes.ok) {
+          const secData = await secRes.json();
+          if (Array.isArray(secData.streams) && secData.streams.length > 0) {
+            const seenKeys = new Set(
+              rawStreams.map(s => (s.infoHash || s.url || s.title || '').toString().toLowerCase()).filter(Boolean)
+            );
+            for (const secStream of secData.streams) {
+              const dedupeKey = (secStream.infoHash || secStream.url || secStream.title || '').toString().toLowerCase();
+              if (!dedupeKey || !seenKeys.has(dedupeKey)) {
+                if (dedupeKey) seenKeys.add(dedupeKey);
+                rawStreams.push(secStream);
+              }
+            }
+          }
+        }
+      } catch (_) {
+        // Secondary indexer unreachable -> proceed gracefully
       }
     }
 
@@ -7469,6 +7810,7 @@ export async function handleRequest(req, res) {
       const initialRegion = userConfig.region || 'GB';
       const initialPrefLang = userConfig.prefLang || 'en';
       const initialDubPref = userConfig.dubPref || 'dub_or_orig';
+      const initialMaxQuality = userConfig.maxQuality || 'any';
       const initialHideRisk = userConfig.hideRisk;
       const initialRealDebrid = escapeHtml(userConfig.realDebrid || '');
       const initialYoutubeSubs = escapeHtml(userConfig.youtubeSubs || '');
@@ -8048,9 +8390,9 @@ export async function handleRequest(req, res) {
   <div class="overlay"></div>
   <div class="card">
     <img src="/icon.png" alt="NightKnight Logo" class="logo-img">
-    <h1>NightKnight Cinema</h1>
+    <h1>NightKnight Cinema <span style="font-size: 14px; font-weight: 700; vertical-align: middle; background: rgba(56, 189, 248, 0.16); border: 1px solid rgba(56, 189, 248, 0.42); color: #38bdf8; -webkit-text-fill-color: #38bdf8; padding: 3px 10px; border-radius: 999px; letter-spacing: 0.4px;">v2.0</span></h1>
     <div class="byline">Crafted by <a href="https://github.com/NightKnight24" target="_blank" class="author-link">NightKnight (@NightKnight24)</a></div>
-    <div class="subtitle">The ultimate all-in-one cinema & media hub: Native Multi-Language Subtitles (80+ languages), Regional Live TV, 24/7 Music TV & Live Radios, DRM-Free Cinema, YouTube in-app playback, BYOA streaming hubs (Netflix, BBC iPlayer, ITVX, Channel 4, Disney+, Prime, Max, Hotstar), Curated Franchises & intelligent speed ranking.</div>
+    <div class="subtitle">The ultimate all-in-one cinema & media hub: Multi-Indexer Stream Failover &amp; Resolution Priority Sorter, Native Multi-Language Subtitles (80+ languages), Regional Live TV, 24/7 Music TV &amp; Live Radios, DRM-Free Cinema, YouTube in-app playback, BYOA streaming hubs (Netflix, BBC iPlayer, ITVX, Channel 4, Disney+, Prime, Max, Hotstar), Curated Franchises &amp; CAM/Screener Shield.</div>
     
     <div class="features">
       <div class="feature-item">
@@ -8136,13 +8478,19 @@ export async function handleRequest(req, res) {
           <option value="any" ${initialPrefLang === 'any' ? 'selected' : ''}>🌐 Any Language (Pure Speed &amp; Seeders Only)</option>
         </select>
         <label style="font-size: 12px; color: #cbd5e1;">Dubbing &amp; Audio Priority Mode:</label>
-        <select id="dub-pref-select">
+        <select id="dub-pref-select" style="margin-bottom: 10px;">
           <option value="dub_or_orig" ${initialDubPref === 'dub_or_orig' ? 'selected' : ''}>⚡ Smart Best Match: Preferred Language, Dubbed/Multi-Audio + Best Stream First</option>
           <option value="dub_first" ${initialDubPref === 'dub_first' ? 'selected' : ''}>🎙️ Dubbed Priority: Put Dubbed &amp; Multi-Audio Streams in Preferred Language First</option>
           <option value="sub_orig" ${initialDubPref === 'sub_orig' ? 'selected' : ''}>💬 Subbed / Original Audio Priority: Original Audio + Multi-Subs First</option>
         </select>
+        <label style="font-size: 12px; color: #cbd5e1;">Preferred Resolution &amp; Stream Quality Priority:</label>
+        <select id="max-quality-select">
+          <option value="any" ${initialMaxQuality === 'any' ? 'selected' : ''}>🎬 Best Available (4K UHD + 1080p Full HD — Default)</option>
+          <option value="1080p" ${initialMaxQuality === '1080p' ? 'selected' : ''}>📺 1080p Full HD Priority (Fastest Load for TV, Firestick &amp; Mobile)</option>
+          <option value="4k_only" ${initialMaxQuality === '4k_only' ? 'selected' : ''}>💎 4K Ultra HD / Dolby Vision / HDR Priority (Home Theater)</option>
+        </select>
         <div style="font-size: 11px; color: #94a3b8; margin-top: 8px; line-height: 1.4;">
-          💬 Automatically ranks streams by your language &amp; dubbing preference + speed/quality, demotes mismatched foreign dub packs, and puts matching UTF-8 subtitles at the top for every movie, series, anime, DRM-Free classic &amp; YouTube video.
+          💬 Automatically ranks streams by your language, dubbing, resolution priority &amp; multi-indexer failover, demotes CAM/Screener rips, and puts matching UTF-8 subtitles at the top for every movie, series, anime, DRM-Free classic &amp; YouTube video.
         </div>
       </div>
       <div class="input-group" style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 8px; padding: 14px; margin-top: 14px; margin-bottom: 16px;">
@@ -8199,11 +8547,14 @@ export async function handleRequest(req, res) {
     </div>
 
     <div style="background: linear-gradient(135deg, rgba(236, 72, 153, 0.1), rgba(139, 92, 246, 0.1)); border: 1px solid rgba(236, 72, 153, 0.3); border-radius: 12px; padding: 14px 18px; margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
-      <div style="display: flex; align-items: center; gap: 14px;">
+      <div style="display: flex; align-items: center; gap: 14px; flex: 1; min-width: 240px;">
         <div style="font-size: 28px; line-height: 1;">👑</div>
-        <div>
-          <div style="font-weight: 700; font-size: 14px; color: #fdf2f8;">Enjoying NightKnight Cinema?</div>
-          <div style="font-size: 12px; color: #cbd5e1; margin-top: 2px;">Support future updates, send a surprise mystery gift 🎁, or contribute to gaming gear &amp; vouchers via my privacy-protected Throne wishlist!</div>
+        <div style="flex: 1;">
+          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <span style="font-weight: 700; font-size: 14px; color: #fdf2f8;">Enjoying NightKnight Cinema v2.0?</span>
+            <span style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; background: rgba(236, 72, 153, 0.2); border: 1px solid rgba(236, 72, 153, 0.45); color: #f9a8d4; padding: 2px 7px; border-radius: 999px;">Community Goal</span>
+          </div>
+          <div style="font-size: 12px; color: #cbd5e1; margin-top: 2px;">Support 2.0 server uptime, send a surprise mystery gift 🎁, or contribute toward the next community server upgrade on my privacy-protected Throne wishlist!</div>
         </div>
       </div>
       <a href="https://throne.com/nightknight24" target="_blank" style="background: linear-gradient(135deg, #ec4899, #8b5cf6); color: #fff; text-decoration: none; font-weight: 700; font-size: 13px; padding: 10px 18px; border-radius: 8px; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 14px rgba(236, 72, 153, 0.35); white-space: nowrap; transition: transform 0.15s ease;">
@@ -8378,6 +8729,7 @@ export async function handleRequest(req, res) {
       const region = document.getElementById('region-select').value;
       const prefLang = document.getElementById('pref-lang-select') ? document.getElementById('pref-lang-select').value : 'en';
       const dubPref = document.getElementById('dub-pref-select') ? document.getElementById('dub-pref-select').value : 'dub_or_orig';
+      const maxQuality = document.getElementById('max-quality-select') ? document.getElementById('max-quality-select').value : 'any';
       const hideRisk = document.getElementById('filter-buffer-risk').checked;
       const realDebrid = document.getElementById('rd-input') ? document.getElementById('rd-input').value.trim() : '';
       const youtubeSubs = document.getElementById('yt-subs-input') ? document.getElementById('yt-subs-input').value.trim() : '';
@@ -8385,13 +8737,13 @@ export async function handleRequest(req, res) {
       const twitchFollows = document.getElementById('twitch-follows-input') ? document.getElementById('twitch-follows-input').value.trim() : '';
       const twitchClientId = document.getElementById('twitch-clientid-input') ? document.getElementById('twitch-clientid-input').value.trim() : '';
 
-      const isDefault = upstream === 'https://torrentio.strem.fun' && region === 'GB' && prefLang === 'en' && dubPref === 'dub_or_orig' && !hideRisk && !realDebrid && !youtubeSubs && !youtubeApiKey && !twitchFollows && !twitchClientId;
+      const isDefault = upstream === 'https://torrentio.strem.fun' && region === 'GB' && prefLang === 'en' && dubPref === 'dub_or_orig' && maxQuality === 'any' && !hideRisk && !realDebrid && !youtubeSubs && !youtubeApiKey && !twitchFollows && !twitchClientId;
       const host = window.location.host;
 
       let href = 'stremio://' + host + '/manifest.json';
       let webHref = window.location.protocol + '//' + host + '/manifest.json';
       if (!isDefault) {
-        const configObj = { region, hideRisk, prefLang, dubPref };
+        const configObj = { region, hideRisk, prefLang, dubPref, maxQuality };
         if (upstream !== 'https://torrentio.strem.fun') configObj.upstream = upstream;
         if (realDebrid) configObj.realDebrid = realDebrid;
         if (youtubeSubs) configObj.youtubeSubs = youtubeSubs;
@@ -8415,6 +8767,7 @@ export async function handleRequest(req, res) {
     document.getElementById('region-select').addEventListener('change', updateInstallLink);
     if (document.getElementById('pref-lang-select')) document.getElementById('pref-lang-select').addEventListener('change', updateInstallLink);
     if (document.getElementById('dub-pref-select')) document.getElementById('dub-pref-select').addEventListener('change', updateInstallLink);
+    if (document.getElementById('max-quality-select')) document.getElementById('max-quality-select').addEventListener('change', updateInstallLink);
     document.getElementById('filter-buffer-risk').addEventListener('change', updateInstallLink);
     ['yt-subs-input', 'yt-apikey-input', 'twitch-follows-input', 'twitch-clientid-input'].forEach(function(id) {
       var el = document.getElementById(id);
