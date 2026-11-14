@@ -5,6 +5,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -15,7 +16,7 @@ const TMDB_API_KEY = process.env.TMDB_API_KEY || '3157bd6dacbc3a653ae2e5a3b19beb
 const PORT = process.env.PORT || 7000;
 const HOST = process.env.HOST || (process.env.PORT ? '0.0.0.0' : '127.0.0.1');
 
-const ADDON_VERSION = '1.12.12';
+const ADDON_VERSION = '1.13.0';
 
 // Load server-wide DEFAULTS (read-only). Per-user settings live in the install URL, never on the server.
 function loadConfig() {
@@ -43,7 +44,15 @@ const REGIONS = {
   IE: 'Ireland',
   CA: 'Canada',
   AU: 'Australia',
-  IN: 'India'
+  IN: 'India',
+  DE: 'Germany',
+  FR: 'France',
+  ES: 'Spain',
+  IT: 'Italy',
+  NL: 'Netherlands',
+  BR: 'Brazil',
+  MX: 'Mexico',
+  ALL: 'Global (All Countries)'
 };
 
 // -------------------------------------------------------------
@@ -804,7 +813,8 @@ const REGIONAL_CHANNELS = {
       logo: 'https://cdn-icons-png.flaticon.com/512/3075/3075908.png',
       background: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=1280&q=80',
       genres: ['Radio & Music', 'Bollywood & Music', 'Live TV'],
-      streamUrl: 'https://stream.zeno.fm/f3wvbbqmdg8uv',
+      streamUrl: 'https://drive.uber.radio/uber/bollywoodnow/icecast.audio',
+      backupUrl: 'https://drive.uber.radio/uber/bollywood2010s/icecast.audio',
       summary: 'India’s #1 hit radio station streaming non-stop Bollywood chartbusters, RJ shows, and the latest Mumbai film tracks.',
       network: 'Radio Mirchi',
       guideSchedule: [
@@ -821,7 +831,8 @@ const REGIONAL_CHANNELS = {
       logo: 'https://cdn-icons-png.flaticon.com/512/4430/4430494.png',
       background: 'https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=1280&q=80',
       genres: ['Radio & Music', 'Bollywood & Music', 'Live TV'],
-      streamUrl: 'https://stream.zeno.fm/0r0xa792kwzuv',
+      streamUrl: 'https://drive.uber.radio/uber/bollywood1990s/icecast.audio',
+      backupUrl: 'https://drive.uber.radio/uber/bollywoodlove/icecast.audio',
       summary: 'Non-stop golden era Bollywood melodies, vintage film soundtracks, ghazals, and romantic classics from the 60s, 70s, and 80s.',
       network: 'Bollywood Classics',
       guideSchedule: [
@@ -998,38 +1009,560 @@ const DRM_FREE_MOVIES = [
   }
 ];
 
-// Helper: Formats a real-time, hour-by-hour dynamic TV Guide for a channel
-function formatTvGuide(channel, countryCode = 'GB') {
-  const schedule = channel.guideSchedule || [];
-  if (!schedule.length) return '';
+const GENRE_SCHEDULE_TEMPLATES = {
+  news: [
+    { time: '00:00', title: 'Overnight World Briefing', desc: 'Breaking headlines, overnight international developments & weather.' },
+    { time: '04:00', title: 'Early Edition Live', desc: 'Morning newspapers review, global markets & live desk reports.' },
+    { time: '06:00', title: 'Breakfast Live', desc: 'Live morning news, political interviews & commuter headlines.' },
+    { time: '09:00', title: 'Morning Newsroom', desc: 'Continuous live journalism, field correspondents & analysis.' },
+    { time: '12:00', title: 'Midday Live & Business', desc: 'Midday national briefing, stock markets & global stories.' },
+    { time: '15:00', title: 'Afternoon World Desk', desc: 'Live breaking coverage, international affairs & press briefings.' },
+    { time: '18:00', title: 'Evening NewsHour', desc: 'Flagship evening broadcast with special investigative reports.' },
+    { time: '20:00', title: 'Primetime Debate & Analysis', desc: 'In-depth panel discussions on top national and global stories.' },
+    { time: '22:00', title: 'News at Ten & Tonight', desc: 'Late evening full summary and tomorrow’s front pages.' }
+  ],
+  sports: [
+    { time: '00:00', title: 'Overnight Championship Replay', desc: 'Full match and event replay from top international competitions.' },
+    { time: '06:00', title: 'Morning SportsCenter', desc: 'Overnight scores, transfer wire & game-day injury updates.' },
+    { time: '09:00', title: 'Pre-Match Build-Up', desc: 'Live tactical previews, team news & pundit predictions.' },
+    { time: '12:00', title: 'Midday Live Action', desc: 'Live sporting coverage, fixtures & real-time pitchside updates.' },
+    { time: '15:00', title: 'Afternoon Tournament Coverage', desc: 'Live multi-event broadcast and championship qualifiers.' },
+    { time: '18:00', title: 'Goals, Highlights & Analysis', desc: 'Every decisive play broken down with expert studio commentary.' },
+    { time: '20:00', title: 'Primetime Main Event Live', desc: 'Headline evening fixture and live arena broadcast.' },
+    { time: '22:30', title: 'Late Night Post-Game Show', desc: 'Manager reaction, dressing room interviews & league table breakdown.' }
+  ],
+  movies: [
+    { time: '00:00', title: 'Midnight Cult Feature', desc: 'Uncut late-night thriller and cult cinema showcase.' },
+    { time: '03:00', title: 'Late Night Noir', desc: 'Classic mystery and suspense double-bill.' },
+    { time: '06:00', title: 'Early Morning Matinee', desc: 'Feel-good cinema and adventure classics to start the day.' },
+    { time: '09:00', title: 'Morning Family Feature', desc: 'All-ages adventure and comedy movie presentation.' },
+    { time: '12:00', title: 'Noon Action Showcase', desc: 'High-octane action, crime & western double feature.' },
+    { time: '15:00', title: 'Afternoon Drama Feature', desc: 'Critically acclaimed drama and historical biopic.' },
+    { time: '18:00', title: 'Early Evening Thriller', desc: 'Suspense and edge-of-your-seat primetime warm-up.' },
+    { time: '20:00', title: 'Primetime Movie Event', desc: 'Headline evening blockbuster and fan-favorite cinema.' },
+    { time: '22:15', title: 'Late Feature Presentation', desc: 'Horror, sci-fi or action late-night feature film.' }
+  ],
+  music: [
+    { time: '00:00', title: 'Midnight Chill & Ambient Mix', desc: 'Uninterrupted late-night acoustic, lo-fi & downtempo hits.' },
+    { time: '06:00', title: 'Breakfast Feel-Good Hits', desc: 'Upbeat chart toppers and morning anthems to energize your day.' },
+    { time: '10:00', title: 'Daytime Non-Stop Chart', desc: 'Fresh hits, trending singles & throwback favorites.' },
+    { time: '13:00', title: 'Afternoon Throwback Rewind', desc: 'Iconic 90s, 00s & 10s hits back-to-back.' },
+    { time: '16:00', title: 'Drivetime Anthems Live', desc: 'High-energy pop, hip-hop & dance tracks for the commute.' },
+    { time: '19:00', title: 'Evening Live Lounge', desc: 'Live sessions, artist spotlights & acoustic performances.' },
+    { time: '21:00', title: 'Night Club & Dance Session', desc: 'Non-stop DJ mixes and party anthems into the night.' }
+  ],
+  kids: [
+    { time: '00:00', title: 'Bedtime Classics & Lullabies', desc: 'Gentle animated shorts for peaceful late-night viewing.' },
+    { time: '06:00', title: 'Early Risers Cartoons', desc: 'Classic animated comedies and colorful adventures.' },
+    { time: '09:00', title: 'Preschool Playtime', desc: 'Educational stories, songs & friendly characters.' },
+    { time: '12:00', title: 'Midday Animated Adventures', desc: 'Action-packed superhero and fantasy episodes.' },
+    { time: '15:00', title: 'After School Favorites', desc: 'Popular animated series marathon and comedy specials.' },
+    { time: '18:00', title: 'Family Animation Hour', desc: 'Wholesome animated specials for parents and kids together.' },
+    { time: '20:00', title: 'Evening Cartoon Showcase', desc: 'Fan-favorite episodes before bedtime.' }
+  ],
+  documentary: [
+    { time: '00:00', title: 'Deep Space Frontiers', desc: 'Exploring galaxies, exoplanets & cosmic mysteries.' },
+    { time: '06:00', title: 'Dawn of History', desc: 'Ancient civilizations and archaeological discoveries.' },
+    { time: '09:00', title: 'Wild Planet Earth', desc: 'Ultra-HD wildlife cinematography across oceans and jungles.' },
+    { time: '12:00', title: 'Mega Engineering', desc: 'Inside the world’s most ambitious bridges, rockets & cities.' },
+    { time: '15:00', title: 'Secret History Files', desc: 'Declassified archives and untold 20th-century stories.' },
+    { time: '18:00', title: 'Nature & Ocean Mysteries', desc: 'Deep-sea expeditions and endangered ecosystems.' },
+    { time: '20:00', title: 'Primetime Investigation', desc: 'Feature documentary exploring science, crime & culture.' },
+    { time: '22:00', title: 'Frontiers of Technology', desc: 'AI, robotics & the future of human exploration.' }
+  ],
+  entertainment: [
+    { time: '00:00', title: 'Overnight Encore', desc: 'Best highlights, comedy & viral moments replayed overnight.' },
+    { time: '06:00', title: 'Morning Variety & Lifestyle', desc: 'Cooking, home design & morning entertainment magazine.' },
+    { time: '09:00', title: 'Daytime Talk & Culture', desc: 'Celebrity interviews, trends & live studio conversations.' },
+    { time: '12:00', title: 'Midday Reality Showcase', desc: 'Back-to-back competition, talent & travel episodes.' },
+    { time: '15:00', title: 'Afternoon Game Show Hour', desc: 'Fast-paced trivia, studio games & big prizes.' },
+    { time: '18:00', title: 'Early Evening Magazine', desc: 'Daily culture roundup, pop news & comedy sketches.' },
+    { time: '20:00', title: 'Primetime Special Event', desc: 'Flagship evening drama, reality finale or variety special.' },
+    { time: '22:00', title: 'Late Night Comedy & Talk', desc: 'Stand-up, monologue & celebrity guests live.' }
+  ]
+};
 
-  const now = new Date();
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+const EPG_URL_MAP = {
+  GB: 'https://epgshare01.online/epgshare01/epg_ripper_UK1.xml.gz',
+  US: 'https://epgshare01.online/epgshare01/epg_ripper_US1.xml.gz',
+  IE: 'https://epgshare01.online/epgshare01/epg_ripper_IE1.xml.gz',
+  CA: 'https://epgshare01.online/epgshare01/epg_ripper_CA1.xml.gz',
+  AU: 'https://epgshare01.online/epgshare01/epg_ripper_AU1.xml.gz',
+  IN: 'https://epgshare01.online/epgshare01/epg_ripper_IN1.xml.gz',
+  DE: 'https://epgshare01.online/epgshare01/epg_ripper_DE1.xml.gz',
+  FR: 'https://epgshare01.online/epgshare01/epg_ripper_FR1.xml.gz',
+  ES: 'https://epgshare01.online/epgshare01/epg_ripper_ES1.xml.gz',
+  IT: 'https://epgshare01.online/epgshare01/epg_ripper_IT1.xml.gz',
+  NL: 'https://epgshare01.online/epgshare01/epg_ripper_NL1.xml.gz',
+  BR: 'https://epgshare01.online/epgshare01/epg_ripper_BR1.xml.gz',
+  MX: 'https://epgshare01.online/epgshare01/epg_ripper_MX1.xml.gz'
+};
 
-  let currentShow = schedule[0];
-  let currentIdx = 0;
+function normalizeChannelName(name = '') {
+  const cleaned = String(name)
+    .toLowerCase()
+    .replace(/\([^)]*\)/g, ' ')
+    .replace(/\[[^\]]*\]/g, ' ')
+    .replace(/\b(hd|fhd|uhd|sd|4k|1080p|720p|480p|360p|576p|geo-blocked)\b/g, ' ')
+    .replace(/[^a-z0-9]+/g, '')
+    .trim();
+  return cleaned || String(name).toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
 
-  for (let i = 0; i < schedule.length; i++) {
-    const [h, m] = schedule[i].time.split(':').map(Number);
-    const showMinutes = h * 60 + m;
-    if (currentMinutes >= showMinutes) {
-      currentShow = schedule[i];
-      currentIdx = i;
+function getChannelCategoryTag(channel) {
+  const text = `${(channel.genres || []).join(' ')} ${channel.name || ''}`.toLowerCase();
+  if (/news|cnn|bbc news|sky news|gb news|al jazeera|france 24|euronews|nhk|ndtv|cnbc|bloomberg|talktv|aaj tak/.test(text)) return { key: 'news', tag: '📰 Live News' };
+  if (/sport|fifa|uefa|espn|nfl|nba|nhl|mlb|red bull|racing|tennis|cricket|golf|ufc|f1|motorsport/.test(text)) return { key: 'sports', tag: '⚽ Live Sports' };
+  if (/movie|film|cinema|western|noir|great!|horror|sci-fi|b4u movies|thriller|bollywood movies/.test(text)) return { key: 'movies', tag: '🎬 Movie' };
+  if (/music|radio|hits|kiss|heart|capital|mirchi|9x|lofi|qwest|jazz|rock|pop/.test(text)) return { key: 'music', tag: '🎵 Music & Radio' };
+  if (/kid|cartoon|nick|disney|cbbc|cbeebies|anim|pbs kids|citv/.test(text)) return { key: 'kids', tag: '🧸 Kids' };
+  if (/doc|nasa|science|history|nature|planet|discovery|national geographic/.test(text)) return { key: 'documentary', tag: '🌍 Documentary' };
+  return { key: 'entertainment', tag: '📺 TV Program' };
+}
+
+function getChannelSchedule(channel) {
+  if (Array.isArray(channel.guideSchedule) && channel.guideSchedule.length > 0) {
+    return channel.guideSchedule;
+  }
+  const { key } = getChannelCategoryTag(channel);
+  const template = GENRE_SCHEDULE_TEMPLATES[key] || GENRE_SCHEDULE_TEMPLATES.entertainment;
+  const cleanName = String(channel.name || 'Live Channel').replace(/\s*\(Live.*\)$/i, '').trim();
+  return template.map(slot => ({
+    time: slot.time,
+    title: slot.title,
+    desc: `${slot.desc} (${cleanName})`
+  }));
+}
+
+function parseXmltvDate(raw = '') {
+  const m = String(raw).match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})\s*([+-]\d{4})?/);
+  if (!m) return null;
+  const isoBase = `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}`;
+  let offset = 'Z';
+  if (m[7]) {
+    offset = `${m[7].slice(0, 3)}:${m[7].slice(3, 5)}`;
+  }
+  const ms = Date.parse(`${isoBase}${offset}`);
+  return Number.isNaN(ms) ? null : ms;
+}
+
+function decodeXmlEntities(str = '') {
+  return String(str)
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&apos;/g, "'")
+    .trim();
+}
+
+const INFLIGHT_EPG = new Map();
+async function getXmltvProgrammesForRegion(countryCode = 'GB') {
+  const cc = (countryCode || 'GB').toUpperCase();
+  if (!EPG_URL_MAP[cc]) return null;
+  const cacheKey = `epg:xml:${cc}`;
+  const cached = getCache(cacheKey);
+  if (cached) return cached;
+  if (INFLIGHT_EPG.has(cc)) return INFLIGHT_EPG.get(cc);
+
+  const task = (async () => {
+    try {
+      const res = await fetch(EPG_URL_MAP[cc], {
+        headers: { 'User-Agent': 'NightKnightCinema/1.13' },
+        signal: AbortSignal.timeout(4500)
+      });
+      if (!res.ok) return null;
+      const gzBuf = Buffer.from(await res.arrayBuffer());
+      if (gzBuf.length > 8_000_000) return null;
+      const xml = zlib.gunzipSync(gzBuf).toString('utf-8');
+
+      const channelNameMap = new Map();
+      let pos = 0;
+      while (pos < xml.length && channelNameMap.size < 4000) {
+        const chStart = xml.indexOf('<channel ', pos);
+        if (chStart === -1) break;
+        const chEnd = xml.indexOf('</channel>', chStart);
+        if (chEnd === -1) break;
+        const block = xml.slice(chStart, chEnd);
+        const idMatch = block.match(/id="([^"]+)"/);
+        const dnMatch = block.match(/<display-name[^>]*>([^<]+)<\/display-name>/);
+        if (idMatch && dnMatch) {
+          const chId = decodeXmlEntities(idMatch[1]);
+          const norm = normalizeChannelName(decodeXmlEntities(dnMatch[1]));
+          channelNameMap.set(chId.toLowerCase(), norm);
+        }
+        pos = chEnd + 10;
+      }
+
+      const now = Date.now();
+      const windowStart = now - 3 * 3600 * 1000;
+      const windowEnd = now + 40 * 3600 * 1000;
+      const byNorm = new Map();
+      let pPos = xml.indexOf('<programme ');
+      let parsedCount = 0;
+
+      while (pPos !== -1 && parsedCount < 18000) {
+        const pEnd = xml.indexOf('</programme>', pPos);
+        if (pEnd === -1) break;
+        const block = xml.slice(pPos, pEnd);
+        pPos = xml.indexOf('<programme ', pEnd + 12);
+
+        const attrMatch = block.match(/start="([^"]+)"[^>]*stop="([^"]+)"[^>]*channel="([^"]+)"/);
+        if (!attrMatch) continue;
+        const startMs = parseXmltvDate(attrMatch[1]);
+        const stopMs = parseXmltvDate(attrMatch[2]);
+        if (!startMs || !stopMs || stopMs < windowStart || startMs > windowEnd) continue;
+
+        const rawCh = decodeXmlEntities(attrMatch[3]);
+        const normCh = channelNameMap.get(rawCh.toLowerCase()) || normalizeChannelName(rawCh);
+        if (!normCh) continue;
+
+        const titleMatch = block.match(/<title[^>]*>([^<]+)<\/title>/);
+        if (!titleMatch) continue;
+        const descMatch = block.match(/<desc[^>]*>([^<]+)<\/desc>/);
+
+        let arr = byNorm.get(normCh);
+        if (!arr) {
+          arr = [];
+          byNorm.set(normCh, arr);
+        }
+        if (arr.length < 24) {
+          arr.push({
+            startMs,
+            stopMs,
+            title: decodeXmlEntities(titleMatch[1]),
+            desc: descMatch ? decodeXmlEntities(descMatch[1]) : ''
+          });
+          parsedCount++;
+        }
+      }
+
+      setCache(cacheKey, byNorm, 21600);
+      return byNorm;
+    } catch (e) {
+      return null;
+    } finally {
+      INFLIGHT_EPG.delete(cc);
+    }
+  })();
+
+  INFLIGHT_EPG.set(cc, task);
+  return task;
+}
+
+function getCurrentAndUpcomingPrograms(channel, countryCode = 'GB', hoursAhead = 36, xmltvByNorm = null) {
+  const { tag: defaultTag } = getChannelCategoryTag(channel);
+  const nowMs = Date.now();
+  const horizonMs = nowMs + hoursAhead * 3600 * 1000;
+
+  if (xmltvByNorm instanceof Map) {
+    const candidates = [
+      channel.tvgId ? normalizeChannelName(channel.tvgId) : '',
+      normalizeChannelName(channel.name || '')
+    ].filter(Boolean);
+    for (const key of candidates) {
+      const list = xmltvByNorm.get(key);
+      if (list && list.length > 0) {
+        const sorted = [...list].sort((a, b) => a.startMs - b.startMs);
+        const current = sorted.find(p => p.startMs <= nowMs && p.stopMs > nowMs) || sorted[0];
+        const upcoming = sorted
+          .filter(p => p.startMs > nowMs && p.startMs <= horizonMs)
+          .slice(0, 16)
+          .map(p => {
+            const d = new Date(p.startMs);
+            const hhmm = d.toISOString().slice(11, 16);
+            return {
+              time: hhmm,
+              timeLabel: `${d.toDateString() === new Date(nowMs).toDateString() ? 'Today' : 'Tomorrow'} ${hhmm} UTC`,
+              title: p.title,
+              desc: p.desc || `Scheduled broadcast on ${channel.name}`,
+              startIso: d.toISOString(),
+              endIso: new Date(p.stopMs).toISOString(),
+              categoryTag: defaultTag
+            };
+          });
+        const cTime = new Date(current.startMs).toISOString().slice(11, 16);
+        const nowPlaying = {
+          time: cTime,
+          title: current.title,
+          desc: current.desc || `Live on ${channel.name}`,
+          startIso: new Date(current.startMs).toISOString(),
+          endIso: new Date(current.stopMs).toISOString(),
+          categoryTag: defaultTag
+        };
+        let guideText = `\n\n🔴 LIVE NOW:\n👉 ${nowPlaying.time} — ${nowPlaying.title}\n${nowPlaying.desc}\n\n📅 UP NEXT ON ${String(channel.name || '').toUpperCase()}:\n`;
+        for (const s of upcoming.slice(0, 5)) {
+          guideText += `• ${s.timeLabel} — ${s.title}\n`;
+        }
+        guideText += '\n🔔 Select any upcoming program in the list to track airtimes & add to Calendar!\n⚡ 100% Legal DRM-Free Stream • In-App Stremio Playback';
+        return { nowPlaying, upcoming, guideText };
+      }
     }
   }
 
-  const nextShows = [];
-  for (let step = 1; step <= 4; step++) {
-    const nextIdx = (currentIdx + step) % schedule.length;
-    nextShows.push(schedule[nextIdx]);
+  const schedule = getChannelSchedule(channel);
+  const timeline = [];
+  for (let dayOffset = 0; dayOffset <= 2; dayOffset++) {
+    for (const slot of schedule) {
+      const [h, m] = String(slot.time || '00:00').split(':').map(Number);
+      const dt = new Date(nowMs);
+      dt.setUTCHours(0, 0, 0, 0);
+      dt.setUTCDate(dt.getUTCDate() + dayOffset);
+      dt.setUTCHours(h || 0, m || 0, 0, 0);
+      timeline.push({
+        time: slot.time,
+        title: slot.title,
+        desc: slot.desc,
+        startMs: dt.getTime(),
+        dayOffset,
+        categoryTag: defaultTag
+      });
+    }
+  }
+  timeline.sort((a, b) => a.startMs - b.startMs);
+
+  let currentItem = timeline[0];
+  for (const item of timeline) {
+    if (item.startMs <= nowMs) currentItem = item;
   }
 
-  let guideText = '\n\n📺 NOW AIRING:\n👉 ' + currentShow.time + ' — ' + currentShow.title + '\n' + currentShow.desc + '\n\n📅 COMING UP NEXT TODAY:\n';
-  for (const s of nextShows) {
-    guideText += '• ' + s.time + ' — ' + s.title + '\n';
+  const todayStr = new Date(nowMs).toISOString().slice(0, 10);
+  const upcoming = timeline
+    .filter(item => item.startMs > nowMs && item.startMs <= horizonMs)
+    .slice(0, 16)
+    .map((item, idx, arr) => {
+      const d = new Date(item.startMs);
+      const isToday = d.toISOString().slice(0, 10) === todayStr;
+      const endMs = arr[idx + 1] ? arr[idx + 1].startMs : item.startMs + 2 * 3600 * 1000;
+      return {
+        time: item.time,
+        timeLabel: `${isToday ? 'Today' : 'Tomorrow'} ${item.time}`,
+        title: item.title,
+        desc: item.desc,
+        startIso: d.toISOString(),
+        endIso: new Date(endMs).toISOString(),
+        categoryTag: item.categoryTag
+      };
+    });
+
+  const nowPlaying = {
+    time: currentItem.time,
+    title: currentItem.title,
+    desc: currentItem.desc,
+    startIso: new Date(currentItem.startMs).toISOString(),
+    endIso: upcoming[0] ? upcoming[0].startIso : new Date(nowMs + 3600 * 1000).toISOString(),
+    categoryTag: defaultTag
+  };
+
+  let guideText = `\n\n🔴 LIVE NOW:\n👉 ${nowPlaying.time} — ${nowPlaying.title}\n${nowPlaying.desc}\n\n📅 UP NEXT:\n`;
+  for (const s of upcoming.slice(0, 5)) {
+    guideText += `• ${s.timeLabel} — ${s.title}\n`;
   }
-  guideText += '\n⚡ 100% Legal DRM-Free Stream • In-App Stremio Playback';
-  return guideText;
+  guideText += '\n🔔 Select any upcoming program in the list to track airtimes & add to Calendar!\n⚡ 100% Legal DRM-Free Stream • In-App Stremio Playback';
+
+  return { nowPlaying, upcoming, guideText };
+}
+
+// Helper: Formats a real-time, hour-by-hour dynamic TV Guide for a channel
+function formatTvGuide(channel, countryCode = 'GB') {
+  return getCurrentAndUpcomingPrograms(channel, countryCode).guideText;
+}
+
+const EXT_CHANNEL_BY_ID = new Map();
+
+function mapIptvGenres(rawGroup = '', streamType = 'hls', regionCode = 'GB') {
+  const g = String(rawGroup || '').toLowerCase();
+  const genres = new Set();
+  if (/news|weather|business|politics/.test(g)) genres.add('News & Info');
+  if (/sport|football|soccer|auto|racing|outdoor|fight|wrestling/.test(g)) genres.add('Sports');
+  if (/movie|cinema|film|classic/.test(g)) genres.add('Movies & Drama');
+  if (/music|radio|concert/.test(g)) genres.add('Radio & Music');
+  if (/kid|child|family|anim|cartoon/.test(g)) genres.add('Kids & Family');
+  if (/doc|science|history|nature|education|travel|culture/.test(g)) genres.add('Documentary');
+  if (/entertain|comedy|lifestyle|cooking|general|series|drama/.test(g) || genres.size === 0) genres.add('Entertainment');
+  genres.add('Live TV');
+  if (REGIONS[regionCode] && regionCode !== 'ALL') genres.add(REGIONS[regionCode]);
+  if (streamType === 'youtube') genres.add('YouTube Ⓨ');
+  if (streamType === 'twitch') genres.add('Twitch Ⓣ');
+  return Array.from(genres);
+}
+
+function detectStreamType(url = '') {
+  const lower = String(url).toLowerCase();
+  if (lower.includes('youtube.com/') || lower.includes('youtu.be/')) return 'youtube';
+  if (lower.includes('twitch.tv/')) return 'twitch';
+  return 'hls';
+}
+
+function parseM3uPlaylist(text = '', defaultRegion = 'ALL') {
+  const lines = String(text).split(/\r?\n/);
+  const items = [];
+  let pendingMeta = null;
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    if (line.startsWith('#EXTINF:')) {
+      const attrs = {};
+      const attrRegex = /([a-zA-Z0-9-]+)="([^"]*)"/g;
+      let am;
+      while ((am = attrRegex.exec(line)) !== null) {
+        attrs[am[1].toLowerCase()] = am[2];
+      }
+      const commaIdx = line.lastIndexOf(',');
+      const rawName = (commaIdx !== -1 ? line.slice(commaIdx + 1) : (attrs['tvg-name'] || 'Live Channel')).trim();
+      pendingMeta = {
+        name: rawName,
+        tvgId: attrs['tvg-id'] || '',
+        logo: attrs['tvg-logo'] || '',
+        country: (attrs['tvg-country'] || defaultRegion || 'ALL').split(';')[0].trim().toUpperCase(),
+        group: attrs['group-title'] || 'Entertainment'
+      };
+    } else if (!line.startsWith('#') && pendingMeta) {
+      const url = line;
+      const meta = pendingMeta;
+      pendingMeta = null;
+
+      if (!/^https?:\/\//i.test(url)) continue;
+      if (/\.mpd(\?|$)|widevine|playready|clearkey/i.test(url)) continue;
+      if (/\[geo-blocked\]|\[not 24\/7\]/i.test(meta.name)) continue;
+
+      const cleanName = meta.name.replace(/\s*\(\d+p\)|\s*\[[^\]]*\]/gi, '').trim();
+      if (!cleanName) continue;
+
+      const st = detectStreamType(url);
+      const badgeSuffix = st === 'youtube' ? ' Ⓨ' : (st === 'twitch' ? ' Ⓣ' : '');
+      const chCountry = meta.country === 'UK' ? 'GB' : (meta.country || defaultRegion);
+      const normName = normalizeChannelName(cleanName);
+      if (!normName) continue;
+
+      const regionPrefix = (chCountry && /^[A-Z]{2}$/.test(chCountry)) ? chCountry.toLowerCase() : 'global';
+      const id = `tv:ext_${regionPrefix}_${normName.slice(0, 44)}`;
+
+      items.push({
+        id,
+        tvgId: meta.tvgId,
+        normName,
+        name: `${cleanName}${badgeSuffix}`,
+        rawName: cleanName,
+        logo: meta.logo || 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png',
+        background: meta.logo || 'https://images.unsplash.com/photo-1522869635100-9f4c5e86aa37?w=1280&q=80',
+        country: chCountry,
+        genres: mapIptvGenres(meta.group, st, chCountry),
+        streamType: st,
+        streamUrl: url,
+        summary: `Watch ${cleanName} live free-to-air stream on NightKnight Cinema (DRM-Free).`
+      });
+    }
+  }
+  return items;
+}
+
+const INFLIGHT_M3U = new Map();
+async function fetchM3uCached(cacheKey, url, regionHint = 'ALL') {
+  const cached = getCache(cacheKey);
+  if (cached) return cached;
+  if (INFLIGHT_M3U.has(cacheKey)) return INFLIGHT_M3U.get(cacheKey);
+
+  const task = (async () => {
+    try {
+      const res = await fetch(url, {
+        headers: { 'User-Agent': 'NightKnightCinema/1.13' },
+        signal: AbortSignal.timeout(4500)
+      });
+      if (!res.ok) return [];
+      const text = await res.text();
+      const parsed = parseM3uPlaylist(text, regionHint);
+      setCache(cacheKey, parsed, 14400);
+      return parsed;
+    } catch (e) {
+      return [];
+    } finally {
+      INFLIGHT_M3U.delete(cacheKey);
+    }
+  })();
+
+  INFLIGHT_M3U.set(cacheKey, task);
+  return task;
+}
+
+async function fetchExternalLiveTvChannels(regionCode = 'GB') {
+  const rc = String(regionCode || 'GB').toUpperCase();
+  const mergedCacheKey = `tv:merged:${rc}`;
+  const cachedMerged = getCache(mergedCacheKey);
+  if (cachedMerged) {
+    for (const ch of cachedMerged) EXT_CHANNEL_BY_ID.set(ch.id, ch);
+    return cachedMerged;
+  }
+
+  const baseCurated = rc === 'ALL'
+    ? Object.values(REGIONAL_CHANNELS).flat()
+    : (REGIONAL_CHANNELS[rc] || []);
+
+  const mergedList = [];
+  const byNorm = new Map();
+
+  for (const ch of baseCurated) {
+    const clone = {
+      ...ch,
+      backupUrls: Array.isArray(ch.backupUrls) ? [...ch.backupUrls] : []
+    };
+    if (clone.backupUrl && !clone.backupUrls.includes(clone.backupUrl)) {
+      clone.backupUrls.push(clone.backupUrl);
+    }
+    const norm = normalizeChannelName(clone.name);
+    mergedList.push(clone);
+    if (norm && !byNorm.has(norm)) byNorm.set(norm, clone);
+    EXT_CHANNEL_BY_ID.set(clone.id, clone);
+  }
+
+  const iptvOrgCode = rc === 'GB' ? 'uk' : rc.toLowerCase();
+  const fetchTasks = [
+    fetchM3uCached('ext:freetv:all', 'https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8', 'ALL')
+  ];
+  if (rc !== 'ALL' && /^[a-z]{2}$/.test(iptvOrgCode)) {
+    fetchTasks.push(
+      fetchM3uCached(`ext:iptvorg:${iptvOrgCode}`, `https://iptv-org.github.io/iptv/countries/${iptvOrgCode}.m3u`, rc)
+    );
+  }
+
+  const results = await Promise.allSettled(fetchTasks);
+  const freeTvAll = results[0].status === 'fulfilled' ? results[0].value : [];
+  const iptvOrgList = (results[1] && results[1].status === 'fulfilled') ? results[1].value : [];
+
+  const filteredFreeTv = rc === 'ALL'
+    ? freeTvAll
+    : freeTvAll.filter(item => item.country === rc || (rc === 'GB' && item.country === 'UK'));
+
+  const combinedExternal = [...filteredFreeTv, ...iptvOrgList];
+
+  for (const ext of combinedExternal) {
+    const existing = byNorm.get(ext.normName);
+    if (existing) {
+      if (!existing.backupUrls) existing.backupUrls = [];
+      if (ext.streamUrl && ext.streamUrl !== existing.streamUrl && !existing.backupUrls.includes(ext.streamUrl) && existing.backupUrls.length < 4) {
+        existing.backupUrls.push(ext.streamUrl);
+      }
+      if (!existing.tvgId && ext.tvgId) existing.tvgId = ext.tvgId;
+      continue;
+    }
+
+    let finalId = ext.id;
+    if (EXT_CHANNEL_BY_ID.has(finalId) && EXT_CHANNEL_BY_ID.get(finalId).rawName !== ext.rawName) {
+      finalId = `${ext.id}_${crypto.createHash('md5').update(ext.rawName).digest('hex').slice(0, 4)}`;
+    }
+    const entry = {
+      ...ext,
+      id: finalId,
+      backupUrls: []
+    };
+    byNorm.set(ext.normName, entry);
+    mergedList.push(entry);
+    EXT_CHANNEL_BY_ID.set(entry.id, entry);
+  }
+
+  setCache(mergedCacheKey, mergedList, 3600);
+  return mergedList;
 }
 
 // -------------------------------------------------------------
@@ -1067,7 +1600,11 @@ const DEFAULT_USER_CONFIG = {
   upstream: normalizeUpstream(APP_CONFIG.upstreamScraper) || 'https://torrentio.strem.fun',
   hideRisk: !!APP_CONFIG.filterHighBufferRisk,
   region: REGIONS[APP_CONFIG.defaultRegion] ? APP_CONFIG.defaultRegion : 'GB',
-  realDebrid: ''
+  realDebrid: '',
+  youtubeSubs: '',
+  youtubeApiKey: '',
+  twitchFollows: '',
+  twitchClientId: ''
 };
 
 function decodeUserConfig(segment) {
@@ -1100,6 +1637,24 @@ function decodeUserConfig(segment) {
           cfg.realDebrid = cleanRd;
         }
       }
+      if (typeof json.youtubeSubs === 'string') {
+        cfg.youtubeSubs = json.youtubeSubs.trim().slice(0, 500);
+      }
+      if (typeof json.youtubeApiKey === 'string') {
+        const cleanYtKey = json.youtubeApiKey.trim();
+        if (/^[A-Za-z0-9_-]{15,100}$/.test(cleanYtKey)) {
+          cfg.youtubeApiKey = cleanYtKey;
+        }
+      }
+      if (typeof json.twitchFollows === 'string') {
+        cfg.twitchFollows = json.twitchFollows.trim().slice(0, 500);
+      }
+      if (typeof json.twitchClientId === 'string') {
+        const cleanTwId = json.twitchClientId.trim();
+        if (/^[A-Za-z0-9_-]{10,100}$/.test(cleanTwId)) {
+          cfg.twitchClientId = cleanTwId;
+        }
+      }
     }
   } catch (e) {
     // Invalid config segment -> safe defaults
@@ -1127,6 +1682,67 @@ const UPSTREAM_HEALTH = { lastStatus: null, lastError: null, lastStreams: null, 
 const STATS_PATH = process.env.VERCEL ? '/tmp/stats.json' : path.join(__dirname, 'stats.json');
 const STATS_SALT = crypto.randomBytes(16).toString('hex');
 
+const COUNTRY_METADATA = {
+  GB: { name: 'United Kingdom', flag: '🇬🇧' },
+  US: { name: 'United States', flag: '🇺🇸' },
+  IE: { name: 'Ireland', flag: '🇮🇪' },
+  CA: { name: 'Canada', flag: '🇨🇦' },
+  AU: { name: 'Australia', flag: '🇦🇺' },
+  IN: { name: 'India', flag: '🇮🇳' },
+  DE: { name: 'Germany', flag: '🇩🇪' },
+  FR: { name: 'France', flag: '🇫🇷' },
+  ES: { name: 'Spain', flag: '🇪🇸' },
+  IT: { name: 'Italy', flag: '🇮🇹' },
+  NL: { name: 'Netherlands', flag: '🇳🇱' },
+  BR: { name: 'Brazil', flag: '🇧🇷' },
+  MX: { name: 'Mexico', flag: '🇲🇽' },
+  PT: { name: 'Portugal', flag: '🇵🇹' },
+  PL: { name: 'Poland', flag: '🇵🇱' },
+  SE: { name: 'Sweden', flag: '🇸🇪' },
+  NO: { name: 'Norway', flag: '🇳🇴' },
+  DK: { name: 'Denmark', flag: '🇩🇰' },
+  FI: { name: 'Finland', flag: '🇫🇮' },
+  BE: { name: 'Belgium', flag: '🇧🇪' },
+  CH: { name: 'Switzerland', flag: '🇨🇭' },
+  AT: { name: 'Austria', flag: '🇦🇹' },
+  NZ: { name: 'New Zealand', flag: '🇳🇿' },
+  ZA: { name: 'South Africa', flag: '🇿🇦' },
+  SG: { name: 'Singapore', flag: '🇸🇬' },
+  JP: { name: 'Japan', flag: '🇯🇵' },
+  KR: { name: 'South Korea', flag: '🇰🇷' },
+  AE: { name: 'UAE', flag: '🇦🇪' },
+  PH: { name: 'Philippines', flag: '🇵🇭' },
+  ID: { name: 'Indonesia', flag: '🇮🇩' },
+  MY: { name: 'Malaysia', flag: '🇲🇾' },
+  TR: { name: 'Turkey', flag: '🇹🇷' },
+  RO: { name: 'Romania', flag: '🇷🇴' },
+  GR: { name: 'Greece', flag: '🇬🇷' },
+  CZ: { name: 'Czechia', flag: '🇨🇿' },
+  HU: { name: 'Hungary', flag: '🇭🇺' },
+  AR: { name: 'Argentina', flag: '🇦🇷' },
+  CO: { name: 'Colombia', flag: '🇨🇴' },
+  CL: { name: 'Chile', flag: '🇨🇱' },
+  UNK: { name: 'Unknown / Direct', flag: '🌐' }
+};
+
+function getCountryInfo(code) {
+  const c = String(code || 'UNK').toUpperCase();
+  if (COUNTRY_METADATA[c]) return { code: c, ...COUNTRY_METADATA[c] };
+  if (/^[A-Z]{2}$/.test(c)) {
+    const flag = String.fromCodePoint(...[...c].map(ch => 127397 + ch.charCodeAt(0)));
+    return { code: c, name: c, flag };
+  }
+  return { code: 'UNK', name: 'Unknown / Direct', flag: '🌐' };
+}
+
+function getTmdbRegion(regionCode) {
+  const code = String(regionCode || 'GB').toUpperCase();
+  if (code === 'ALL' || !/^[A-Z]{2}$/.test(code)) return 'GB';
+  return code;
+}
+
+const ID_TITLE_CACHE = new Map();
+
 function loadStats() {
   try {
     if (fs.existsSync(STATS_PATH)) {
@@ -1140,6 +1756,7 @@ function loadStats() {
         streamRequests: data.streamRequests || 0,
         subtitleRequests: data.subtitleRequests || 0,
         youtubeSearches: data.youtubeSearches || 0,
+        twitchRequests: data.twitchRequests || 0,
         tvGuideRequests: data.tvGuideRequests || 0,
         drmFreeRequests: data.drmFreeRequests || 0,
         estimatedInstalls: data.estimatedInstalls || 0,
@@ -1148,6 +1765,11 @@ function loadStats() {
         freeClients: new Set(data.freeClientHashes || []),
         rdStreamRequests: data.rdStreamRequests || 0,
         freeStreamRequests: data.freeStreamRequests || 0,
+        countryCounts: data.countryCounts || {},
+        clientCountries: data.clientCountries || {},
+        popularMovies: data.popularMovies || {},
+        popularSeries: data.popularSeries || {},
+        popularChannels: data.popularChannels || {},
         lastRequestAt: data.lastRequestAt || null
       };
     }
@@ -1163,12 +1785,18 @@ function loadStats() {
     freeStreamRequests: 0,
     subtitleRequests: 0,
     youtubeSearches: 0,
+    twitchRequests: 0,
     tvGuideRequests: 0,
     drmFreeRequests: 0,
     estimatedInstalls: 0,
     uniqueClients: new Set(),
     rdClients: new Set(),
     freeClients: new Set(),
+    countryCounts: {},
+    clientCountries: {},
+    popularMovies: {},
+    popularSeries: {},
+    popularChannels: {},
     lastRequestAt: null
   };
 }
@@ -1193,6 +1821,7 @@ function persistStats() {
         freeStreamRequests: STATS.freeStreamRequests || 0,
         subtitleRequests: STATS.subtitleRequests || 0,
         youtubeSearches: STATS.youtubeSearches,
+        twitchRequests: STATS.twitchRequests || 0,
         tvGuideRequests: STATS.tvGuideRequests || 0,
         drmFreeRequests: STATS.drmFreeRequests || 0,
         estimatedInstalls: Math.max(STATS.estimatedInstalls, STATS.uniqueClients.size),
@@ -1201,12 +1830,42 @@ function persistStats() {
         uniqueClientHashes: Array.from(STATS.uniqueClients).slice(-5000),
         rdClientHashes: Array.from(STATS.rdClients || []).slice(-2000),
         freeClientHashes: Array.from(STATS.freeClients || []).slice(-5000),
+        countryCounts: STATS.countryCounts || {},
+        clientCountries: STATS.clientCountries || {},
+        popularMovies: STATS.popularMovies || {},
+        popularSeries: STATS.popularSeries || {},
+        popularChannels: STATS.popularChannels || {},
         lastRequestAt: STATS.lastRequestAt,
         savedAt: new Date().toISOString()
       };
       fs.writeFileSync(STATS_PATH, JSON.stringify(payload, null, 2), 'utf-8');
     } catch (e) {}
   }, 3000);
+}
+
+function recordPopularItem(category, id, title, extraMeta = {}) {
+  if (!id || !title) return;
+  const bucketKey = category === 'movie'
+    ? 'popularMovies'
+    : (category === 'series' ? 'popularSeries' : 'popularChannels');
+  if (!STATS[bucketKey] || typeof STATS[bucketKey] !== 'object') STATS[bucketKey] = {};
+  const bucket = STATS[bucketKey];
+  const key = String(id).trim();
+  const prev = bucket[key] || { id: key, title: String(title).trim(), count: 0 };
+  bucket[key] = {
+    ...prev,
+    ...extraMeta,
+    id: key,
+    title: String(title || prev.title).trim(),
+    count: (prev.count || 0) + 1,
+    lastSeen: new Date().toISOString()
+  };
+  const keys = Object.keys(bucket);
+  if (keys.length > 300) {
+    const sorted = Object.entries(bucket).sort((a, b) => (b[1].count || 0) - (a[1].count || 0)).slice(0, 200);
+    STATS[bucketKey] = Object.fromEntries(sorted);
+  }
+  persistStats();
 }
 
 const RECENT_ACTIVITY = [];
@@ -1238,6 +1897,20 @@ function recordClient(req, userConfig = DEFAULT_USER_CONFIG, pathname = '/') {
   STATS.lastRequestAt = new Date().toISOString();
   STATS.estimatedInstalls = Math.max(STATS.estimatedInstalls, STATS.uniqueClients.size);
 
+  const rawCountry = String(req.headers['x-vercel-ip-country'] || req.headers['cf-ipcountry'] || '').trim().toUpperCase();
+  const isLocal = ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1';
+  const countryCode = /^[A-Z]{2}$/.test(rawCountry) ? rawCountry : (isLocal ? 'GB' : 'UNK');
+  if (!STATS.countryCounts || typeof STATS.countryCounts !== 'object') STATS.countryCounts = {};
+  if (!STATS.clientCountries || typeof STATS.clientCountries !== 'object') STATS.clientCountries = {};
+  STATS.countryCounts[countryCode] = (STATS.countryCounts[countryCode] || 0) + 1;
+  STATS.clientCountries[hash] = countryCode;
+  const ccKeys = Object.keys(STATS.clientCountries);
+  if (ccKeys.length > 5000) {
+    for (const oldKey of ccKeys.slice(0, ccKeys.length - 5000)) {
+      delete STATS.clientCountries[oldKey];
+    }
+  }
+
   const hasRd = Boolean(userConfig && userConfig.realDebrid);
   if (hasRd) {
     STATS.rdClients.add(hash);
@@ -1246,12 +1919,15 @@ function recordClient(req, userConfig = DEFAULT_USER_CONFIG, pathname = '/') {
     STATS.freeClients.add(hash);
   }
 
+  const countryInfo = getCountryInfo(countryCode);
   // Record into recent activity ring buffer (max 15 items)
   RECENT_ACTIVITY.unshift({
     time: new Date().toISOString(),
     endpoint: pathname.split('/')[1] || 'root',
     tier: hasRd ? '⚡ Real-Debrid' : '🆓 Free P2P',
-    client: hash.slice(0, 6)
+    client: hash.slice(0, 6),
+    country: countryCode,
+    flag: countryInfo.flag
   });
   if (RECENT_ACTIVITY.length > 15) RECENT_ACTIVITY.pop();
 }
@@ -1525,8 +2201,12 @@ const DECADE_CATALOG_RANGES = {
 function getManifest(baseUrl, userConfig = DEFAULT_USER_CONFIG, rootUrl = baseUrl) {
   const regionCode = (userConfig && userConfig.region) || 'GB';
   const regionName = REGIONS[regionCode] || 'United Kingdom';
-  const regionalChannelsList = REGIONAL_CHANNELS[regionCode] || REGIONAL_CHANNELS.GB;
-  const regionalGenres = ['All Channels', ...new Set(regionalChannelsList.flatMap(c => c.genres))];
+  const cachedMergedTv = getCache(`tv:merged:${regionCode}`);
+  const regionalChannelsList = cachedMergedTv || (regionCode === 'ALL'
+    ? Object.values(REGIONAL_CHANNELS).flat()
+    : (REGIONAL_CHANNELS[regionCode] || REGIONAL_CHANNELS.GB));
+  const standardTvGenres = ['All Channels', 'News & Info', 'Entertainment', 'Movies & Drama', 'Sports', 'Radio & Music', 'Kids & Family', 'Documentary', 'Live TV', 'YouTube Ⓨ', 'Twitch Ⓣ'];
+  const regionalGenres = [...new Set([...standardTvGenres, ...regionalChannelsList.flatMap(c => c.genres)])];
   const drmFreeGenres = ['All Titles', ...new Set(DRM_FREE_MOVIES.flatMap(m => m.genres))];
   const hasRd = Boolean(userConfig && userConfig.realDebrid);
 
@@ -1534,12 +2214,12 @@ function getManifest(baseUrl, userConfig = DEFAULT_USER_CONFIG, rootUrl = baseUr
     id: 'org.stremio.nightknight.cinema',
     version: ADDON_VERSION,
     name: hasRd ? 'NightKnight Cinema ⚡ RD' : 'NightKnight Cinema',
-    description: `Created by NightKnight (@NightKnight24). Complete cinema hub: ⚡ Real-Debrid High-Speed Cloud Streams ${hasRd ? 'Active' : '(Click ⚙️ Configure to enable)'}, Native Multi-Language Subtitles Engine (80+ languages), Regional Live TV & TV Guide (EPG), 24/7 Live Music TV & Radios (UK, US, Canada, Australia, Ireland, India), DRM-Free Cinema playback, YouTube in-app player, streaming hubs (BBC iPlayer, ITVX, Netflix, Disney+, Hotstar), franchise viewing orders & speed engine. Support the developer on Throne: https://throne.com/nightknight24 • Projects: https://github.com/NightKnight24`,
+    description: `Created by NightKnight (@NightKnight24). Complete cinema hub: ⚡ Real-Debrid Cloud Streams ${hasRd ? 'Active' : '(Click ⚙️ Configure)'}, 2,200+ Global Live TV Channels & Multi-Server TV Guide (EPG), Next-Gen YouTube Channels & Creators, Twitch Live/VODs/Clips & Ad-Free HLS, Live Country & Trending Analytics, 80+ Language Subtitles, DRM-Free Cinema, Streaming Hubs & Speed Engine. Throne: https://throne.com/nightknight24 • GitHub: https://github.com/NightKnight24`,
     logo: `${rootUrl}/icon.png`,
     background: `${rootUrl}/background.png`,
     resources: ['catalog', 'meta', 'stream', 'subtitles'],
     types: ['movie', 'series', 'channel'],
-    idPrefixes: ['tmdb:', 'tt', 'yt:', 'tv:', 'drmfree:'],
+    idPrefixes: ['tmdb:', 'tt', 'yt:', 'twitch:', 'tv:', 'drmfree:'],
     behaviorHints: {
       configurable: true,
       configurationRequired: false
@@ -1555,6 +2235,7 @@ function getManifest(baseUrl, userConfig = DEFAULT_USER_CONFIG, rootUrl = baseUr
             name: 'genre',
             options: [
               'Popular',
+              'Trending on NightKnight',
               'Upcoming Releases',
               'Now In Theaters',
               'Top Rated',
@@ -1627,6 +2308,7 @@ function getManifest(baseUrl, userConfig = DEFAULT_USER_CONFIG, rootUrl = baseUr
             name: 'genre',
             options: [
               'Popular',
+              'Trending on NightKnight',
               'Airing Next 7 Days',
               'Airing Today',
               'Top Rated',
@@ -2033,7 +2715,7 @@ function getManifest(baseUrl, userConfig = DEFAULT_USER_CONFIG, rootUrl = baseUr
         type: 'channel',
         id: 'regional_live_tv',
         name: `Live TV & Guide (${regionName})`,
-        pageSize: 20,
+        pageSize: 60,
         posterShape: 'square',
         extra: [
           {
@@ -2070,7 +2752,50 @@ function getManifest(baseUrl, userConfig = DEFAULT_USER_CONFIG, rootUrl = baseUr
           { name: 'search', isRequired: false },
           {
             name: 'genre',
-            options: ['Trending', 'Music', 'Gaming', 'Tech', 'Podcasts', 'News'],
+            options: [
+              'Trending',
+              'Channels & Creators',
+              'My Subscriptions (BYOA)',
+              'Live Now',
+              'Music',
+              'Gaming',
+              'Tech',
+              'Podcasts',
+              'News',
+              'Movies & Trailers',
+              'Sports'
+            ],
+            isRequired: false
+          },
+          { name: 'skip', isRequired: false }
+        ]
+      },
+      {
+        type: 'channel',
+        id: 'twitch_live',
+        name: 'Twitch Live & Creators (NightKnight)',
+        pageSize: 25,
+        posterShape: 'square',
+        extra: [
+          { name: 'search', isRequired: false },
+          {
+            name: 'genre',
+            options: [
+              'Top Live Now',
+              'My Followed Streamers (BYOA)',
+              'Just Chatting',
+              'Sports',
+              'Music',
+              'League of Legends',
+              'Counter-Strike',
+              'Valorant',
+              'Grand Theft Auto V',
+              'Minecraft',
+              'Fortnite',
+              'Apex Legends',
+              'EA Sports FC 25',
+              'Software and Game Development'
+            ],
             isRequired: false
           },
           { name: 'skip', isRequired: false }
@@ -2183,20 +2908,385 @@ async function enrichMetasWithImdb(metas, defaultType) {
   }));
 }
 
-// YouTube Search & Video Scraper (Zero-Auth, DRM-Free & BYOA)
-async function searchYouTube(query = 'Trending', skip = 0) {
-  const cacheKey = `yt:query:${query}`;
+const FEATURED_YT_CHANNELS = [
+  { id: 'UCX6OQ3DkcsbYNE6H8uQQuVA', handle: '@MrBeast', name: 'MrBeast', desc: 'Viral challenges, giveaways & mega productions.' },
+  { id: 'UCBJycsmduvYEL83R_U4JriQ', handle: '@mkbhd', name: 'Marques Brownlee (MKBHD)', desc: 'Quality tech reviews, smartphones, EVs & studio gear.' },
+  { id: 'UCoMdktPbSTixAyNGwb-UYkQ', handle: '@SkyNews', name: 'Sky News (24/7 Live)', desc: 'Breaking UK and world news live broadcasts.' },
+  { id: 'UCSJ4gkVC6NrvII8umztf0Ow', handle: '@LofiGirl', name: 'Lofi Girl (24/7 Radio)', desc: 'Non-stop lo-fi hip hop & synthwave focus radio.' },
+  { id: 'UCLA_DiR1FfKNvjuUpBHmylQ', handle: '@NASA', name: 'NASA Live & Missions', desc: 'Rocket launches, ISS feeds & space exploration.' },
+  { id: 'UCsXVk37bltHxD1rDPwtNM8Q', handle: '@kurzgesagt', name: 'Kurzgesagt – In a Nutshell', desc: 'Animated science, space & philosophy deep dives.' },
+  { id: 'UCHnyfMqiRRG1u-2MsSQLbXA', handle: '@veritasium', name: 'Veritasium', desc: 'An element of truth — physics, engineering & science.' },
+  { id: 'UCIEv3lZ_tNXHzL3ox-_uUGQ', handle: '@gordonramsay', name: 'Gordon Ramsay', desc: 'Kitchen Nightmares, Hell’s Kitchen & masterclasses.' },
+  { id: 'UCqFMzb-4AUf6WAIbl132QKA', handle: '@NHL', name: 'NHL Hockey Highlights', desc: 'Official hockey highlights, recaps & top plays.' },
+  { id: 'UCblfuW_4rakIf2h6aqANefA', handle: '@redbull', name: 'Red Bull Extreme Sports', desc: 'Motorsport, cliff diving, BMX & extreme sports.' }
+];
+
+function extractYtThumb(thumbnails = [], fallbackVideoId = '') {
+  if (Array.isArray(thumbnails) && thumbnails.length > 0) {
+    const raw = thumbnails[thumbnails.length - 1]?.url || thumbnails[0]?.url || '';
+    if (raw) return raw.startsWith('//') ? `https:${raw}` : raw;
+  }
+  return fallbackVideoId ? `https://i.ytimg.com/vi/${fallbackVideoId}/hqdefault.jpg` : 'https://cdn-icons-png.flaticon.com/512/1384/1384060.png';
+}
+
+function buildYouTubeChannelCard(channelId, title, avatar, handle = '', subText = '') {
+  const cardId = `yt:channel:${channelId}`;
+  const card = {
+    id: cardId,
+    type: 'channel',
+    name: `📺 ${title}`,
+    poster: avatar || 'https://cdn-icons-png.flaticon.com/512/1384/1384060.png',
+    posterShape: 'square',
+    background: avatar || 'https://images.unsplash.com/photo-1611162616475-46b635cb6868?w=1280&q=80',
+    description: `${handle ? handle + ' • ' : ''}${subText || 'Click to open creator hub: latest uploads, 🔴 live streams & ⏰ upcoming premieres.'}\n\n🔔 Add to Stremio Library for Calendar notifications on scheduled premieres!`,
+    releaseInfo: handle || 'YouTube Creator'
+  };
+  setCache(`yt:chcard:${channelId}`, card, 21600);
+  return card;
+}
+
+async function resolveYouTubeChannelId(channelOrHandle = '') {
+  const clean = String(channelOrHandle || '').replace(/^yt:channel:/, '').trim();
+  if (!clean) return null;
+  if (/^UC[a-zA-Z0-9_-]{22}$/.test(clean)) return clean;
+
+  const cacheKey = `yt:handle2id:${clean.toLowerCase()}`;
+  const cached = getCache(cacheKey);
+  if (cached) return cached;
+
+  try {
+    const urlPath = clean.startsWith('@') ? clean : `@${clean}`;
+    const res = await fetch(`https://www.youtube.com/${encodeURIComponent(urlPath).replace(/%40/, '@')}`, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept-Language': 'en-GB,en;q=0.9'
+      },
+      signal: AbortSignal.timeout(4500)
+    });
+    if (!res.ok) return null;
+    const html = await res.text();
+    const m = html.match(/"externalId"\s*:\s*"(UC[a-zA-Z0-9_-]{22})"/)
+      || html.match(/itemprop="channelId"\s+content="(UC[a-zA-Z0-9_-]{22})"/)
+      || html.match(/"browseId"\s*:\s*"(UC[a-zA-Z0-9_-]{22})"/);
+    if (m) {
+      setCache(cacheKey, m[1], 86400 * 7);
+      return m[1];
+    }
+  } catch (e) {}
+  return null;
+}
+
+async function resolveYouTubeDirectStreams(videoId = '') {
+  const cleanVid = String(videoId || '').replace(/^yt:/, '').trim();
+  if (!cleanVid || !/^[a-zA-Z0-9_-]{11}$/.test(cleanVid)) return [];
+
+  const cacheKey = `yt:direct:${cleanVid}`;
+  const cached = getCache(cacheKey);
+  if (cached) return cached;
+
+  const streams = [];
+  try {
+    const res = await fetch('https://www.youtube.com/youtubei/v1/player?prettyPrint=false', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'com.google.android.youtube/20.03.32 (Linux; U; Android 14) gzip'
+      },
+      body: JSON.stringify({
+        context: {
+          client: {
+            clientName: 'ANDROID',
+            clientVersion: '20.03.32',
+            androidSdkVersion: 34,
+            hl: 'en',
+            gl: 'GB'
+          }
+        },
+        videoId: cleanVid
+      }),
+      signal: AbortSignal.timeout(4500)
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      const sd = data?.streamingData;
+      if (sd?.hlsManifestUrl) {
+        streams.push({
+          name: '🔴 [DIRECT LIVE HLS]\nAd-Free Native Stream',
+          title: `${data.videoDetails?.title || 'YouTube Live'}\nIn-App Stremio Player • Ad-Free Direct HLS`,
+          url: sd.hlsManifestUrl,
+          behaviorHints: { notWebReady: false }
+        });
+      }
+      if (Array.isArray(sd?.formats)) {
+        const muxed = sd.formats
+          .filter(f => f.url && String(f.mimeType || '').includes('video/mp4'))
+          .sort((a, b) => (b.height || 0) - (a.height || 0));
+        const seenQ = new Set();
+        for (const f of muxed) {
+          const q = f.qualityLabel || (f.height ? `${f.height}p` : 'MP4');
+          if (seenQ.has(q)) continue;
+          seenQ.add(q);
+          streams.push({
+            name: `⚡ [DIRECT ${q}]\nAd-Free Native MP4`,
+            title: `${data.videoDetails?.title || 'YouTube Video'} • ${q}\nIn-App Stremio Player • Ad-Free`,
+            url: f.url
+          });
+          if (streams.length >= 3) break;
+        }
+      }
+    }
+  } catch (e) {}
+
+  if (streams.length > 0) setCache(cacheKey, streams, 900);
+  return streams;
+}
+
+async function fetchYouTubeChannelMeta(channelIdOrHandle, userConfig = DEFAULT_USER_CONFIG) {
+  const raw = String(channelIdOrHandle || '').replace(/^yt:channel:/, '').trim();
+  const ucId = await resolveYouTubeChannelId(raw);
+  if (!ucId) return null;
+
+  const cacheKey = `yt:chmeta:${ucId}`;
+  const cached = getCache(cacheKey);
+  if (cached) return cached;
+
+  const cachedCard = getCache(`yt:chcard:${ucId}`);
+  const featuredInfo = FEATURED_YT_CHANNELS.find(c => c.id === ucId);
+  let channelName = (cachedCard?.name || '').replace(/^📺\s*/, '') || featuredInfo?.name || raw;
+  let channelPoster = cachedCard?.poster || `https://cdn-icons-png.flaticon.com/512/1384/1384060.png`;
+  let channelDesc = featuredInfo?.desc || '';
+  const videos = [];
+  const seenVidIds = new Set();
+  let hasUpcoming = false;
+
+  const [rssResult, streamsTabResult] = await Promise.allSettled([
+    fetch(`https://www.youtube.com/feeds/videos.xml?channel_id=${encodeURIComponent(ucId)}`, {
+      headers: { 'User-Agent': 'NightKnightCinema/1.13' },
+      signal: AbortSignal.timeout(4500)
+    }).then(r => r.ok ? r.text() : ''),
+    fetch(`https://www.youtube.com/channel/${encodeURIComponent(ucId)}/streams`, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept-Language': 'en-GB,en;q=0.9'
+      },
+      signal: AbortSignal.timeout(4500)
+    }).then(r => r.ok ? r.text() : '')
+  ]);
+
+  if (streamsTabResult.status === 'fulfilled' && streamsTabResult.value) {
+    try {
+      const html = streamsTabResult.value;
+      const avatarMatch = html.match(/"avatar":\{"thumbnails":\[\{"url":"([^"]+)"/);
+      if (avatarMatch) channelPoster = avatarMatch[1].startsWith('//') ? `https:${avatarMatch[1]}` : avatarMatch[1];
+      const initMatch = html.match(/ytInitialData\s*=\s*({.+?});<\/script>/);
+      if (initMatch) {
+        const data = JSON.parse(initMatch[1]);
+        const metaTitle = data.metadata?.channelMetadataRenderer?.title;
+        if (metaTitle) channelName = metaTitle;
+        const metaDesc = data.metadata?.channelMetadataRenderer?.description;
+        if (metaDesc && !channelDesc) channelDesc = metaDesc.slice(0, 260);
+        const metaAvatar = data.metadata?.channelMetadataRenderer?.avatar?.thumbnails?.[0]?.url;
+        if (metaAvatar) channelPoster = metaAvatar;
+
+        const tabs = data.contents?.twoColumnBrowseResultsRenderer?.tabs || [];
+        for (const t of tabs) {
+          const items = t.tabRenderer?.content?.richGridRenderer?.contents || [];
+          for (const ri of items.slice(0, 12)) {
+            const lm = ri.richItemRenderer?.content?.lockupViewModel;
+            const vr = ri.richItemRenderer?.content?.videoRenderer;
+            if (lm && lm.contentId) {
+              const vid = lm.contentId;
+              const title = lm.metadata?.lockupMetadataViewModel?.title?.content || 'Live Stream';
+              const badges = lm.contentImage?.thumbnailViewModel?.overlays?.flatMap(o => o.thumbnailBadgeViewModel ? [o.thumbnailBadgeViewModel] : []) || [];
+              const isLive = badges.some(b => b.badgeStyle === 'THUMBNAIL_OVERLAY_BADGE_STYLE_LIVE' || String(b.text || '').toUpperCase() === 'LIVE');
+              if (isLive && !seenVidIds.has(vid)) {
+                seenVidIds.add(vid);
+                videos.push({
+                  id: `yt:${vid}`,
+                  title: `🔴 LIVE NOW: ${title}`,
+                  season: 1,
+                  episode: videos.length + 1,
+                  released: new Date().toISOString(),
+                  thumbnail: `https://i.ytimg.com/vi/${vid}/hqdefault.jpg`,
+                  overview: `Streaming live right now on ${channelName} • Ad-free direct playback in Stremio.`
+                });
+              }
+            } else if (vr && vr.videoId) {
+              const vid = vr.videoId;
+              const title = vr.title?.runs?.[0]?.text || 'Stream';
+              const upTs = Number(vr.upcomingEventData?.startTime || 0);
+              const isUpcoming = upTs > Math.floor(Date.now() / 1000);
+              const isLive = (vr.badges || []).some(b => b.metadataBadgeRenderer?.style === 'BADGE_STYLE_TYPE_LIVE_NOW');
+              if ((isLive || isUpcoming) && !seenVidIds.has(vid)) {
+                seenVidIds.add(vid);
+                if (isUpcoming) hasUpcoming = true;
+                const relIso = isUpcoming ? new Date(upTs * 1000).toISOString() : new Date().toISOString();
+                videos.push({
+                  id: `yt:${vid}`,
+                  title: isUpcoming ? `⏰ UPCOMING PREMIERE: ${title}` : `🔴 LIVE NOW: ${title}`,
+                  season: 1,
+                  episode: videos.length + 1,
+                  released: relIso,
+                  thumbnail: `https://i.ytimg.com/vi/${vid}/hqdefault.jpg`,
+                  overview: isUpcoming
+                    ? `🔔 Scheduled premiere on ${relIso.slice(0, 16).replace('T', ' ')} UTC. Add to Library / Calendar for reminders!`
+                    : `Streaming live right now on ${channelName}!`
+                });
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {}
+  }
+
+  if (rssResult.status === 'fulfilled' && rssResult.value) {
+    const xml = rssResult.value;
+    const authorMatch = xml.match(/<author>\s*<name>([^<]+)<\/name>/);
+    if (authorMatch && (!channelName || channelName.startsWith('UC') || channelName.startsWith('@'))) {
+      channelName = decodeXmlEntities(authorMatch[1]);
+    }
+    const entries = xml.split('<entry>').slice(1, 16);
+    for (const entry of entries) {
+      const vidMatch = entry.match(/<yt:videoId>([^<]+)<\/yt:videoId>/);
+      if (!vidMatch) continue;
+      const vid = vidMatch[1].trim();
+      if (seenVidIds.has(vid)) continue;
+      seenVidIds.add(vid);
+      const tMatch = entry.match(/<title>([^<]+)<\/title>/);
+      const pMatch = entry.match(/<published>([^<]+)<\/published>/);
+      const dMatch = entry.match(/<media:description>([^<]*)<\/media:description>/);
+      const vTitle = tMatch ? decodeXmlEntities(tMatch[1]) : 'YouTube Video';
+      const pubDate = pMatch ? new Date(pMatch[1].trim()).toISOString() : new Date().toISOString();
+      const desc = dMatch ? decodeXmlEntities(dMatch[1]).slice(0, 260) : '';
+      videos.push({
+        id: `yt:${vid}`,
+        title: vTitle,
+        season: 1,
+        episode: videos.length + 1,
+        released: pubDate,
+        thumbnail: `https://i.ytimg.com/vi/${vid}/hqdefault.jpg`,
+        overview: desc || `Uploaded by ${channelName} • Plays directly in Stremio.`
+      });
+    }
+  }
+
+  if (videos.length === 0) return null;
+
+  const meta = {
+    id: `yt:channel:${ucId}`,
+    type: 'channel',
+    name: channelName,
+    poster: channelPoster,
+    posterShape: 'square',
+    background: videos[0]?.thumbnail || channelPoster,
+    logo: channelPoster,
+    genres: ['YouTube Creator', 'Channels & Creators'],
+    description: `${channelDesc ? channelDesc + '\n\n' : ''}📺 ${videos.length} latest uploads, live streams & premieres from ${channelName}.\n⚡ Click any video below to play ad-free directly inside Stremio.`,
+    behaviorHints: {
+      defaultVideoId: videos[0].id,
+      hasScheduledVideos: hasUpcoming
+    },
+    videos
+  };
+  setCache(cacheKey, meta, 900);
+  return meta;
+}
+
+// YouTube Search, Channels & Video Scraper (Zero-Auth, DRM-Free & BYOA)
+async function searchYouTube(query = 'Trending', skip = 0, userConfig = DEFAULT_USER_CONFIG, genre = '') {
+  if (genre === 'Channels & Creators' && (!query || query === 'Trending' || query === 'Channels & Creators')) {
+    const featuredCards = FEATURED_YT_CHANNELS.map(c =>
+      buildYouTubeChannelCard(c.id, c.name, null, c.handle, c.desc)
+    );
+    return featuredCards.slice(skip, skip + 20);
+  }
+
+  if (genre === 'My Subscriptions (BYOA)') {
+    const rawSubs = String(userConfig?.youtubeSubs || '').split(/[,\n]+/).map(s => s.trim()).filter(Boolean).slice(0, 15);
+    if (rawSubs.length === 0) {
+      return FEATURED_YT_CHANNELS.slice(0, 6).map(c =>
+        buildYouTubeChannelCard(c.id, c.name, null, c.handle, 'Configure your own YouTube @Handles on the NightKnight /configure portal!')
+      );
+    }
+    const cards = await Promise.all(rawSubs.map(async (sub) => {
+      const chMeta = await fetchYouTubeChannelMeta(sub, userConfig);
+      if (chMeta) {
+        return {
+          id: chMeta.id,
+          type: 'channel',
+          name: `🔔 ${chMeta.name}`,
+          poster: chMeta.poster,
+          posterShape: 'square',
+          background: chMeta.background,
+          description: chMeta.description,
+          releaseInfo: `${chMeta.videos?.length || 0} videos`
+        };
+      }
+      return null;
+    }));
+    return cards.filter(Boolean).slice(skip, skip + 20);
+  }
+
+  const effectiveQuery = genre === 'Live Now' && query === 'Trending'
+    ? 'live news music gaming stream'
+    : (query || genre || 'Trending');
+  const apiKey = userConfig?.youtubeApiKey || '';
+  const cacheKey = `yt:query:${effectiveQuery}:${genre}:${apiKey ? 'api' : 'web'}`;
   let videos = getCache(cacheKey);
 
   if (!videos) {
+    if (apiKey) {
+      try {
+        const apiUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=24&q=${encodeURIComponent(effectiveQuery)}&type=channel,video&key=${encodeURIComponent(apiKey)}`;
+        const apiRes = await fetch(apiUrl, { signal: AbortSignal.timeout(4500) });
+        if (apiRes.ok) {
+          const apiData = await apiRes.json();
+          if (Array.isArray(apiData.items) && apiData.items.length > 0) {
+            videos = apiData.items.map(it => {
+              if (it.id?.kind === 'youtube#channel' && it.id.channelId) {
+                return buildYouTubeChannelCard(
+                  it.id.channelId,
+                  decodeXmlEntities(it.snippet?.title || 'Channel'),
+                  it.snippet?.thumbnails?.high?.url,
+                  '',
+                  decodeXmlEntities(it.snippet?.description || '')
+                );
+              }
+              if (it.id?.videoId) {
+                const isLive = it.snippet?.liveBroadcastContent === 'live';
+                const vMeta = {
+                  id: `yt:${it.id.videoId}`,
+                  type: 'channel',
+                  name: `${isLive ? '🔴 LIVE: ' : ''}${decodeXmlEntities(it.snippet?.title || '')}`,
+                  poster: it.snippet?.thumbnails?.high?.url || `https://i.ytimg.com/vi/${it.id.videoId}/hqdefault.jpg`,
+                  background: `https://i.ytimg.com/vi/${it.id.videoId}/maxresdefault.jpg`,
+                  description: `Channel: ${decodeXmlEntities(it.snippet?.channelTitle || '')}\n\n${decodeXmlEntities(it.snippet?.description || '')}`,
+                  releaseInfo: isLive ? '🔴 LIVE' : (it.snippet?.channelTitle || 'YouTube'),
+                  behaviorHints: { defaultVideoId: `yt:${it.id.videoId}` }
+                };
+                setCache(`yt:meta:${it.id.videoId}`, vMeta, 86400);
+                return vMeta;
+              }
+              return null;
+            }).filter(Boolean);
+            setCache(cacheKey, videos, 1800);
+            return videos.slice(skip, skip + 20);
+          }
+        }
+      } catch (e) {}
+    }
+
     try {
-      const url = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
+      const liveFilter = genre === 'Live Now' ? '&sp=EgJAAQ%253D%253D' : '';
+      const url = `https://www.youtube.com/results?search_query=${encodeURIComponent(effectiveQuery)}${liveFilter}`;
       const res = await fetch(url, {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
           'Accept-Language': 'en-GB,en;q=0.9'
         },
-        signal: AbortSignal.timeout(6000)
+        signal: AbortSignal.timeout(5000)
       });
       const html = await res.text();
       const match = html.match(/ytInitialData\s*=\s*({.+?});<\/script>/);
@@ -2206,27 +3296,41 @@ async function searchYouTube(query = 'Trending', skip = 0) {
         videos = [];
 
         for (const item of contents) {
+          const cr = item.channelRenderer;
+          if (cr && cr.channelId) {
+            const cTitle = cr.title?.simpleText || cr.title?.runs?.[0]?.text || 'YouTube Channel';
+            const cAvatar = extractYtThumb(cr.thumbnail?.thumbnails);
+            const cHandle = cr.navigationEndpoint?.browseEndpoint?.canonicalBaseUrl || '';
+            const cSub = cr.subscriberCountText?.simpleText || cr.videoCountText?.simpleText || '';
+            videos.push(buildYouTubeChannelCard(cr.channelId, cTitle, cAvatar, cHandle, cSub));
+            continue;
+          }
+
           const vr = item.videoRenderer;
           if (vr && vr.videoId) {
             const title = vr.title?.runs?.[0]?.text || '';
             const channel = vr.ownerText?.runs?.[0]?.text || '';
-            const thumbnail = vr.thumbnail?.thumbnails?.[0]?.url || `https://i.ytimg.com/vi/${vr.videoId}/hqdefault.jpg`;
+            const thumbnail = extractYtThumb(vr.thumbnail?.thumbnails, vr.videoId);
             const length = vr.lengthText?.simpleText || '';
+            const isLive = (vr.badges || []).some(b => b.metadataBadgeRenderer?.style === 'BADGE_STYLE_TYPE_LIVE_NOW')
+              || (vr.thumbnailOverlays || []).some(o => o.thumbnailOverlayTimeStatusRenderer?.style === 'LIVE');
+            const upTs = Number(vr.upcomingEventData?.startTime || 0);
+            const isUpcoming = upTs > Math.floor(Date.now() / 1000);
+            const prefix = isLive ? '🔴 LIVE: ' : (isUpcoming ? '⏰ UPCOMING: ' : '');
 
             const videoMeta = {
               id: `yt:${vr.videoId}`,
               type: 'channel',
-              name: title,
+              name: `${prefix}${title}`,
               poster: thumbnail,
               background: `https://i.ytimg.com/vi/${vr.videoId}/maxresdefault.jpg`,
-              description: `Channel: ${channel} • Duration: ${length}\n\n▶️ Plays directly inside Stremio player (DRM-Free) or opens in YouTube app (BYOA).`,
-              releaseInfo: length || channel,
+              description: `Channel: ${channel} • ${isLive ? '🔴 Streaming Live Now' : `Duration: ${length || 'Video'}`}\n\n▶️ Plays ad-free inside Stremio player or opens in YouTube app (BYOA).`,
+              releaseInfo: isLive ? '🔴 LIVE' : (length || channel),
               behaviorHints: {
                 defaultVideoId: `yt:${vr.videoId}`
               }
             };
             videos.push(videoMeta);
-            // Cache individual video meta for handleMeta
             setCache(`yt:meta:${vr.videoId}`, videoMeta, 86400);
           }
         }
@@ -2239,6 +3343,549 @@ async function searchYouTube(query = 'Trending', skip = 0) {
 
   if (!Array.isArray(videos)) return [];
   return videos.slice(skip, skip + 20);
+}
+
+// -------------------------------------------------------------
+// TWITCH LIVE, VODS, CLIPS & CREATOR HUB (GQL + Usher HLS)
+// -------------------------------------------------------------
+const TWITCH_GQL_CLIENT_ID = 'kimne78kx3ncx6brgo4mv6wki5h1ko';
+
+async function twitchGql(query, variables = {}, customClientId = '') {
+  const res = await fetch('https://gql.twitch.tv/gql', {
+    method: 'POST',
+    headers: {
+      'Client-ID': customClientId || TWITCH_GQL_CLIENT_ID,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ query, variables }),
+    signal: AbortSignal.timeout(4500)
+  });
+  if (!res.ok) throw new Error(`Twitch GQL HTTP ${res.status}`);
+  return await res.json();
+}
+
+function formatTwitchUserCard(node = {}) {
+  const b = node.broadcaster || node;
+  if (!b || !b.login) return null;
+  const s = node.previewImageURL ? node : (b.stream || null);
+  const gameName = s?.game?.displayName || s?.game?.name || '';
+  const viewers = s?.viewersCount || 0;
+  const isLive = Boolean(s);
+  const thumb = isLive
+    ? String(s.previewImageURL || '').replace('{width}', '640').replace('{height}', '360')
+    : '';
+  const avatar = b.profileImageURL || 'https://cdn-icons-png.flaticon.com/512/5968/5968819.png';
+
+  return {
+    id: `twitch:${b.login}`,
+    type: 'channel',
+    name: `${isLive ? '🔴 ' : ''}${b.displayName || b.login}${gameName ? ` — ${gameName}` : ''}`,
+    poster: avatar,
+    posterShape: 'square',
+    background: thumb || avatar,
+    description: isLive
+      ? `🔴 LIVE NOW on Twitch • ${viewers.toLocaleString()} viewers\n🎮 Category: ${gameName || 'Live'}\n📺 "${s.title || b.displayName}"\n\n⚡ Click to watch 1080p60 Ad-Free Live Stream, Scheduled Streams, VODs & Top Weekly Clips!`
+      : `🟣 Twitch Channel: ${b.displayName || b.login}\n⚫ Currently Offline\n\n📼 Click to browse recent VODs, Top Weekly Clips & Upcoming Stream Schedule!`,
+    releaseInfo: isLive ? `🔴 ${viewers.toLocaleString()} viewers` : 'Offline • VODs'
+  };
+}
+
+async function handleTwitchCatalog(genre = 'Top Live Now', search = '', skip = 0, userConfig = DEFAULT_USER_CONFIG) {
+  const clientId = userConfig?.twitchClientId || '';
+  const cleanSearch = String(search || '').trim();
+  const cacheKey = `twitch:cat:${genre}:${cleanSearch}`;
+  let cards = getCache(cacheKey);
+
+  if (!cards) {
+    cards = [];
+    try {
+      if (cleanSearch) {
+        const directLogin = cleanSearch.toLowerCase().replace(/[^a-z0-9_]/g, '');
+        const sq = `
+          query($q: String!, $logins: [String!]) {
+            searchSuggestions(queryFragment: $q) {
+              edges {
+                node {
+                  text
+                  content {
+                    __typename
+                    ... on SearchSuggestionChannel {
+                      id
+                      login
+                    }
+                  }
+                }
+              }
+            }
+            users(logins: $logins) {
+              id
+              login
+              displayName
+              profileImageURL(width: 300)
+              stream {
+                id
+                title
+                viewersCount
+                previewImageURL(width: 640, height: 360)
+                game { name displayName }
+              }
+            }
+          }
+        `;
+        const data = await twitchGql(sq, { q: cleanSearch, logins: directLogin ? [directLogin] : [] }, clientId);
+        const logins = new Set();
+        for (const u of (data?.data?.users || [])) {
+          if (u && u.login) {
+            logins.add(u.login);
+            const card = formatTwitchUserCard({ ...u.stream, broadcaster: u });
+            if (card) cards.push(card);
+          }
+        }
+        const suggestedLogins = [];
+        for (const e of (data?.data?.searchSuggestions?.edges || [])) {
+          const ch = e?.node?.content;
+          if (ch?.login && !logins.has(ch.login)) {
+            logins.add(ch.login);
+            suggestedLogins.push(ch.login);
+          }
+        }
+        if (suggestedLogins.length > 0) {
+          const uRes = await twitchGql(`
+            query($logins: [String!]) {
+              users(logins: $logins) {
+                id login displayName profileImageURL(width: 300)
+                stream { id title viewersCount previewImageURL(width: 640, height: 360) game { name displayName } }
+              }
+            }
+          `, { logins: suggestedLogins.slice(0, 18) }, clientId);
+          for (const u of (uRes?.data?.users || [])) {
+            const card = formatTwitchUserCard({ ...(u.stream || {}), broadcaster: u });
+            if (card) cards.push(card);
+          }
+        }
+      } else if (genre === 'My Followed Streamers (BYOA)') {
+        const rawFollows = String(userConfig?.twitchFollows || '').split(/[\s,;]+/).map(s => s.toLowerCase().replace(/^@/, '').trim()).filter(Boolean).slice(0, 25);
+        const targetLogins = rawFollows.length > 0 ? rawFollows : ['blastpremier', 'nasa', 'monstercat', 'kaicenat', 'shroud'];
+        const fq = `
+          query($logins: [String!]) {
+            users(logins: $logins) {
+              id login displayName profileImageURL(width: 300)
+              stream { id title viewersCount previewImageURL(width: 640, height: 360) game { name displayName } }
+            }
+          }
+        `;
+        const data = await twitchGql(fq, { logins: targetLogins }, clientId);
+        for (const u of (data?.data?.users || [])) {
+          if (!u) continue;
+          const card = formatTwitchUserCard({ ...(u.stream || {}), broadcaster: u });
+          if (card) cards.push(card);
+        }
+        cards.sort((a, b) => (b.name.startsWith('🔴') ? 1 : 0) - (a.name.startsWith('🔴') ? 1 : 0));
+      } else if (genre && genre !== 'Top Live Now') {
+        const gq = `
+          query($name: String!) {
+            game(name: $name) {
+              streams(first: 25) {
+                edges {
+                  node {
+                    id title viewersCount previewImageURL(width: 640, height: 360)
+                    game { name displayName }
+                    broadcaster { id login displayName profileImageURL(width: 300) }
+                  }
+                }
+              }
+            }
+          }
+        `;
+        const data = await twitchGql(gq, { name: genre }, clientId);
+        for (const e of (data?.data?.game?.streams?.edges || [])) {
+          const card = formatTwitchUserCard(e.node);
+          if (card) cards.push(card);
+        }
+      } else {
+        const tq = `
+          query {
+            streams(first: 25) {
+              edges {
+                node {
+                  id title viewersCount previewImageURL(width: 640, height: 360)
+                  game { name displayName }
+                  broadcaster { id login displayName profileImageURL(width: 300) }
+                }
+              }
+            }
+          }
+        `;
+        const data = await twitchGql(tq, {}, clientId);
+        for (const e of (data?.data?.streams?.edges || [])) {
+          const card = formatTwitchUserCard(e.node);
+          if (card) cards.push(card);
+        }
+      }
+      if (cards.length > 0) setCache(cacheKey, cards, 180);
+    } catch (e) {
+      console.error('Twitch catalog error:', e.message);
+    }
+  }
+
+  return cards.slice(skip, skip + 25);
+}
+
+async function fetchTwitchChannelMeta(id, userConfig = DEFAULT_USER_CONFIG) {
+  const clientId = userConfig?.twitchClientId || '';
+  if (id.startsWith('twitch:vod:')) {
+    const vodId = id.replace('twitch:vod:', '');
+    return {
+      id,
+      type: 'channel',
+      name: `Twitch VOD #${vodId}`,
+      poster: 'https://cdn-icons-png.flaticon.com/512/5968/5968819.png',
+      description: 'Watch past Twitch broadcast directly inside Stremio player.',
+      behaviorHints: { defaultVideoId: id }
+    };
+  }
+  if (id.startsWith('twitch:clip:')) {
+    const slug = id.replace('twitch:clip:', '');
+    return {
+      id,
+      type: 'channel',
+      name: `Twitch Clip (${slug})`,
+      poster: 'https://cdn-icons-png.flaticon.com/512/5968/5968819.png',
+      description: 'Watch Twitch Clip directly inside Stremio player.',
+      behaviorHints: { defaultVideoId: id }
+    };
+  }
+
+  const login = id.replace(/^twitch:/, '').split(':')[0].toLowerCase().trim();
+  if (!login) return null;
+
+  const cacheKey = `twitch:meta:${login}`;
+  const cached = getCache(cacheKey);
+  if (cached) return cached;
+
+  try {
+    const q = `
+      query($login: String!) {
+        user(login: $login) {
+          id
+          login
+          displayName
+          description
+          profileImageURL(width: 300)
+          offlineImageURL
+          stream {
+            id
+            title
+            viewersCount
+            createdAt
+            previewImageURL(width: 1280, height: 720)
+            game { name displayName }
+          }
+          channel {
+            schedule {
+              segments {
+                id
+                startAt
+                endAt
+                title
+                isCancelled
+                categories { name }
+              }
+            }
+          }
+          videos(first: 12, type: ARCHIVE) {
+            edges {
+              node {
+                id
+                title
+                lengthSeconds
+                publishedAt
+                previewThumbnailURL(width: 640, height: 360)
+                game { name }
+              }
+            }
+          }
+          clips(first: 8, criteria: { period: LAST_WEEK }) {
+            edges {
+              node {
+                slug
+                title
+                viewCount
+                createdAt
+                thumbnailURL
+              }
+            }
+          }
+        }
+      }
+    `;
+    const data = await twitchGql(q, { login }, clientId);
+    const u = data?.data?.user;
+    if (!u) return null;
+
+    const videos = [];
+    const nowMs = Date.now();
+    let hasUpcoming = false;
+
+    if (u.stream) {
+      videos.push({
+        id: `twitch:${u.login}:live`,
+        title: `🔴 LIVE NOW: ${u.stream.title || u.displayName} (${(u.stream.viewersCount || 0).toLocaleString()} watching)`,
+        season: 1,
+        episode: 1,
+        released: u.stream.createdAt || new Date().toISOString(),
+        thumbnail: String(u.stream.previewImageURL || u.profileImageURL || '').replace('{width}', '1280').replace('{height}', '720'),
+        overview: `🎮 Category: ${u.stream.game?.displayName || 'Live'}\n⚡ Streaming 1080p60 Ad-Free directly inside Stremio.`
+      });
+    }
+
+    const segments = u.channel?.schedule?.segments || [];
+    for (const seg of segments) {
+      if (seg.isCancelled || !seg.startAt) continue;
+      const startMs = Date.parse(seg.startAt);
+      if (Number.isNaN(startMs) || startMs <= nowMs) continue;
+      hasUpcoming = true;
+      const cat = seg.categories?.[0]?.name || 'Scheduled Stream';
+      videos.push({
+        id: `twitch:${u.login}:sched_${seg.id}`,
+        title: `⏰ SCHEDULED [${seg.startAt.slice(0, 16).replace('T', ' ')} UTC]: ${seg.title || cat}`,
+        season: 1,
+        episode: videos.length + 1,
+        released: new Date(startMs).toISOString(),
+        thumbnail: u.profileImageURL,
+        overview: `🔔 Category: ${cat}\nAdd ${u.displayName} to your Stremio Library or Phone Calendar to get notified before broadcast begins!`
+      });
+    }
+
+    for (const edge of (u.videos?.edges || [])) {
+      const v = edge?.node;
+      if (!v) continue;
+      const mins = Math.round((v.lengthSeconds || 0) / 60);
+      const durStr = mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins}m`;
+      videos.push({
+        id: `twitch:vod:${v.id}`,
+        title: `📼 [VOD • ${durStr}] ${v.title || 'Past Broadcast'}`,
+        season: 1,
+        episode: videos.length + 1,
+        released: v.publishedAt || new Date().toISOString(),
+        thumbnail: v.previewThumbnailURL || u.profileImageURL,
+        overview: `Past broadcast • ${v.game?.name || 'Twitch'} • Duration: ${durStr}`
+      });
+    }
+
+    for (const edge of (u.clips?.edges || [])) {
+      const c = edge?.node;
+      if (!c) continue;
+      videos.push({
+        id: `twitch:clip:${c.slug}`,
+        title: `🎬 [CLIP • ${(c.viewCount || 0).toLocaleString()} views] ${c.title || 'Twitch Clip'}`,
+        season: 1,
+        episode: videos.length + 1,
+        released: c.createdAt || new Date().toISOString(),
+        thumbnail: c.thumbnailURL || u.profileImageURL,
+        overview: `Top weekly highlight clip on ${u.displayName}`
+      });
+    }
+
+    const bg = u.stream?.previewImageURL
+      ? String(u.stream.previewImageURL).replace('{width}', '1280').replace('{height}', '720')
+      : (u.offlineImageURL || u.profileImageURL);
+
+    const meta = {
+      id: `twitch:${u.login}`,
+      type: 'channel',
+      name: `${u.stream ? '🔴 ' : ''}${u.displayName || u.login} (Twitch)`,
+      poster: u.profileImageURL,
+      posterShape: 'square',
+      background: bg,
+      logo: u.profileImageURL,
+      genres: ['Twitch Live', u.stream?.game?.displayName || 'Gaming & Creators'],
+      description: `${u.stream ? `🔴 LIVE NOW: ${u.stream.title} (${(u.stream.viewersCount || 0).toLocaleString()} viewers)\n\n` : '⚫ Currently Offline — Browse scheduled streams, past VODs & clips below.\n\n'}${u.description || ''}\n\n⚡ 100% Native HLS • Zero Ads • Calendar Sync Supported`,
+      behaviorHints: {
+        defaultVideoId: videos[0]?.id,
+        hasScheduledVideos: hasUpcoming
+      },
+      videos
+    };
+    setCache(cacheKey, meta, 180);
+    return meta;
+  } catch (e) {
+    console.error('Twitch meta error:', e.message);
+    return null;
+  }
+}
+
+function parseUsherHlsQualities(m3u8Text = '', labelPrefix = 'TWITCH LIVE') {
+  const lines = String(m3u8Text).split(/\r?\n/);
+  const streams = [];
+  let pendingInfo = null;
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line) continue;
+    if (line.startsWith('#EXT-X-STREAM-INF:')) {
+      pendingInfo = line;
+    } else if (!line.startsWith('#') && pendingInfo && /^https?:\/\//i.test(line)) {
+      const resM = pendingInfo.match(/RESOLUTION=(\d+x\d+)/);
+      const fpsM = pendingInfo.match(/FRAME-RATE=([\d.]+)/);
+      const videoM = pendingInfo.match(/VIDEO="([^"]+)"/);
+      const isSource = videoM && videoM[1] === 'chunked';
+      const height = resM ? `${resM[1].split('x')[1]}p` : (videoM?.[1] || 'HLS');
+      const fps = fpsM && parseFloat(fpsM[1]) >= 50 ? '60' : '';
+      const qLabel = isSource ? `${height}${fps} SOURCE` : `${height}${fps}`;
+      streams.push({
+        name: `${isSource ? '🟣' : '🟢'} [${labelPrefix}]\n${qLabel}`,
+        title: `Ad-Free Direct HLS Stream (${resM ? resM[1] : qLabel}) • In-App Stremio Player`,
+        url: line,
+        behaviorHints: { notWebReady: false }
+      });
+      pendingInfo = null;
+    }
+  }
+  return streams;
+}
+
+async function resolveTwitchStreams(id, userConfig = DEFAULT_USER_CONFIG) {
+  const clientId = userConfig?.twitchClientId || '';
+
+  if (id.startsWith('twitch:clip:')) {
+    const slug = id.replace('twitch:clip:', '').trim();
+    try {
+      const cq = `
+        query($slug: ID!) {
+          clip(slug: $slug) {
+            id
+            title
+            url
+            playbackAccessToken(params: { platform: "web", playerType: "embed" }) {
+              signature
+              value
+            }
+            videoQualities {
+              quality
+              frameRate
+              sourceURL
+            }
+          }
+        }
+      `;
+      const data = await twitchGql(cq, { slug }, clientId);
+      const clip = data?.data?.clip;
+      if (clip && Array.isArray(clip.videoQualities) && clip.playbackAccessToken) {
+        const sig = clip.playbackAccessToken.signature;
+        const val = encodeURIComponent(clip.playbackAccessToken.value);
+        const streams = clip.videoQualities.slice(0, 3).map(q => ({
+          name: `🎬 [TWITCH CLIP • ${q.quality}p${q.frameRate >= 50 ? '60' : ''}]\nAd-Free MP4`,
+          title: `${clip.title || 'Twitch Clip'}\nDirect MP4 inside Stremio`,
+          url: `${q.sourceURL}?sig=${sig}&token=${val}`
+        }));
+        streams.push({
+          name: '🟣 [TWITCH • BYOA]\nOpen Clip on Twitch',
+          title: 'Open in Twitch website/app',
+          externalUrl: clip.url || `https://clips.twitch.tv/${slug}`
+        });
+        return streams;
+      }
+    } catch (e) {}
+    return [{
+      name: '🟣 [TWITCH • BYOA]\nOpen Clip on Twitch',
+      externalUrl: `https://clips.twitch.tv/${slug}`
+    }];
+  }
+
+  if (id.startsWith('twitch:vod:')) {
+    const vodId = id.replace('twitch:vod:', '').trim();
+    try {
+      const vq = `
+        query($id: ID!) {
+          videoPlaybackAccessToken(id: $id, params: { platform: "web", playerBackend: "mediaplayer", playerType: "site" }) {
+            value
+            signature
+          }
+        }
+      `;
+      const data = await twitchGql(vq, { id: vodId }, clientId);
+      const token = data?.data?.videoPlaybackAccessToken;
+      if (token?.value && token?.signature) {
+        const usherUrl = `https://usher.ttvnw.net/vod/${vodId}.m3u8?nauth=${encodeURIComponent(token.value)}&nauthsig=${token.signature}&allow_source=true&allow_audio_only=true&player=twitchweb`;
+        const streams = [];
+        try {
+          const mRes = await fetch(usherUrl, { signal: AbortSignal.timeout(4000) });
+          if (mRes.ok) {
+            streams.push(...parseUsherHlsQualities(await mRes.text(), 'TWITCH VOD').slice(0, 3));
+          }
+        } catch (e) {}
+        if (streams.length === 0) {
+          streams.push({
+            name: '📼 [TWITCH VOD • AUTO HLS]\nAd-Free Stream',
+            title: 'Watch Twitch VOD directly inside Stremio',
+            url: usherUrl,
+            behaviorHints: { notWebReady: false }
+          });
+        }
+        streams.push({
+          name: '🟣 [TWITCH • BYOA]\nOpen VOD on Twitch',
+          externalUrl: `https://www.twitch.tv/videos/${vodId}`
+        });
+        return streams;
+      }
+    } catch (e) {}
+    return [{
+      name: '🟣 [TWITCH • BYOA]\nOpen VOD on Twitch',
+      externalUrl: `https://www.twitch.tv/videos/${vodId}`
+    }];
+  }
+
+  const login = id.replace(/^twitch:/, '').split(':')[0].toLowerCase().trim();
+  const byoa = {
+    name: '🟣 [TWITCH • BYOA]\nOfficial Twitch App',
+    title: 'Watch in Twitch app with live chat & channel points\n🔗 Opens Twitch',
+    externalUrl: `https://www.twitch.tv/${login}`
+  };
+
+  if (id.includes(':sched_')) {
+    return [{
+      name: '⏰ [UPCOMING STREAM SCHEDULED]\nCheck Live Status',
+      title: `This broadcast hasn't started yet — if ${login} is live early, it loads below!`,
+      externalUrl: `https://www.twitch.tv/${login}/schedule`
+    }];
+  }
+
+  try {
+    const sq = `
+      query($login: String!) {
+        streamPlaybackAccessToken(channelName: $login, params: { platform: "web", playerBackend: "mediaplayer", playerType: "site" }) {
+          value
+          signature
+        }
+      }
+    `;
+    const data = await twitchGql(sq, { login }, clientId);
+    const token = data?.data?.streamPlaybackAccessToken;
+    if (token?.value && token?.signature) {
+      const rand = Math.floor(Math.random() * 9000000) + 1000000;
+      const usherUrl = `https://usher.ttvnw.net/api/channel/hls/${login}.m3u8?sig=${token.signature}&token=${encodeURIComponent(token.value)}&allow_source=true&allow_audio_only=true&fast_bread=true&p=${rand}`;
+      const streams = [];
+      try {
+        const mRes = await fetch(usherUrl, { signal: AbortSignal.timeout(4000) });
+        if (mRes.ok) {
+          streams.push(...parseUsherHlsQualities(await mRes.text(), 'TWITCH LIVE').slice(0, 3));
+        }
+      } catch (e) {}
+      if (streams.length === 0) {
+        return [byoa];
+      }
+      streams.push({
+        name: '⚡ [TWITCH AUTO HLS]\nAdaptive Bitrate',
+        title: `Adaptive HLS Live Stream for ${login} • In-App Stremio Player`,
+        url: usherUrl,
+        behaviorHints: { notWebReady: false }
+      });
+      streams.push(byoa);
+      return streams;
+    }
+  } catch (e) {}
+
+  return [byoa];
 }
 
 // Known TMDb Watch Provider definitions (matched by exact provider_id for 100% accuracy)
@@ -3136,6 +4783,55 @@ async function handleGenreCatalog(type, genre, skip = 0, userConfig = DEFAULT_US
   const isMovie = type === 'movie';
   const tmdbPage = Math.floor(skip / 20) + 1;
 
+  if (genre === 'Trending on NightKnight') {
+    const bucket = isMovie ? (STATS.popularMovies || {}) : (STATS.popularSeries || {});
+    const ranked = Object.values(bucket)
+      .sort((a, b) => (b.count || 0) - (a.count || 0))
+      .slice(skip, skip + 20);
+    const items = [];
+    const seenIds = new Set();
+
+    for (const entry of ranked) {
+      let itemMeta = null;
+      if (entry.poster && entry.title) {
+        itemMeta = {
+          id: entry.id,
+          type,
+          name: entry.title,
+          poster: entry.poster,
+          description: `🔥 Trending on NightKnight Cinema (${entry.count || 1} streams)`
+        };
+      } else if (String(entry.id || '').startsWith('tt')) {
+        try {
+          const findRes = await fetchTmdb(`/find/${entry.id}`, { external_source: 'imdb_id' });
+          const match = isMovie ? findRes?.movie_results?.[0] : findRes?.tv_results?.[0];
+          if (match) {
+            itemMeta = formatMetaPreview(match, type);
+            itemMeta.id = entry.id;
+            itemMeta.description = `🔥 Trending on NightKnight Cinema (${entry.count || 1} streams)\n\n${itemMeta.description || ''}`;
+          }
+        } catch (e) {}
+      }
+      if (itemMeta) {
+        seenIds.add(itemMeta.id);
+        items.push(itemMeta);
+      }
+    }
+
+    if (items.length < 20) {
+      const tmdbFallback = await fetchTmdb(`/trending/${isMovie ? 'movie' : 'tv'}/day`, { page: tmdbPage });
+      for (const tItem of (tmdbFallback.results || [])) {
+        if (items.length >= 20) break;
+        const preview = formatMetaPreview(tItem, type);
+        if (!seenIds.has(preview.id)) {
+          seenIds.add(preview.id);
+          items.push(preview);
+        }
+      }
+    }
+    return items;
+  }
+
   if (genre === 'Upcoming Releases' && isMovie) {
     const res = await fetchTmdb('/movie/upcoming', { page: tmdbPage });
     return (res.results || []).map(item => formatMetaPreview(item, 'movie'));
@@ -3709,59 +5405,86 @@ async function fetchTmdbVideos(tmdbId, seasons = [], imdbId) {
 }
 
 // Handle Metadata for clicked item
-async function handleMeta(type, id) {
+async function handleMeta(type, id, userConfig = DEFAULT_USER_CONFIG) {
   if (id.startsWith('tv:')) {
-    const cleanId = id.replace(/:live$/, '');
-    let foundChannel = null;
-    let foundRegion = 'GB';
-    for (const [rCode, channels] of Object.entries(REGIONAL_CHANNELS)) {
-      const match = channels.find(c => c.id === cleanId || c.id === id);
-      if (match) {
-        foundChannel = match;
-        foundRegion = rCode;
-        break;
+    const cleanId = id.split(':').slice(0, 2).join(':');
+    let foundChannel = EXT_CHANNEL_BY_ID.get(cleanId) || EXT_CHANNEL_BY_ID.get(id) || null;
+    let foundRegion = foundChannel?.country || 'GB';
+
+    if (!foundChannel) {
+      for (const [rCode, channels] of Object.entries(REGIONAL_CHANNELS)) {
+        const match = channels.find(c => c.id === cleanId || c.id === id);
+        if (match) {
+          foundChannel = match;
+          foundRegion = rCode;
+          break;
+        }
       }
     }
+
+    if (!foundChannel && cleanId.startsWith('tv:ext_')) {
+      const extMatch = cleanId.match(/^tv:ext_([a-z]{2})_/);
+      const hintRegion = extMatch ? extMatch[1].toUpperCase() : 'ALL';
+      await fetchExternalLiveTvChannels(hintRegion);
+      foundChannel = EXT_CHANNEL_BY_ID.get(cleanId) || EXT_CHANNEL_BY_ID.get(id) || null;
+      if (!foundChannel && hintRegion !== 'ALL') {
+        await fetchExternalLiveTvChannels('ALL');
+        foundChannel = EXT_CHANNEL_BY_ID.get(cleanId) || EXT_CHANNEL_BY_ID.get(id) || null;
+      }
+      if (foundChannel) foundRegion = foundChannel.country || hintRegion;
+    }
+
     if (!foundChannel) return null;
 
-    const guideText = formatTvGuide(foundChannel, foundRegion);
+    recordPopularItem('channel', foundChannel.id, foundChannel.name, { logo: foundChannel.logo, region: foundRegion });
+
+    let xmltvByNorm = getCache(`epg:xml:${foundRegion}`);
+    if (!xmltvByNorm && EPG_URL_MAP[foundRegion]) {
+      xmltvByNorm = await Promise.race([
+        getXmltvProgrammesForRegion(foundRegion),
+        new Promise(resolve => setTimeout(() => resolve(null), 1500))
+      ]);
+    }
+
+    const { nowPlaying, upcoming, guideText } = getCurrentAndUpcomingPrograms(foundChannel, foundRegion, 36, xmltvByNorm);
+
     return {
       id: foundChannel.id,
       type: 'channel',
       name: `${foundChannel.name} (Live)`,
       poster: foundChannel.logo,
-      background: foundChannel.background,
+      posterShape: 'square',
+      background: foundChannel.background || foundChannel.logo,
       logo: foundChannel.logo,
       genres: foundChannel.genres,
-      description: `${foundChannel.summary}${guideText}`,
+      description: `${foundChannel.summary || ''}${guideText}`,
       behaviorHints: {
-        defaultVideoId: `${foundChannel.id}:live`
+        defaultVideoId: undefined,
+        hasScheduledVideos: true
       },
       videos: (() => {
         const list = [
           {
             id: `${foundChannel.id}:live`,
-            title: `🔴 LIVE BROADCAST: ${foundChannel.name}`,
+            title: `🔴 LIVE NOW: ${nowPlaying.title}`,
+            season: 1,
+            episode: 1,
             released: new Date().toISOString(),
             thumbnail: foundChannel.logo,
-            overview: `Watch ${foundChannel.name} live unencrypted broadcast directly inside Stremio's native player (DRM-Free).`
+            overview: `${nowPlaying.desc}\n\n▶️ Click to play ${foundChannel.name} live right now inside Stremio (Multi-Server DRM-Free).`
           }
         ];
-        const nowMs = Date.now();
-        for (const prog of (foundChannel.guideSchedule || [])) {
-          const [h, m] = prog.time.split(':').map(Number);
-          const progDate = new Date();
-          progDate.setHours(h, m, 0, 0);
-          if (progDate.getTime() > nowMs) {
-            list.push({
-              id: `${foundChannel.id}:${prog.time.replace(':', '')}`,
-              title: `⏰ [AIRS AT ${prog.time}] ${prog.title}`,
-              released: progDate.toISOString(),
-              thumbnail: foundChannel.logo,
-              overview: `${prog.desc}\n\nBroadcasts today at ${prog.time}. Bookmark or add to your Stremio Library to track airtimes and get notified when it airs!`
-            });
-          }
-        }
+        upcoming.forEach((prog, idx) => {
+          list.push({
+            id: `${foundChannel.id}:epg_${idx}`,
+            title: `⏰ [${prog.timeLabel}] ${prog.title} (${prog.categoryTag})`,
+            season: 1,
+            episode: idx + 2,
+            released: prog.startIso,
+            thumbnail: foundChannel.logo,
+            overview: `🔔 Click or add this channel to your Library / Calendar to be notified when ${prog.title} begins at ${prog.timeLabel}!\n\n${prog.desc}`
+          });
+        });
         return list;
       })()
     };
@@ -3791,8 +5514,28 @@ async function handleMeta(type, id) {
     };
   }
 
-  if (id.startsWith('yt:') || (type === 'channel' && !id.startsWith('tv:'))) {
-    const videoId = id.replace('yt:', '');
+  if (id.startsWith('twitch:')) {
+    STATS.twitchRequests = (STATS.twitchRequests || 0) + 1;
+    persistStats();
+    const twMeta = await fetchTwitchChannelMeta(id, userConfig);
+    if (twMeta) {
+      recordPopularItem('channel', twMeta.id, twMeta.name, { logo: twMeta.poster });
+      return twMeta;
+    }
+    return null;
+  }
+
+  if (id.startsWith('yt:') || (type === 'channel' && !id.startsWith('tv:') && !id.startsWith('twitch:'))) {
+    if (id.startsWith('yt:channel:')) {
+      const chMeta = await fetchYouTubeChannelMeta(id, userConfig);
+      if (chMeta) {
+        recordPopularItem('channel', chMeta.id, chMeta.name, { logo: chMeta.poster });
+        return chMeta;
+      }
+      return null;
+    }
+
+    const videoId = id.replace(/^yt:/, '');
     const cachedMeta = getCache(`yt:meta:${videoId}`);
     if (cachedMeta) return cachedMeta;
 
@@ -3816,7 +5559,7 @@ async function handleMeta(type, id) {
       name: videoTitle,
       poster: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
       background: `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`,
-      description: authorName ? `Channel: ${authorName}\n\n▶️ Watch directly inside Stremio player (DRM-Free) or launch in the YouTube app with your Google account (BYOA).` : '▶️ Watch directly inside Stremio player (DRM-Free) or launch in the YouTube app with your Google account (BYOA).',
+      description: authorName ? `Channel: ${authorName}\n\n▶️ Watch ad-free directly inside Stremio player or launch in the YouTube app with your Google account (BYOA).` : '▶️ Watch ad-free directly inside Stremio player or launch in the YouTube app with your Google account (BYOA).',
       behaviorHints: {
         defaultVideoId: `yt:${videoId}`
       }
@@ -3843,7 +5586,12 @@ async function handleMeta(type, id) {
 
   const cacheKey = `meta:${type}:${id}`;
   const cached = getCache(cacheKey);
-  if (cached) return cached;
+  if (cached) {
+    if (cached.name) {
+      recordPopularItem(isMovie ? 'movie' : 'series', cached.imdb_id || cached.id || id, cached.name, { poster: cached.poster });
+    }
+    return cached;
+  }
 
   if (isMovie) {
     const data = await fetchTmdb(`/movie/${tmdbId}`, {
@@ -3899,6 +5647,13 @@ async function handleMeta(type, id) {
         hasScheduledVideos: Boolean(data.release_date && new Date(data.release_date) > new Date())
       }
     };
+
+    const canonMovieId = imdbId || meta.id;
+    const movieInfo = { id: canonMovieId, title: data.title, poster: meta.poster, type: 'movie' };
+    ID_TITLE_CACHE.set(id, movieInfo);
+    if (imdbId) ID_TITLE_CACHE.set(imdbId, movieInfo);
+    ID_TITLE_CACHE.set(`tmdb:${tmdbId}`, movieInfo);
+    recordPopularItem('movie', canonMovieId, data.title, { poster: meta.poster });
 
     setCache(cacheKey, meta, 3600);
     return meta;
@@ -3993,6 +5748,13 @@ async function handleMeta(type, id) {
         hasScheduledVideos: true
       }
     };
+
+    const canonSeriesId = imdbId || seriesMetaId;
+    const seriesInfo = { id: canonSeriesId, title: data.name, poster: meta.poster, type: 'series' };
+    ID_TITLE_CACHE.set(id, seriesInfo);
+    if (imdbId) ID_TITLE_CACHE.set(imdbId, seriesInfo);
+    ID_TITLE_CACHE.set(`tmdb:${tmdbId}`, seriesInfo);
+    recordPopularItem('series', canonSeriesId, data.name, { poster: meta.poster });
 
     setCache(cacheKey, meta, 3600);
     return meta;
@@ -4213,32 +5975,109 @@ async function handleStream(type, id, userConfig = DEFAULT_USER_CONFIG) {
     STATS.drmFreeRequests = (STATS.drmFreeRequests || 0) + 1;
     persistStats();
 
-    const parts = id.split(':');
-    const baseId = parts[0] + ':' + parts[1];
-    let foundChannel = null;
-    for (const channels of Object.values(REGIONAL_CHANNELS)) {
-      const match = channels.find(c => c.id === baseId || c.id === id);
-      if (match) {
-        foundChannel = match;
-        break;
+    const cleanId = id.split(':').slice(0, 2).join(':');
+    let foundChannel = EXT_CHANNEL_BY_ID.get(cleanId) || EXT_CHANNEL_BY_ID.get(id) || null;
+    let foundRegion = foundChannel?.country || 'GB';
+
+    if (!foundChannel) {
+      for (const [rCode, channels] of Object.entries(REGIONAL_CHANNELS)) {
+        const match = channels.find(c => c.id === cleanId || c.id === id);
+        if (match) {
+          foundChannel = match;
+          foundRegion = rCode;
+          break;
+        }
       }
     }
+
+    if (!foundChannel && cleanId.startsWith('tv:ext_')) {
+      const extMatch = cleanId.match(/^tv:ext_([a-z]{2})_/);
+      const hintRegion = extMatch ? extMatch[1].toUpperCase() : 'ALL';
+      await fetchExternalLiveTvChannels(hintRegion);
+      foundChannel = EXT_CHANNEL_BY_ID.get(cleanId) || EXT_CHANNEL_BY_ID.get(id) || null;
+      if (!foundChannel && hintRegion !== 'ALL') {
+        await fetchExternalLiveTvChannels('ALL');
+        foundChannel = EXT_CHANNEL_BY_ID.get(cleanId) || EXT_CHANNEL_BY_ID.get(id) || null;
+      }
+    } else if (foundChannel && !getCache(`tv:merged:${foundRegion}`)) {
+      await Promise.race([
+        fetchExternalLiveTvChannels(foundRegion),
+        new Promise(resolve => setTimeout(resolve, 1200))
+      ]);
+      foundChannel = EXT_CHANNEL_BY_ID.get(cleanId) || foundChannel;
+    }
+
     if (!foundChannel) return [];
 
-    const streams = [
-      {
-        name: `🔴 [LIVE BROADCAST]\n${foundChannel.name}`,
-        title: `Watch live unencrypted broadcast directly in Stremio (DRM-Free • 1080p/720p)`,
-        url: foundChannel.streamUrl
-      }
+    recordPopularItem('channel', foundChannel.id, foundChannel.name, { logo: foundChannel.logo });
+
+    const candidateUrls = [
+      foundChannel.streamUrl,
+      foundChannel.backupUrl,
+      ...(Array.isArray(foundChannel.backupUrls) ? foundChannel.backupUrls : [])
+    ].filter(u => typeof u === 'string' && /^https?:\/\//i.test(u));
+
+    const uniqueUrls = Array.from(new Set(candidateUrls)).slice(0, 5);
+    const serverLabels = [
+      '🟢 [SERVER 1 • PRIMARY LIVE]',
+      '🟡 [SERVER 2 • BACKUP FAILOVER]',
+      '🟠 [SERVER 3 • MIRROR FEED]',
+      '🔵 [SERVER 4 • ALT NODE]',
+      '🟣 [SERVER 5 • ARCHIVE NODE]'
     ];
-    if (foundChannel.backupUrl) {
+    const isScheduledSlot = id.includes(':epg_');
+    const streams = [];
+
+    for (let idx = 0; idx < uniqueUrls.length; idx++) {
+      const u = uniqueUrls[idx];
+      const lower = u.toLowerCase();
+
+      if (lower.includes('youtube.com/') || lower.includes('youtu.be/')) {
+        let ytVidId = null;
+        const vM = u.match(/[?&]v=([a-zA-Z0-9_-]{11})/) || u.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/) || u.match(/youtube\.com\/live\/([a-zA-Z0-9_-]{11})/);
+        if (vM) {
+          ytVidId = vM[1];
+        } else {
+          try {
+            const ytHtml = await fetch(u, {
+              headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+              signal: AbortSignal.timeout(3000)
+            }).then(r => r.ok ? r.text() : '');
+            const liveM = ytHtml.match(/"videoId":"([a-zA-Z0-9_-]{11})"/);
+            if (liveM) ytVidId = liveM[1];
+          } catch (e) {}
+        }
+        if (ytVidId) {
+          const directYt = await resolveYouTubeDirectStreams(ytVidId);
+          for (const ds of directYt) streams.push(ds);
+          streams.push({
+            name: `🔴 [YOUTUBE LIVE • SERVER ${idx + 1}]\n${foundChannel.name}`,
+            title: `Watch YouTube Live broadcast directly in Stremio (DRM-Free)`,
+            ytId: ytVidId
+          });
+          continue;
+        }
+      }
+
+      if (lower.includes('twitch.tv/')) {
+        const twM = u.match(/twitch\.tv\/([a-zA-Z0-9_]+)/i);
+        if (twM && twM[1]) {
+          const twStreams = await resolveTwitchStreams(`twitch:${twM[1].toLowerCase()}`, userConfig);
+          streams.push(...twStreams);
+          continue;
+        }
+      }
+
       streams.push({
-        name: `📡 [BACKUP FEED]\n${foundChannel.name} Secondary`,
-        title: `Alternate unencrypted live stream (DRM-Free)`,
-        url: foundChannel.backupUrl
+        name: `${serverLabels[idx] || `🔵 [SERVER ${idx + 1}]`}\n${foundChannel.name}`,
+        title: isScheduledSlot
+          ? `Watch ${foundChannel.name} live stream (DRM-Free • Server ${idx + 1}/${uniqueUrls.length})\n🔔 Program schedule note: if not yet airing, you can watch current live feed.`
+          : `Watch live unencrypted broadcast directly in Stremio (DRM-Free • Server ${idx + 1}/${uniqueUrls.length})`,
+        url: u,
+        behaviorHints: { notWebReady: false }
       });
     }
+
     return streams;
   }
 
@@ -4271,18 +6110,53 @@ async function handleStream(type, id, userConfig = DEFAULT_USER_CONFIG) {
     return drmStreams;
   }
 
-  if (id.startsWith('yt:') || (type === 'channel' && !id.startsWith('tv:'))) {
-    const videoId = id.replace('yt:', '');
+  if (id.startsWith('twitch:')) {
+    STATS.twitchRequests = (STATS.twitchRequests || 0) + 1;
+    persistStats();
+    const twBaseLogin = (!id.startsWith('twitch:vod:') && !id.startsWith('twitch:clip:'))
+      ? id.replace(/^twitch:/, '').split(':')[0].toLowerCase()
+      : null;
+    if (twBaseLogin) {
+      recordPopularItem('channel', `twitch:${twBaseLogin}`, `${twBaseLogin} (Twitch)`);
+    }
+    return await resolveTwitchStreams(id, userConfig);
+  }
+
+  if (id.startsWith('yt:') || (type === 'channel' && !id.startsWith('tv:') && !id.startsWith('twitch:'))) {
+    const rawYt = id.replace(/^yt:/, '');
+    if (rawYt.startsWith('channel:')) {
+      const chMeta = await fetchYouTubeChannelMeta(id, userConfig);
+      const firstVid = chMeta?.videos?.[0]?.id?.replace(/^yt:/, '');
+      if (firstVid) {
+        const directStreams = await resolveYouTubeDirectStreams(firstVid);
+        return [
+          ...directStreams,
+          {
+            name: '▶️ [STREMIO PLAYER]\nYouTube Native Stream',
+            title: `${chMeta.videos[0].title} — Watch directly inside Stremio`,
+            ytId: firstVid
+          },
+          {
+            name: '🔴 [YOUTUBE • BYOA]\nOpen Creator Channel',
+            externalUrl: `https://www.youtube.com/watch?v=${firstVid}`
+          }
+        ];
+      }
+      return [];
+    }
+
+    const directStreams = await resolveYouTubeDirectStreams(rawYt);
     return [
+      ...directStreams,
       {
         name: '▶️ [STREMIO PLAYER]\nYouTube Native Stream',
         title: 'Watch directly inside Stremio (DRM-Free)',
-        ytId: videoId
+        ytId: rawYt
       },
       {
         name: '🔴 [YOUTUBE • BYOA]\nOfficial YouTube App',
         title: 'Watch on YouTube with your account (likes, comments, subscriptions)\n🔗 Opens YouTube',
-        externalUrl: `https://www.youtube.com/watch?v=${videoId}`
+        externalUrl: `https://www.youtube.com/watch?v=${rawYt}`
       }
     ];
   }
@@ -4290,8 +6164,15 @@ async function handleStream(type, id, userConfig = DEFAULT_USER_CONFIG) {
   const region = userConfig.region || 'GB';
   const rdKey = userConfig.realDebrid ? crypto.createHash('sha256').update(userConfig.realDebrid).digest('hex').slice(0, 12) : 'none';
   const cacheKey = `stream:${type}:${id}:${region}:${userConfig.upstream}:${userConfig.hideRisk}:${rdKey}`;
+  const baseLookupId = id.startsWith('tt') ? id.split(':')[0] : (id.startsWith('tmdb:') ? `tmdb:${id.replace('tmdb:', '').split(':')[0]}` : id);
+  const cachedTitleInfo = ID_TITLE_CACHE.get(baseLookupId);
   const cached = getCache(cacheKey);
-  if (cached) return cached;
+  if (cached) {
+    if (cachedTitleInfo) {
+      recordPopularItem(type === 'movie' ? 'movie' : 'series', cachedTitleInfo.id, cachedTitleInfo.title, { poster: cachedTitleInfo.poster });
+    }
+    return cached;
+  }
 
   try {
     let imdbTarget = id;
@@ -4328,10 +6209,20 @@ async function handleStream(type, id, userConfig = DEFAULT_USER_CONFIG) {
       }
     }
 
+    if (targetTitle) {
+      const canonId = id.startsWith('tt')
+        ? id.split(':')[0]
+        : (imdbTarget ? String(imdbTarget).split(':')[0] : `tmdb:${tmdbTargetId}`);
+      const itemInfo = { id: canonId, title: targetTitle, type: type === 'movie' ? 'movie' : 'series' };
+      ID_TITLE_CACHE.set(baseLookupId, itemInfo);
+      if (canonId) ID_TITLE_CACHE.set(canonId, itemInfo);
+      recordPopularItem(type === 'movie' ? 'movie' : 'series', canonId, targetTitle);
+    }
+
     // 1. Fetch BYOA Streams & Official Trailer
     let byoaStreams = [];
     if (tmdbTargetId) {
-      byoaStreams = await fetchByoaStreams(type, tmdbTargetId, targetTitle || 'Title', region);
+      byoaStreams = await fetchByoaStreams(type, tmdbTargetId, targetTitle || 'Title', getTmdbRegion(region));
     }
 
     if (!imdbTarget) return byoaStreams;
@@ -4601,6 +6492,31 @@ export async function handleRequest(req, res) {
       const totalActive = STATS.uniqueClients ? STATS.uniqueClients.size : 0;
       const rdCount = STATS.rdClients ? STATS.rdClients.size : 0;
       const freeCount = STATS.freeClients ? STATS.freeClients.size : 0;
+
+      const countryClientCounts = {};
+      for (const cc of Object.values(STATS.clientCountries || {})) {
+        countryClientCounts[cc] = (countryClientCounts[cc] || 0) + 1;
+      }
+      const allCountryCodes = new Set([
+        ...Object.keys(STATS.countryCounts || {}),
+        ...Object.keys(countryClientCounts)
+      ]);
+      const trackedClientsTotal = Object.values(countryClientCounts).reduce((a, b) => a + b, 0);
+      const topCountries = Array.from(allCountryCodes)
+        .map(code => {
+          const info = getCountryInfo(code);
+          const uniqueClients = countryClientCounts[code] || 0;
+          const requests = (STATS.countryCounts && STATS.countryCounts[code]) || 0;
+          const sharePct = trackedClientsTotal > 0 ? Math.round((uniqueClients / trackedClientsTotal) * 100) : 0;
+          return { code: info.code, name: info.name, flag: info.flag, uniqueClients, requests, sharePct };
+        })
+        .sort((a, b) => (b.uniqueClients - a.uniqueClients) || (b.requests - a.requests))
+        .slice(0, 12);
+
+      const topMovies = Object.values(STATS.popularMovies || {}).sort((a, b) => (b.count || 0) - (a.count || 0)).slice(0, 10);
+      const topSeries = Object.values(STATS.popularSeries || {}).sort((a, b) => (b.count || 0) - (a.count || 0)).slice(0, 10);
+      const topChannels = Object.values(STATS.popularChannels || {}).sort((a, b) => (b.count || 0) - (a.count || 0)).slice(0, 10);
+
       res.end(JSON.stringify({
         addon: 'NightKnight Cinema',
         version: ADDON_VERSION,
@@ -4621,6 +6537,10 @@ export async function handleRequest(req, res) {
           freeTorrentioStreams: STATS.freeStreamRequests || 0
         },
         recentActivity: RECENT_ACTIVITY.slice(0, 10),
+        topCountries,
+        topMovies,
+        topSeries,
+        topChannels,
         manifestRequests: STATS.manifestRequests,
         totalRequests: STATS.totalRequests,
         catalogRequests: STATS.catalogRequests,
@@ -4628,11 +6548,12 @@ export async function handleRequest(req, res) {
         subtitleRequests: STATS.subtitleRequests || 0,
         metaRequests: STATS.metaRequests,
         youtubeSearches: STATS.youtubeSearches,
+        twitchRequests: STATS.twitchRequests || 0,
         tvGuideRequests: STATS.tvGuideRequests || 0,
         drmFreeRequests: STATS.drmFreeRequests || 0,
         lastRequestAt: STATS.lastRequestAt,
         filterEngine: 'Verified Stremio Clients Only (IP normalized; bots, crawlers, and static page hits excluded)',
-        privacy: '100% Zero-Knowledge Anonymized (No personal tokens or IP addresses stored)'
+        privacy: '100% Zero-Knowledge Anonymized (No personal tokens, IPs, or user histories stored)'
       }, null, 2));
       return;
     }
@@ -4784,32 +6705,40 @@ export async function handleRequest(req, res) {
 
       const skip = parseInt(extra.skip, 10) || 0;
 
-      // Handle Regional Live TV Catalog & Guide
+      // Handle Regional Live TV Catalog & Guide (Curated + Free-TV/IPTV + IPTV-Org)
       if (catalogId === 'regional_live_tv') {
         STATS.tvGuideRequests = (STATS.tvGuideRequests || 0) + 1;
         persistStats();
         const region = userConfig.region || 'GB';
-        const channels = REGIONAL_CHANNELS[region] || REGIONAL_CHANNELS.GB;
+        const channels = await fetchExternalLiveTvChannels(region);
         let filtered = channels;
 
         if (extra.genre && extra.genre !== 'All Channels') {
-          filtered = filtered.filter(c => c.genres.includes(extra.genre));
+          filtered = filtered.filter(c => Array.isArray(c.genres) && c.genres.includes(extra.genre));
         }
         if (extra.search) {
           const q = extra.search.toLowerCase();
-          filtered = filtered.filter(c => c.name.toLowerCase().includes(q) || c.genres.some(g => g.toLowerCase().includes(q)));
+          filtered = filtered.filter(c =>
+            c.name.toLowerCase().includes(q) ||
+            (Array.isArray(c.genres) && c.genres.some(g => g.toLowerCase().includes(q)))
+          );
         }
 
-        const metas = filtered.map(c => ({
-          id: c.id,
-          type: 'channel',
-          name: c.name,
-          poster: c.logo,
-          background: c.background,
-          genres: c.genres,
-          description: `${c.summary}\n\n🔴 LIVE BROADCAST • Click to open Regional TV Guide`,
-          posterShape: 'square'
-        }));
+        const paged = filtered.slice(skip, skip + 60);
+        const metas = paged.map(c => {
+          const totalServers = 1 + (Array.isArray(c.backupUrls) ? c.backupUrls.length : 0);
+          const serverBadge = totalServers > 1 ? ` • ${totalServers} Failover Servers` : '';
+          return {
+            id: c.id,
+            type: 'channel',
+            name: c.name,
+            poster: c.logo,
+            background: c.background || c.logo,
+            genres: c.genres,
+            description: `${c.summary}\n\n🔴 LIVE BROADCAST${serverBadge} • Click to open TV Guide & Up Next Schedule`,
+            posterShape: 'square'
+          };
+        });
 
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
         res.end(JSON.stringify({ metas }));
@@ -4863,12 +6792,22 @@ export async function handleRequest(req, res) {
         return;
       }
 
-      // Handle YouTube Catalog & Search
-      if (catalogId === 'youtube_videos' || (type === 'channel' && catalogId !== 'regional_live_tv')) {
+      // Handle Twitch Live & Creators Catalog
+      if (catalogId === 'twitch_live') {
+        STATS.twitchRequests = (STATS.twitchRequests || 0) + 1;
+        persistStats();
+        const metas = await handleTwitchCatalog(extra.genre || 'Top Live Now', extra.search || '', skip, userConfig);
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        res.end(JSON.stringify({ metas }));
+        return;
+      }
+
+      // Handle YouTube Catalog & Search (Videos + Channels)
+      if (catalogId === 'youtube_videos' || (type === 'channel' && catalogId !== 'regional_live_tv' && catalogId !== 'twitch_live')) {
         if (extra.search) STATS.youtubeSearches++;
         persistStats();
-        const query = extra.search || (extra.genre ? `${extra.genre} videos` : 'Trending');
-        const metas = await searchYouTube(query, skip);
+        const query = extra.search || (extra.genre && extra.genre !== 'Channels & Creators' && extra.genre !== 'My Subscriptions (BYOA)' && extra.genre !== 'Live Now' ? `${extra.genre} videos` : 'Trending');
+        const metas = await searchYouTube(query, skip, userConfig, extra.genre || '');
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
         res.end(JSON.stringify({ metas }));
         return;
@@ -4882,6 +6821,17 @@ export async function handleRequest(req, res) {
 
         const results = await Promise.all(ids.map(async (rawId) => {
           try {
+            if (rawId.startsWith('tv:') || rawId.startsWith('yt:') || rawId.startsWith('twitch:')) {
+              const chMeta = await handleMeta('channel', rawId, userConfig);
+              if (chMeta) {
+                return {
+                  ...chMeta,
+                  id: rawId
+                };
+              }
+              return null;
+            }
+
             let tmdbId = null;
             let itemType = type || (catalogId === 'calendar-movies' ? 'movie' : 'series');
 
@@ -4903,7 +6853,7 @@ export async function handleRequest(req, res) {
             }
 
             if (tmdbId) {
-              const meta = await handleMeta(itemType, `tmdb:${tmdbId}`);
+              const meta = await handleMeta(itemType, `tmdb:${tmdbId}`, userConfig);
               if (meta) {
                 return {
                   ...meta,
@@ -4994,13 +6944,13 @@ export async function handleRequest(req, res) {
       return;
     }
 
-    // 4. Meta: /meta/:type/:id.json (supports tmdb:123, tt1234567, yt:VIDEO_ID, tv:CHANNEL, and drmfree:TITLE)
-    const metaMatch = pathname.match(/^\/meta\/(movie|series|channel)\/((?:tmdb:[0-9]+)|(?:tt[0-9]+)|(?:yt:[a-zA-Z0-9_\-]+)|(?:tv:[a-zA-Z0-9_\-:]+)|(?:drmfree:[a-zA-Z0-9_\-]+))\.json$/);
+    // 4. Meta: /meta/:type/:id.json (supports tmdb:123, tt1234567, yt:VIDEO_ID|channel:..., twitch:LOGIN, tv:CHANNEL, and drmfree:TITLE)
+    const metaMatch = pathname.match(/^\/meta\/(movie|series|channel)\/((?:tmdb:[0-9]+)|(?:tt[0-9]+)|(?:yt:[a-zA-Z0-9_\-:@]+)|(?:twitch:[a-zA-Z0-9_\-:]+)|(?:tv:[a-zA-Z0-9_\-:]+)|(?:drmfree:[a-zA-Z0-9_\-]+))\.json$/);
     if (metaMatch) {
       STATS.metaRequests++;
       persistStats();
       const [, type, id] = metaMatch;
-      const meta = await handleMeta(type, id);
+      const meta = await handleMeta(type, id, userConfig);
       res.setHeader('Cache-Control', 'public, max-age=1800');
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
       res.end(JSON.stringify({ meta }));
@@ -5013,6 +6963,10 @@ export async function handleRequest(req, res) {
       const initialRegion = userConfig.region || 'GB';
       const initialHideRisk = userConfig.hideRisk;
       const initialRealDebrid = escapeHtml(userConfig.realDebrid || '');
+      const initialYoutubeSubs = escapeHtml(userConfig.youtubeSubs || '');
+      const initialYoutubeApiKey = escapeHtml(userConfig.youtubeApiKey || '');
+      const initialTwitchFollows = escapeHtml(userConfig.twitchFollows || '');
+      const initialTwitchClientId = escapeHtml(userConfig.twitchClientId || '');
 
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -5630,15 +7584,23 @@ export async function handleRequest(req, res) {
       <div class="input-group">
         <label>Your Region (for Streaming Services & Live TV Guide):</label>
         <select id="region-select">
-          <option value="GB" ${initialRegion === 'GB' ? 'selected' : ''}>United Kingdom (Free-to-Air, BBC iPlayer, ITVX, Channel 4, My5, Sky Go, NOW)</option>
-          <option value="US" ${initialRegion === 'US' ? 'selected' : ''}>United States (US Networks, Hulu, Peacock, Max, Prime, Disney+)</option>
-          <option value="CA" ${initialRegion === 'CA' ? 'selected' : ''}>Canada (CityNews, Qello Concerts, Stingray, Crave, Prime, Disney+)</option>
-          <option value="AU" ${initialRegion === 'AU' ? 'selected' : ''}>Australia (ABC News, Sky News AU, Qwest TV, SBS PopAsia, Stan, Disney+)</option>
-          <option value="IE" ${initialRegion === 'IE' ? 'selected' : ''}>Ireland (RTÉ 2FM, France 24 / Europe News, GREAT! Movies, Sky Go, NOW)</option>
-          <option value="IN" ${initialRegion === 'IN' ? 'selected' : ''}>India (Bollywood Music, Movies, Live TV & Radios, Hotstar, JioCinema, ZEE5)</option>
+          <option value="GB" ${initialRegion === 'GB' ? 'selected' : ''}>🇬🇧 United Kingdom (Free-to-Air, BBC iPlayer, ITVX, Channel 4, My5, Sky Go, NOW)</option>
+          <option value="US" ${initialRegion === 'US' ? 'selected' : ''}>🇺🇸 United States (US Networks, Hulu, Peacock, Max, Prime, Disney+)</option>
+          <option value="CA" ${initialRegion === 'CA' ? 'selected' : ''}>🇨🇦 Canada (CityNews, Qello Concerts, Stingray, Crave, Prime, Disney+)</option>
+          <option value="AU" ${initialRegion === 'AU' ? 'selected' : ''}>🇦🇺 Australia (ABC News, Sky News AU, Qwest TV, SBS PopAsia, Stan, Disney+)</option>
+          <option value="IE" ${initialRegion === 'IE' ? 'selected' : ''}>🇮🇪 Ireland (RTÉ 2FM, France 24 / Europe News, GREAT! Movies, Sky Go, NOW)</option>
+          <option value="IN" ${initialRegion === 'IN' ? 'selected' : ''}>🇮🇳 India (Bollywood Music, Movies, Live TV & Radios, Hotstar, JioCinema, ZEE5)</option>
+          <option value="DE" ${initialRegion === 'DE' ? 'selected' : ''}>🇩🇪 Germany (Das Erste, ZDF, ARTE, Tagesschau, Free-TV & Regional)</option>
+          <option value="FR" ${initialRegion === 'FR' ? 'selected' : ''}>🇫🇷 France (France 24, ARTE, TV5Monde, Free-TV & Regional)</option>
+          <option value="ES" ${initialRegion === 'ES' ? 'selected' : ''}>🇪🇸 Spain (RTVE, Teledeporte, Free-TV & Regional)</option>
+          <option value="IT" ${initialRegion === 'IT' ? 'selected' : ''}>🇮🇹 Italy (RAI, SuperTennis, Free-TV & Regional)</option>
+          <option value="NL" ${initialRegion === 'NL' ? 'selected' : ''}>🇳🇱 Netherlands (NPO, NOS, Free-TV & Regional)</option>
+          <option value="BR" ${initialRegion === 'BR' ? 'selected' : ''}>🇧🇷 Brazil (TV Brasil, Record, Free-TV & Regional)</option>
+          <option value="MX" ${initialRegion === 'MX' ? 'selected' : ''}>🇲🇽 Mexico (Multimedios, Once TV, Free-TV & Regional)</option>
+          <option value="ALL" ${initialRegion === 'ALL' ? 'selected' : ''}>🌍 Global — All 2,200+ World Live TV Channels</option>
         </select>
         <div style="font-size: 11px; color: #94a3b8; margin-top: 6px;">
-          📍 Automatically configures your local <strong>Live TV & Guide</strong> channel lineup (e.g. UK Free-to-Air, US Networks, Australia ABC, India Bollywood & FAST TV) and regional BYOA streaming hubs.
+          📍 Automatically configures your local <strong>Live TV & Guide</strong> channel lineup (including 2,200+ Free-TV / IPTV-Org channels with Multi-Server Failover) and regional BYOA streaming hubs.
         </div>
       </div>
       <div class="input-group" style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 8px; padding: 14px; margin-top: 14px; margin-bottom: 16px;">
@@ -5654,6 +7616,31 @@ export async function handleRequest(req, res) {
           🚀 <strong>Off by default</strong>: If left blank, NightKnight Cinema uses standard free Torrentio P2P. If you paste your token, it unlocks instant cached cloud streaming (zero P2P seeding, zero buffer). Find your token at <a href="https://real-debrid.com/apitoken" target="_blank" style="color: #60a5fa; text-decoration: underline;">real-debrid.com/apitoken</a>.
         </div>
       </div>
+
+      <div class="input-group" style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.28); border-radius: 8px; padding: 14px; margin-bottom: 14px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+          <label style="font-size: 13px; font-weight: 700; color: #fca5a5; margin-bottom: 0;">📺 YouTube Hub &amp; Creator Subscriptions (BYOA)</label>
+          <span style="font-size: 11px; color: #94a3b8; background: rgba(255,255,255,0.06); padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1);">Optional</span>
+        </div>
+        <input type="text" id="yt-subs-input" value="${initialYoutubeSubs}" placeholder="@MrBeast, @mkbhd, @SkyNews, @LofiGirl" style="margin-bottom: 8px;">
+        <input type="password" id="yt-apikey-input" value="${initialYoutubeApiKey}" placeholder="Optional YouTube Data API v3 Key (AIza...)" autocomplete="off">
+        <div style="font-size: 11px; color: #94a3b8; margin-top: 6px;">
+          ▶️ Pin favorite YouTube @Handles or Channel IDs into <strong>My Subscriptions (BYOA)</strong>, with ad-free direct Stremio playback &amp; premiere alerts.
+        </div>
+      </div>
+
+      <div class="input-group" style="background: rgba(168, 85, 247, 0.08); border: 1px solid rgba(168, 85, 247, 0.3); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+          <label style="font-size: 13px; font-weight: 700; color: #d8b4fe; margin-bottom: 0;">🟣 Twitch Followed Streamers (BYOA)</label>
+          <span style="font-size: 11px; color: #94a3b8; background: rgba(255,255,255,0.06); padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1);">Optional</span>
+        </div>
+        <input type="text" id="twitch-follows-input" value="${initialTwitchFollows}" placeholder="blastpremier, shroud, kaicenat, nasa" style="margin-bottom: 8px;">
+        <input type="password" id="twitch-clientid-input" value="${initialTwitchClientId}" placeholder="Optional custom Twitch Client-ID" autocomplete="off">
+        <div style="font-size: 11px; color: #94a3b8; margin-top: 6px;">
+          📡 Track your favorite Twitch creators in <strong>My Followed Streamers (BYOA)</strong> with ad-free 1080p60 HLS live feeds, VODs, Clips &amp; Scheduled stream Calendar alerts.
+        </div>
+      </div>
+
       <div class="input-group">
         <label>Upstream Scraper (Default: Torrentio, or paste custom Scraper URL):</label>
         <input type="text" id="upstream-input" value="${initialUpstream}" placeholder="https://torrentio.strem.fun">
@@ -5755,6 +7742,31 @@ export async function handleRequest(req, res) {
           <div class="stat-lbl">Total Requests</div>
         </div>
       </div>
+
+      <div style="margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.08);">
+        <div class="stats-title" style="margin-bottom: 10px;">🌍 Global Audience by Country</div>
+        <div id="country-breakdown-list" style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;">
+          <span style="font-size: 12px; color: #64748b;">Loading regional telemetry...</span>
+        </div>
+      </div>
+
+      <div style="margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.08);">
+        <div class="stats-title" style="margin-bottom: 10px;">🔥 Trending on NightKnight Leaderboards</div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; text-align: left;">
+          <div style="background: rgba(15, 23, 42, 0.55); border: 1px solid rgba(255,255,255,0.07); border-radius: 10px; padding: 10px;">
+            <div style="font-size: 11px; font-weight: 700; color: #f87171; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 6px;">🎬 Top Movies</div>
+            <div id="top-movies-list" style="font-size: 12px; color: #cbd5e1; line-height: 1.55;">Loading...</div>
+          </div>
+          <div style="background: rgba(15, 23, 42, 0.55); border: 1px solid rgba(255,255,255,0.07); border-radius: 10px; padding: 10px;">
+            <div style="font-size: 11px; font-weight: 700; color: #60a5fa; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 6px;">📺 Top Series</div>
+            <div id="top-series-list" style="font-size: 12px; color: #cbd5e1; line-height: 1.55;">Loading...</div>
+          </div>
+          <div style="background: rgba(15, 23, 42, 0.55); border: 1px solid rgba(255,255,255,0.07); border-radius: 10px; padding: 10px;">
+            <div style="font-size: 11px; font-weight: 700; color: #c084fc; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 6px;">📡 Top Live Channels</div>
+            <div id="top-channels-list" style="font-size: 12px; color: #cbd5e1; line-height: 1.55;">Loading...</div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="feedback-box">
@@ -5824,8 +7836,12 @@ export async function handleRequest(req, res) {
       const region = document.getElementById('region-select').value;
       const hideRisk = document.getElementById('filter-buffer-risk').checked;
       const realDebrid = document.getElementById('rd-input') ? document.getElementById('rd-input').value.trim() : '';
+      const youtubeSubs = document.getElementById('yt-subs-input') ? document.getElementById('yt-subs-input').value.trim() : '';
+      const youtubeApiKey = document.getElementById('yt-apikey-input') ? document.getElementById('yt-apikey-input').value.trim() : '';
+      const twitchFollows = document.getElementById('twitch-follows-input') ? document.getElementById('twitch-follows-input').value.trim() : '';
+      const twitchClientId = document.getElementById('twitch-clientid-input') ? document.getElementById('twitch-clientid-input').value.trim() : '';
 
-      const isDefault = upstream === 'https://torrentio.strem.fun' && region === 'GB' && !hideRisk && !realDebrid;
+      const isDefault = upstream === 'https://torrentio.strem.fun' && region === 'GB' && !hideRisk && !realDebrid && !youtubeSubs && !youtubeApiKey && !twitchFollows && !twitchClientId;
       const host = window.location.host;
 
       let href = 'stremio://' + host + '/manifest.json';
@@ -5834,6 +7850,10 @@ export async function handleRequest(req, res) {
         const configObj = { region, hideRisk };
         if (upstream !== 'https://torrentio.strem.fun') configObj.upstream = upstream;
         if (realDebrid) configObj.realDebrid = realDebrid;
+        if (youtubeSubs) configObj.youtubeSubs = youtubeSubs;
+        if (youtubeApiKey) configObj.youtubeApiKey = youtubeApiKey;
+        if (twitchFollows) configObj.twitchFollows = twitchFollows;
+        if (twitchClientId) configObj.twitchClientId = twitchClientId;
 
         const configJson = JSON.stringify(configObj);
         // UTF-8 safe Base64URL encode
@@ -5850,6 +7870,10 @@ export async function handleRequest(req, res) {
     document.getElementById('upstream-input').addEventListener('input', updateInstallLink);
     document.getElementById('region-select').addEventListener('change', updateInstallLink);
     document.getElementById('filter-buffer-risk').addEventListener('change', updateInstallLink);
+    ['yt-subs-input', 'yt-apikey-input', 'twitch-follows-input', 'twitch-clientid-input'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) el.addEventListener('input', updateInstallLink);
+    });
 
     const rdInput = document.getElementById('rd-input');
     const toggleRd = document.getElementById('toggle-rd-vis');
@@ -5882,6 +7906,25 @@ export async function handleRequest(req, res) {
 
     updateInstallLink();
 
+    function escHtml(s) {
+      return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function renderLeaderboard(elId, items, emptyMsg) {
+      var el = document.getElementById(elId);
+      if (!el) return;
+      if (!items || items.length === 0) {
+        el.innerHTML = '<div style="color: #64748b; font-size: 11px;">' + emptyMsg + '</div>';
+        return;
+      }
+      el.innerHTML = items.slice(0, 5).map(function(item, i) {
+        return '<div style="display:flex; justify-content:space-between; gap:6px; padding:2px 0; border-bottom:1px solid rgba(255,255,255,0.04);">' +
+          '<span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + (i + 1) + '. ' + escHtml(item.title) + '</span>' +
+          '<span style="color:#94a3b8; font-weight:600; flex-shrink:0;">' + (item.count || 1) + '</span>' +
+          '</div>';
+      }).join('');
+    }
+
     function updateStats() {
       fetch('/api/stats')
         .then(r => r.json())
@@ -5890,6 +7933,25 @@ export async function handleRequest(req, res) {
           if (d.manifestRequests !== undefined) document.getElementById('stat-manifests').textContent = d.manifestRequests.toLocaleString();
           if (d.streamRequests !== undefined) document.getElementById('stat-streams').textContent = d.streamRequests.toLocaleString();
           if (d.totalRequests !== undefined) document.getElementById('stat-requests').textContent = d.totalRequests.toLocaleString();
+
+          var cList = document.getElementById('country-breakdown-list');
+          if (cList) {
+            if (!d.topCountries || d.topCountries.length === 0) {
+              cList.innerHTML = '<span style="font-size: 12px; color: #64748b;">Waiting for regional Stremio requests...</span>';
+            } else {
+              cList.innerHTML = d.topCountries.slice(0, 10).map(function(c) {
+                return '<div style="background: rgba(15,23,42,0.7); border: 1px solid rgba(255,255,255,0.08); border-radius: 999px; padding: 4px 10px; font-size: 12px; color: #e2e8f0; display: inline-flex; align-items: center; gap: 5px;">' +
+                  '<span>' + escHtml(c.flag) + '</span>' +
+                  '<span>' + escHtml(c.name) + '</span>' +
+                  '<strong style="color:#60a5fa;">' + (c.uniqueClients || c.requests) + (c.sharePct ? ' (' + c.sharePct + '%)' : '') + '</strong>' +
+                  '</div>';
+              }).join('');
+            }
+          }
+
+          renderLeaderboard('top-movies-list', d.topMovies, 'No movie streams yet');
+          renderLeaderboard('top-series-list', d.topSeries, 'No series streams yet');
+          renderLeaderboard('top-channels-list', d.topChannels, 'No channel hits yet');
         })
         .catch(() => {});
     }
