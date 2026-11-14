@@ -16,7 +16,7 @@ const TMDB_API_KEY = process.env.TMDB_API_KEY || '3157bd6dacbc3a653ae2e5a3b19beb
 const PORT = process.env.PORT || 7000;
 const HOST = process.env.HOST || (process.env.PORT ? '0.0.0.0' : '127.0.0.1');
 
-const ADDON_VERSION = '1.13.0';
+const ADDON_VERSION = '1.13.1';
 
 // Load server-wide DEFAULTS (read-only). Per-user settings live in the install URL, never on the server.
 function loadConfig() {
@@ -1596,6 +1596,9 @@ function isSafeUpstream(u) {
   }
 }
 
+const SUPPORTED_PREF_LANGS = ['en', 'es', 'fr', 'de', 'it', 'pt', 'hi', 'ja', 'ko', 'ru', 'nl', 'pl', 'tr', 'ar', 'any'];
+const SUPPORTED_DUB_PREFS = ['dub_or_orig', 'dub_first', 'sub_orig'];
+
 const DEFAULT_USER_CONFIG = {
   upstream: normalizeUpstream(APP_CONFIG.upstreamScraper) || 'https://torrentio.strem.fun',
   hideRisk: !!APP_CONFIG.filterHighBufferRisk,
@@ -1604,7 +1607,9 @@ const DEFAULT_USER_CONFIG = {
   youtubeSubs: '',
   youtubeApiKey: '',
   twitchFollows: '',
-  twitchClientId: ''
+  twitchClientId: '',
+  prefLang: 'en',
+  dubPref: 'dub_or_orig'
 };
 
 function decodeUserConfig(segment) {
@@ -1630,6 +1635,14 @@ function decodeUserConfig(segment) {
       if (up) cfg.upstream = up;
       if (typeof json.hideRisk === 'boolean') cfg.hideRisk = json.hideRisk;
       if (typeof json.region === 'string' && REGIONS[json.region.toUpperCase()]) cfg.region = json.region.toUpperCase();
+      if (typeof json.prefLang === 'string') {
+        const cleanLang = json.prefLang.trim().toLowerCase();
+        if (SUPPORTED_PREF_LANGS.includes(cleanLang)) cfg.prefLang = cleanLang;
+      }
+      if (typeof json.dubPref === 'string') {
+        const cleanDub = json.dubPref.trim().toLowerCase();
+        if (SUPPORTED_DUB_PREFS.includes(cleanDub)) cfg.dubPref = cleanDub;
+      }
       const rawRd = json.realDebrid || json.rdToken || json.debridToken || '';
       if (typeof rawRd === 'string') {
         const cleanRd = rawRd.trim();
@@ -3009,12 +3022,40 @@ async function resolveYouTubeDirectStreams(videoId = '') {
 
     if (res.ok) {
       const data = await res.json();
+      const rawTracks = data?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+      let ytSubs = [];
+      if (Array.isArray(rawTracks) && rawTracks.length > 0) {
+        const ytLangMap = {
+          en: 'eng', es: 'spa', fr: 'fre', de: 'ger', it: 'ita',
+          pt: 'por', hi: 'hin', ja: 'jpn', ko: 'kor', ru: 'rus',
+          nl: 'dut', pl: 'pol', tr: 'tur', ar: 'ara'
+        };
+        const seenUrls = new Set();
+        rawTracks.forEach((t, idx) => {
+          if (!t?.baseUrl || seenUrls.has(t.baseUrl)) return;
+          seenUrls.add(t.baseUrl);
+          const rawCode = String(t.languageCode || 'en').toLowerCase();
+          const baseCode = rawCode.split('-')[0];
+          const mappedLang = ytLangMap[baseCode] || rawCode || 'eng';
+          const vttUrl = t.baseUrl.includes('fmt=') ? t.baseUrl : `${t.baseUrl}&fmt=vtt`;
+          ytSubs.push({
+            id: `nk_yt_sub_${cleanVid}_${mappedLang}_${idx}`,
+            url: vttUrl,
+            lang: mappedLang
+          });
+        });
+        if (ytSubs.length > 0) {
+          setCache(`yt:subs:${cleanVid}`, ytSubs, 1800);
+        }
+      }
+
       const sd = data?.streamingData;
       if (sd?.hlsManifestUrl) {
         streams.push({
           name: '🔴 [DIRECT LIVE HLS]\nAd-Free Native Stream',
           title: `${data.videoDetails?.title || 'YouTube Live'}\nIn-App Stremio Player • Ad-Free Direct HLS`,
           url: sd.hlsManifestUrl,
+          ...(ytSubs.length > 0 ? { subtitles: ytSubs.slice(0, 20) } : {}),
           behaviorHints: { notWebReady: false }
         });
       }
@@ -3030,7 +3071,8 @@ async function resolveYouTubeDirectStreams(videoId = '') {
           streams.push({
             name: `⚡ [DIRECT ${q}]\nAd-Free Native MP4`,
             title: `${data.videoDetails?.title || 'YouTube Video'} • ${q}\nIn-App Stremio Player • Ad-Free`,
-            url: f.url
+            url: f.url,
+            ...(ytSubs.length > 0 ? { subtitles: ytSubs.slice(0, 20) } : {})
           });
           if (streams.length >= 3) break;
         }
@@ -5762,8 +5804,251 @@ async function handleMeta(type, id, userConfig = DEFAULT_USER_CONFIG) {
 }
 
 // -------------------------------------------------------------
-// INTELLIGENT STREAM SPEED RANKING & CINEMA AUDIO/VIDEO BADGES
 // -------------------------------------------------------------
+// INTELLIGENT STREAM SPEED RANKING, LANGUAGE/DUBBING & CINEMA BADGES
+// -------------------------------------------------------------
+const DRM_FREE_IMDB_MAP = {
+  'drmfree:night_of_the_living_dead': 'tt0063350',
+  'drmfree:nosferatu': 'tt0013442',
+  'drmfree:the_general': 'tt0017925',
+  'drmfree:his_girl_friday': 'tt0032599',
+  'drmfree:house_on_haunted_hill': 'tt0053126',
+  'drmfree:the_stranger': 'tt0038991',
+  'drmfree:gullivers_travels': 'tt0031397',
+  'drmfree:voyage_prehistoric_women': 'tt0063790',
+  'drmfree:dressed_to_kill': 'tt0038494',
+  'drmfree:suddenly': 'tt0047542',
+  'drmfree:charade': 'tt0056923',
+  'drmfree:little_shop_of_horrors': 'tt0054033',
+  'drmfree:the_brain_that_wouldnt_die': 'tt0052618',
+  'drmfree:carnival_of_souls': 'tt0055894',
+  'drmfree:plan_9_from_outer_space': 'tt0053137'
+};
+
+const LANGUAGE_PROFILES = {
+  en: {
+    label: 'English',
+    short: 'EN',
+    subCodes: ['eng', 'en', 'en-gb', 'en-us'],
+    flags: ['🇬🇧', '🇺🇸', '🇦🇺', '🇨🇦', '🇮🇪'],
+    tokenRe: /\b(eng|english|en-us|en-gb)\b/i
+  },
+  es: {
+    label: 'Spanish',
+    short: 'ES',
+    subCodes: ['spa', 'es', 'spl'],
+    flags: ['🇪🇸', '🇲🇽', '🇦🇷', '🇨🇴'],
+    tokenRe: /\b(spa|spanish|esp|castellano|latino)\b/i
+  },
+  fr: {
+    label: 'French',
+    short: 'FR',
+    subCodes: ['fre', 'fra', 'fr'],
+    flags: ['🇫🇷'],
+    tokenRe: /\b(fre|fra|french|vff|vfq|truefrench)\b/i
+  },
+  de: {
+    label: 'German',
+    short: 'DE',
+    subCodes: ['ger', 'deu', 'de'],
+    flags: ['🇩🇪', '🇦🇹'],
+    tokenRe: /\b(ger|deu|german|deutsch)\b/i
+  },
+  it: {
+    label: 'Italian',
+    short: 'IT',
+    subCodes: ['ita', 'it'],
+    flags: ['🇮🇹'],
+    tokenRe: /\b(ita|italian|italiano)\b/i
+  },
+  pt: {
+    label: 'Portuguese',
+    short: 'PT',
+    subCodes: ['por', 'pob', 'pt', 'pt-br'],
+    flags: ['🇵🇹', '🇧🇷'],
+    tokenRe: /\b(por|portuguese|pt-br|dublado)\b/i
+  },
+  hi: {
+    label: 'Hindi',
+    short: 'HI',
+    subCodes: ['hin', 'hi'],
+    flags: ['🇮🇳'],
+    tokenRe: /\b(hin|hindi)\b/i
+  },
+  ja: {
+    label: 'Japanese',
+    short: 'JA',
+    subCodes: ['jpn', 'ja'],
+    flags: ['🇯🇵'],
+    tokenRe: /\b(jpn|japanese|jap)\b/i
+  },
+  ko: {
+    label: 'Korean',
+    short: 'KO',
+    subCodes: ['kor', 'ko'],
+    flags: ['🇰🇷'],
+    tokenRe: /\b(kor|korean)\b/i
+  },
+  ru: {
+    label: 'Russian',
+    short: 'RU',
+    subCodes: ['rus', 'ru'],
+    flags: ['🇷🇺'],
+    tokenRe: /\b(rus|russian|mvo|dvo|avo|rutracker)\b/i
+  },
+  nl: {
+    label: 'Dutch',
+    short: 'NL',
+    subCodes: ['dut', 'nld', 'nl'],
+    flags: ['🇳🇱'],
+    tokenRe: /\b(dut|nld|dutch|nl-sub|flemish)\b/i
+  },
+  pl: {
+    label: 'Polish',
+    short: 'PL',
+    subCodes: ['pol', 'pl'],
+    flags: ['🇵🇱'],
+    tokenRe: /\b(pol|polish|lektor)\b/i
+  },
+  tr: {
+    label: 'Turkish',
+    short: 'TR',
+    subCodes: ['tur', 'tr'],
+    flags: ['🇹🇷'],
+    tokenRe: /\b(tur|turkish)\b/i
+  },
+  ar: {
+    label: 'Arabic',
+    short: 'AR',
+    subCodes: ['ara', 'ar'],
+    flags: ['🇸🇦', '🇦🇪', '🇪🇬'],
+    tokenRe: /\b(ara|arabic)\b/i
+  }
+};
+
+function analyzeStreamLanguageAndDub(fullText = '', prefLang = 'en', dubPref = 'dub_or_orig') {
+  const cleanPref = SUPPORTED_PREF_LANGS.includes(prefLang) ? prefLang : 'en';
+  const cleanDubPref = SUPPORTED_DUB_PREFS.includes(dubPref) ? dubPref : 'dub_or_orig';
+
+  const detectedLangs = [];
+  for (const [code, prof] of Object.entries(LANGUAGE_PROFILES)) {
+    const hasFlag = prof.flags.some(f => fullText.includes(f));
+    const hasToken = prof.tokenRe.test(fullText);
+    if (hasFlag || hasToken) detectedLangs.push(code);
+  }
+
+  const hasCyrillic = /[А-Яа-яЁё]/.test(fullText);
+  if (hasCyrillic && !detectedLangs.includes('ru')) {
+    detectedLangs.push('ru');
+  }
+
+  const isMultiAudio = /\b(multi[\s.-]*audio|dual[\s.-]*audio|multi\+|multi)\b/i.test(fullText) && !/\bmulti[\s.-]*subs?\b/i.test(fullText)
+    ? true
+    : (/\b(multi[\s.-]*audio|dual[\s.-]*audio|multi\+)\b/i.test(fullText) || detectedLangs.length >= 2);
+  const isDubbed = /\b(dubbed|dub\b|eng[\s.-]*dub|english[\s.-]*dub|dublado|synchro|lektor|dvo\b|mvo\b)/i.test(fullText);
+  const hasMultiSubs = /\b(multi[\s.-]*subs?|multisub|subbed|esub|eng[\s.-]*sub)\b/i.test(fullText);
+  const isOrigTag = /\b(original|orig\b|subbed|vostfr|raw\b)\b/i.test(fullText);
+  const isHeavyRuPack = (hasCyrillic || /\b(rutracker|lostfilm|hdrezka|red head sound|jaskier|newstudio|kubik|tvshows|mvo|dvo)\b/i.test(fullText)) && cleanPref !== 'ru';
+
+  const prefProf = LANGUAGE_PROFILES[cleanPref] || null;
+  const hasPrefLang = cleanPref === 'any'
+    ? true
+    : Boolean(
+        detectedLangs.includes(cleanPref) ||
+        (cleanPref === 'en' && /\b(eng[\s.-]*dub|english[\s.-]*dub|dual[\s.-]*audio)\b/i.test(fullText))
+      );
+
+  const nonPrefLangs = detectedLangs.filter(c => c !== cleanPref);
+  const hasOtherForeignOnly = cleanPref !== 'any' && nonPrefLangs.length > 0 && !hasPrefLang;
+
+  let langScoreDelta = 0;
+  if (cleanPref === 'any') {
+    langScoreDelta = isMultiAudio ? 300 : 0;
+  } else if (cleanDubPref === 'dub_first') {
+    if (hasPrefLang && (isDubbed || isMultiAudio) && !isHeavyRuPack) {
+      langScoreDelta = 2200;
+    } else if (hasPrefLang && !isHeavyRuPack) {
+      langScoreDelta = 1600;
+    } else if (detectedLangs.length === 0 && !isHeavyRuPack) {
+      langScoreDelta = 900;
+    } else if (!hasPrefLang && hasMultiSubs && !isHeavyRuPack) {
+      langScoreDelta = 400;
+    } else if (isHeavyRuPack && hasPrefLang) {
+      langScoreDelta = -600;
+    } else if (hasOtherForeignOnly || isHeavyRuPack) {
+      langScoreDelta = -2500;
+    } else {
+      langScoreDelta = 500;
+    }
+  } else if (cleanDubPref === 'sub_orig') {
+    if ((hasMultiSubs || isOrigTag) && !isDubbed && !isHeavyRuPack && !hasOtherForeignOnly) {
+      langScoreDelta = 2050;
+    } else if ((hasMultiSubs || isOrigTag || isMultiAudio) && !isHeavyRuPack) {
+      langScoreDelta = 1900;
+    } else if (!isHeavyRuPack && !hasOtherForeignOnly && (!isDubbed || !hasPrefLang)) {
+      langScoreDelta = 1350;
+    } else if (isDubbed && !isMultiAudio && !isOrigTag && !isHeavyRuPack) {
+      langScoreDelta = 400;
+    } else {
+      langScoreDelta = -2200;
+    }
+  } else {
+    // Default: dub_or_orig (Preferred Language, Dubbed/Multi-Audio & Clean Best Stream)
+    if (hasPrefLang && (isDubbed || isMultiAudio) && !isHeavyRuPack) {
+      langScoreDelta = 1800;
+    } else if (hasPrefLang && !isHeavyRuPack) {
+      langScoreDelta = 1650;
+    } else if (detectedLangs.length === 0 && !isHeavyRuPack) {
+      langScoreDelta = 1200;
+    } else if (hasMultiSubs && !isHeavyRuPack) {
+      langScoreDelta = 700;
+    } else if (isHeavyRuPack && hasPrefLang) {
+      langScoreDelta = -700;
+    } else if (hasOtherForeignOnly || isHeavyRuPack) {
+      langScoreDelta = -2500;
+    } else {
+      langScoreDelta = 800;
+    }
+  }
+
+  const prefShort = prefProf ? prefProf.short : 'MULTI';
+  const detectedShorts = detectedLangs.map(c => LANGUAGE_PROFILES[c]?.short || c.toUpperCase());
+  let langBadge = '';
+  let langKey = 'std';
+
+  if (hasOtherForeignOnly || (isHeavyRuPack && !hasPrefLang)) {
+    const fLabel = detectedShorts.length > 0 ? detectedShorts.slice(0, 3).join('/') : 'Foreign';
+    langBadge = `🌐 Foreign Dub (${fLabel})`;
+    langKey = `foreign_${fLabel.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
+  } else if (isHeavyRuPack && hasPrefLang) {
+    langBadge = `🌐 Multi-VO / ${prefShort}`;
+    langKey = `${cleanPref}_rupack`;
+  } else if (hasPrefLang && isDubbed && isMultiAudio) {
+    langBadge = `🗣️ ${prefShort} • Dubbed / Multi-Audio`;
+    langKey = `${cleanPref}_dub_multi`;
+  } else if (hasPrefLang && isDubbed) {
+    langBadge = `🗣️ ${prefShort} • Dubbed`;
+    langKey = `${cleanPref}_dub`;
+  } else if (hasPrefLang && isMultiAudio) {
+    langBadge = `🗣️ ${prefShort} • Multi-Audio`;
+    langKey = `${cleanPref}_multi`;
+  } else if (hasPrefLang) {
+    langBadge = `🗣️ ${prefShort} Audio`;
+    langKey = `${cleanPref}_audio`;
+  } else if (hasMultiSubs) {
+    langBadge = `💬 Multi-Subs`;
+    langKey = 'multisub';
+  } else if (isMultiAudio) {
+    langBadge = `🗣️ Multi-Audio`;
+    langKey = 'multiaudio';
+  } else {
+    langBadge = cleanPref === 'any' ? '🌐 Global Release' : `🗣️ ${prefShort} / Standard`;
+    langKey = `${cleanPref}_std`;
+  }
+
+  return { langScoreDelta, langBadge, langKey };
+}
+
 function extractCinemaBadges(text = '') {
   const audio = [];
   const video = [];
@@ -5796,11 +6081,15 @@ function extractCinemaBadges(text = '') {
 function optimizeAndRankStreams(rawStreams, userConfig = DEFAULT_USER_CONFIG, type = '', id = '') {
   if (!Array.isArray(rawStreams) || rawStreams.length === 0) return [];
 
+  const prefLang = (userConfig && typeof userConfig === 'object' && userConfig.prefLang) ? userConfig.prefLang : 'en';
+  const dubPref = (userConfig && typeof userConfig === 'object' && userConfig.dubPref) ? userConfig.dubPref : 'dub_or_orig';
+
   const parsed = [];
   for (const s of rawStreams) {
     const title = s.title || '';
     const name = s.name || '';
     const filename = s.behaviorHints?.filename || '';
+    const fullStreamText = `${title} ${name} ${filename}`;
 
     // Check for Debrid & Usenet Cached Streams (Real-Debrid, AllDebrid, TorBox, Premiumize, EasyDebrid, Debrid-Link, Offcloud, Usenet)
     let debridProvider = '';
@@ -5863,8 +6152,9 @@ function optimizeAndRankStreams(rawStreams, userConfig = DEFAULT_USER_CONFIG, ty
     const isHdr = /HDR/i.test(name) || /HDR/i.test(title);
     const isDv = /\b(dolby\s*vision|dovi)\b/i.test(name + ' ' + title) || (/\bdv\b/i.test(name + ' ' + title) && !/dvd/i.test(name + ' ' + title));
 
-    // Extract Home Cinema Badges (Audio/Video/Edition)
-    const badgesObj = extractCinemaBadges(`${title} ${name} ${filename}`);
+    // Extract Home Cinema Badges (Audio/Video/Edition) & Language/Dubbing Priority
+    const badgesObj = extractCinemaBadges(fullStreamText);
+    const { langScoreDelta, langBadge, langKey } = analyzeStreamLanguageAndDub(fullStreamText, prefLang, dubPref);
     const cinemaHighlights = [...badgesObj.video, ...badgesObj.audio, ...badgesObj.edition];
     const cinemaTag = cinemaHighlights.length > 0 ? ` • ${cinemaHighlights.slice(0, 3).join(' ')}` : '';
 
@@ -5876,25 +6166,25 @@ function optimizeAndRankStreams(rawStreams, userConfig = DEFAULT_USER_CONFIG, ty
     let isBufferRisk = false;
 
     if (isDebrid) {
-      speedScore = 100000 + (is4k ? 1000 : (is1080p ? 600 : 400)) + (isDv || isHdr ? 100 : 0) - (sizeGB * 0.1);
+      speedScore = 100000 + (is4k ? 1000 : (is1080p ? 600 : 400)) + (isDv || isHdr ? 100 : 0) - (sizeGB * 0.1) + langScoreDelta;
       speedBadge = '🚀 [INSTANT CDN • 0 BUFFER]';
       recommendation = `⚡ ${debridProvider} High-Speed Cloud Stream`;
     } else if (isDirectHttp) {
-      speedScore = 80000 + (is4k ? 1000 : (is1080p ? 600 : 400)) + (isDv || isHdr ? 100 : 0) - (sizeGB * 0.1);
+      speedScore = 80000 + (is4k ? 1000 : (is1080p ? 600 : 400)) + (isDv || isHdr ? 100 : 0) - (sizeGB * 0.1) + langScoreDelta;
       speedBadge = '🌐 [DIRECT HTTP • INSTANT]';
       recommendation = 'Direct HTTP/HTTPS stream • Zero P2P swarm required';
     } else if (!hasSeederInfo) {
-      speedScore = 500 + (is4k ? 200 : (is1080p ? 150 : 100));
+      speedScore = 500 + (is4k ? 200 : (is1080p ? 150 : 100)) + langScoreDelta;
       speedBadge = '🔗 [STREAM READY]';
       recommendation = 'Direct or unindexed P2P stream';
     } else {
       if (seeders === 0) {
-        speedScore = -1000;
+        speedScore = -10000;
         speedBadge = '❌ [DEAD • 0 SEEDERS]';
         recommendation = 'Do not stream (No seeders)';
         isDead = true;
       } else if (seeders < 10 && sizeGB > 25) {
-        speedScore = -500 + seeders;
+        speedScore = -5000 + seeders + (langScoreDelta * 0.25);
         speedBadge = `⚠️ [HIGH BUFFER RISK • ${seeders} 👤]`;
         recommendation = 'High buffering risk (Huge file, low seeders)';
         isBufferRisk = true;
@@ -5902,8 +6192,8 @@ function optimizeAndRankStreams(rawStreams, userConfig = DEFAULT_USER_CONFIG, ty
         const qualityWeight = is4k ? 1.2 : (is1080p ? 1.0 : (is720p ? 0.8 : 0.7));
         const seederPoints = seeders * 12;
         const sizePenalty = seeders < 50 ? (sizeGB * 8) : (sizeGB * 2);
-        
-        speedScore = (seederPoints - sizePenalty) * qualityWeight;
+
+        speedScore = ((seederPoints - sizePenalty) * qualityWeight) + langScoreDelta;
 
         if (seeders >= 150) {
           speedBadge = `⚡ [FASTEST • ${seeders} 👤]`;
@@ -5933,9 +6223,9 @@ function optimizeAndRankStreams(rawStreams, userConfig = DEFAULT_USER_CONFIG, ty
       const providerKey = debridProvider ? debridProvider.toLowerCase().replace(/[^a-z0-9]/g, '') : 'p2p';
       const qKey = (quality || '1080p').toLowerCase();
       if (s.infoHash) {
-        bingeGroup = `nightknight|${providerKey}|${qKey}|${s.infoHash.toLowerCase()}`;
+        bingeGroup = `nightknight|${providerKey}|${qKey}|${langKey}|${s.infoHash.toLowerCase()}`;
       } else {
-        bingeGroup = `nightknight|${providerKey}|${qKey}`;
+        bingeGroup = `nightknight|${providerKey}|${qKey}|${langKey}`;
       }
     }
 
@@ -5951,8 +6241,8 @@ function optimizeAndRankStreams(rawStreams, userConfig = DEFAULT_USER_CONFIG, ty
       _seeders: seeders,
       _isDead: isDead,
       _isBufferRisk: isBufferRisk,
-      name: `${speedBadge}\n${cleanAddonName}${cinemaTag}`,
-      title: `${title}${title ? '\n' : ''}🎬 Cinema Format: ${cinemaHighlights.join(' | ') || 'Standard Digital'}\n🛡️ NightKnight Buffer Shield: ${recommendation}`
+      name: `${speedBadge}\n${cleanAddonName} • ${langBadge}${cinemaTag}`,
+      title: `${title}${title ? '\n' : ''}🗣️ Audio & Subs: ${langBadge}\n🎬 Cinema Format: ${cinemaHighlights.join(' | ') || 'Standard Digital'}\n🛡️ NightKnight Buffer Shield: ${recommendation}`
     });
   }
 
@@ -6088,18 +6378,26 @@ async function handleStream(type, id, userConfig = DEFAULT_USER_CONFIG) {
     const foundMovie = DRM_FREE_MOVIES.find(m => m.id === id);
     if (!foundMovie) return [];
 
+    const drmSubs = await Promise.race([
+      handleSubtitles('movie', id, '', userConfig).catch(() => []),
+      new Promise(resolve => setTimeout(() => resolve([]), 2500))
+    ]);
+    const drmSubsSlice = Array.isArray(drmSubs) && drmSubs.length > 0 ? drmSubs.slice(0, 30) : null;
+
     const drmStreams = [
       {
         name: `⚡ [NATIVE DRM-FREE]\n${foundMovie.title} (${foundMovie.year})`,
         title: `100% Legal Public Domain Stream • In-App Playback\nFast CDN • High Quality • No buffering risk`,
-        url: foundMovie.streamUrl
+        url: foundMovie.streamUrl,
+        ...(drmSubsSlice ? { subtitles: drmSubsSlice } : {})
       }
     ];
     if (foundMovie.backupUrl) {
       drmStreams.push({
         name: `📡 [BACKUP MIRROR]\n${foundMovie.title} (${foundMovie.year})`,
         title: `100% Legal Public Domain Secondary CDN • In-App Playback`,
-        url: foundMovie.backupUrl
+        url: foundMovie.backupUrl,
+        ...(drmSubsSlice ? { subtitles: drmSubsSlice } : {})
       });
     }
     drmStreams.push({
@@ -6124,17 +6422,21 @@ async function handleStream(type, id, userConfig = DEFAULT_USER_CONFIG) {
 
   if (id.startsWith('yt:') || (type === 'channel' && !id.startsWith('tv:') && !id.startsWith('twitch:'))) {
     const rawYt = id.replace(/^yt:/, '');
+    const prefLang = userConfig?.prefLang || 'en';
     if (rawYt.startsWith('channel:')) {
       const chMeta = await fetchYouTubeChannelMeta(id, userConfig);
       const firstVid = chMeta?.videos?.[0]?.id?.replace(/^yt:/, '');
       if (firstVid) {
         const directStreams = await resolveYouTubeDirectStreams(firstVid);
+        const ytSubsRaw = getCache(`yt:subs:${firstVid}`) || [];
+        const ytSubs = sortSubtitlesByPrefLang(ytSubsRaw, prefLang).slice(0, 20);
         return [
-          ...directStreams,
+          ...directStreams.map(ds => ytSubs.length > 0 ? { ...ds, subtitles: ytSubs } : ds),
           {
             name: '▶️ [STREMIO PLAYER]\nYouTube Native Stream',
             title: `${chMeta.videos[0].title} — Watch directly inside Stremio`,
-            ytId: firstVid
+            ytId: firstVid,
+            ...(ytSubs.length > 0 ? { subtitles: ytSubs } : {})
           },
           {
             name: '🔴 [YOUTUBE • BYOA]\nOpen Creator Channel',
@@ -6146,12 +6448,15 @@ async function handleStream(type, id, userConfig = DEFAULT_USER_CONFIG) {
     }
 
     const directStreams = await resolveYouTubeDirectStreams(rawYt);
+    const ytSubsRaw = getCache(`yt:subs:${rawYt}`) || [];
+    const ytSubs = sortSubtitlesByPrefLang(ytSubsRaw, prefLang).slice(0, 20);
     return [
-      ...directStreams,
+      ...directStreams.map(ds => ytSubs.length > 0 ? { ...ds, subtitles: ytSubs } : ds),
       {
         name: '▶️ [STREMIO PLAYER]\nYouTube Native Stream',
         title: 'Watch directly inside Stremio (DRM-Free)',
-        ytId: rawYt
+        ytId: rawYt,
+        ...(ytSubs.length > 0 ? { subtitles: ytSubs } : {})
       },
       {
         name: '🔴 [YOUTUBE • BYOA]\nOfficial YouTube App',
@@ -6162,8 +6467,10 @@ async function handleStream(type, id, userConfig = DEFAULT_USER_CONFIG) {
   }
 
   const region = userConfig.region || 'GB';
+  const prefLang = userConfig.prefLang || 'en';
+  const dubPref = userConfig.dubPref || 'dub_or_orig';
   const rdKey = userConfig.realDebrid ? crypto.createHash('sha256').update(userConfig.realDebrid).digest('hex').slice(0, 12) : 'none';
-  const cacheKey = `stream:${type}:${id}:${region}:${userConfig.upstream}:${userConfig.hideRisk}:${rdKey}`;
+  const cacheKey = `stream:${type}:${id}:${region}:${userConfig.upstream}:${userConfig.hideRisk}:${rdKey}:${prefLang}:${dubPref}`;
   const baseLookupId = id.startsWith('tt') ? id.split(':')[0] : (id.startsWith('tmdb:') ? `tmdb:${id.replace('tmdb:', '').split(':')[0]}` : id);
   const cachedTitleInfo = ID_TITLE_CACHE.get(baseLookupId);
   const cached = getCache(cacheKey);
@@ -6241,6 +6548,10 @@ async function handleStream(type, id, userConfig = DEFAULT_USER_CONFIG) {
     }
 
     const upstreamUrl = `${scraperBase}/stream/${type}/${imdbTarget}.json`;
+    const inlineSubPromise = Promise.race([
+      handleSubtitles(type, imdbTarget, '', userConfig).catch(() => []),
+      new Promise(resolve => setTimeout(() => resolve([]), 2500))
+    ]);
 
     let rawStreams = [];
     try {
@@ -6283,7 +6594,18 @@ async function handleStream(type, id, userConfig = DEFAULT_USER_CONFIG) {
     }
 
     const optimized = optimizeAndRankStreams(rawStreams, userConfig, type, id);
-    const combined = [...byoaStreams, ...optimized];
+    const resolvedSubs = await inlineSubPromise;
+    const inlineSubsSlice = Array.isArray(resolvedSubs) && resolvedSubs.length > 0
+      ? resolvedSubs.slice(0, 30)
+      : null;
+
+    const optimizedWithSubs = inlineSubsSlice
+      ? optimized.map(st => (st.url || st.infoHash || st.ytId) && !st.subtitles
+          ? { ...st, subtitles: inlineSubsSlice }
+          : st)
+      : optimized;
+
+    const combined = [...byoaStreams, ...optimizedWithSubs];
     setCache(cacheKey, combined, 600);
     return combined;
   } catch (e) {
@@ -6293,18 +6615,160 @@ async function handleStream(type, id, userConfig = DEFAULT_USER_CONFIG) {
 }
 
 // -------------------------------------------------------------
-// SUBTITLES HANDLER (NightKnight Unified Multi-Language Subtitles)
-// Resolves clean, synchronized subtitles across 80+ languages directly inside the addon.
+// SUBTITLES HANDLER (NightKnight Universal Multi-Language Subtitles)
+// Resolves clean, synchronized subtitles across 80+ languages for every title.
 // -------------------------------------------------------------
-async function handleSubtitles(type, id, extraStr = '') {
-  if (type !== 'movie' && type !== 'series') return [];
+function sortSubtitlesByPrefLang(subs = [], prefLang = 'en') {
+  if (!Array.isArray(subs) || subs.length === 0) return [];
+  const cleanPref = SUPPORTED_PREF_LANGS.includes(prefLang) ? prefLang : 'en';
+  const prefCodes = LANGUAGE_PROFILES[cleanPref]?.subCodes || [];
+  const enCodes = LANGUAGE_PROFILES.en.subCodes;
 
-  const cacheKey = `subtitles:${type}:${id}:${extraStr}`;
+  const ranked = subs.map((sub, idx) => {
+    const lc = String(sub.lang || '').toLowerCase();
+    const isPref = cleanPref !== 'any' && prefCodes.includes(lc);
+    const isEn = enCodes.includes(lc);
+    const tier = isPref ? 3 : (isEn ? 2 : 1);
+    const hashBoost = sub._hashMatch ? 1 : 0;
+    const downloads = Number(sub._downloads || 0);
+    return { sub, idx, tier, hashBoost, downloads };
+  });
+
+  ranked.sort((a, b) => {
+    if (b.tier !== a.tier) return b.tier - a.tier;
+    if (b.hashBoost !== a.hashBoost) return b.hashBoost - a.hashBoost;
+    if (b.downloads !== a.downloads) return b.downloads - a.downloads;
+    return a.idx - b.idx;
+  });
+
+  return ranked.map(({ sub }) => {
+    const { _hashMatch, _downloads, ...clean } = sub;
+    return clean;
+  });
+}
+
+async function resolveDrmFreeImdb(drmId) {
+  if (DRM_FREE_IMDB_MAP[drmId]) return DRM_FREE_IMDB_MAP[drmId];
+  const foundMovie = DRM_FREE_MOVIES.find(m => m.id === drmId);
+  if (!foundMovie) return null;
+  const posterMatch = String(foundMovie.poster || '').match(/\/(tt\d+)\//);
+  if (posterMatch) return posterMatch[1];
+  try {
+    const searchRes = await fetchTmdb('/search/movie', {
+      query: foundMovie.title,
+      year: foundMovie.year
+    });
+    const firstHit = searchRes?.results?.[0];
+    if (firstHit?.id) {
+      const mData = await fetchTmdb(`/movie/${firstHit.id}`, { append_to_response: 'external_ids' });
+      return mData.external_ids?.imdb_id || mData.imdb_id || null;
+    }
+  } catch (e) {}
+  return null;
+}
+
+async function fetchOpenSubtitlesV3(url, isHashMatch = false) {
+  try {
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'Stremio/4.4.168' },
+      signal: AbortSignal.timeout(4500)
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    const subs = Array.isArray(data?.subtitles) ? data.subtitles : [];
+    return subs
+      .filter(s => s && s.url)
+      .map(s => ({
+        url: s.url,
+        lang: s.lang || 'eng',
+        _hashMatch: isHashMatch,
+        _downloads: 0
+      }));
+  } catch (e) {
+    return [];
+  }
+}
+
+async function fetchOpenSubtitlesRest(type, cleanId, osLangCode = '') {
+  try {
+    const parts = cleanId.split(':');
+    const imdbBase = parts[0];
+    const imdbDigits = imdbBase.replace(/^tt/i, '');
+    if (!/^\d+$/.test(imdbDigits)) return [];
+
+    let apiUrl = `https://rest.opensubtitles.org/search`;
+    if (type === 'series' && parts[1] && parts[2]) {
+      apiUrl += `/episode-${parts[2]}/imdbid-${imdbDigits}/season-${parts[1]}`;
+    } else {
+      apiUrl += `/imdbid-${imdbDigits}`;
+    }
+    if (osLangCode) {
+      apiUrl += `/sublanguageid-${encodeURIComponent(osLangCode)}`;
+    }
+
+    const res = await fetch(apiUrl, {
+      headers: { 'X-User-Agent': 'TemporaryUserAgent' },
+      signal: AbortSignal.timeout(4000)
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    if (!Array.isArray(data)) return [];
+
+    return data
+      .filter(item => item && item.IDSubtitleFile)
+      .map(item => ({
+        url: `https://subs5.strem.io/en/download/subencoding-stremio-utf8/src-api/file/${item.IDSubtitleFile}`,
+        lang: item.SubLanguageID || item.ISO639 || 'eng',
+        _hashMatch: false,
+        _downloads: Number(item.SubDownloadsCnt || 0)
+      }));
+  } catch (e) {
+    return [];
+  }
+}
+
+async function handleSubtitles(type, id, extraStr = '', userConfig = DEFAULT_USER_CONFIG) {
+  if (type !== 'movie' && type !== 'series' && type !== 'channel') return [];
+
+  const prefLang = (userConfig && typeof userConfig === 'object' && SUPPORTED_PREF_LANGS.includes(userConfig.prefLang))
+    ? userConfig.prefLang
+    : 'en';
+  const cacheKey = `subtitles:v2:${type}:${id}:${extraStr}:${prefLang}`;
   const cached = getCache(cacheKey);
   if (cached) return cached;
 
+  // Handle YouTube captions for channels & videos
+  if (id.startsWith('yt:') || type === 'channel') {
+    const cleanYt = id.replace(/^yt:/, '');
+    let targetVid = /^[a-zA-Z0-9_-]{11}$/.test(cleanYt) ? cleanYt : '';
+    if (!targetVid && cleanYt.startsWith('channel:')) {
+      const chMeta = await fetchYouTubeChannelMeta(id, userConfig);
+      targetVid = chMeta?.videos?.[0]?.id?.replace(/^yt:/, '') || '';
+    }
+    if (targetVid) {
+      let ytSubs = getCache(`yt:subs:${targetVid}`);
+      if (!ytSubs) {
+        await resolveYouTubeDirectStreams(targetVid);
+        ytSubs = getCache(`yt:subs:${targetVid}`) || [];
+      }
+      const sortedYt = sortSubtitlesByPrefLang(ytSubs, prefLang).map((sub, idx) => ({
+        id: `nk_yt_sub_${targetVid}_${sub.lang || 'eng'}_${idx}`,
+        url: sub.url,
+        lang: sub.lang || 'eng'
+      }));
+      if (sortedYt.length > 0) setCache(cacheKey, sortedYt, 1800);
+      return sortedYt;
+    }
+    return [];
+  }
+
+  let effectiveType = type;
   let imdbTarget = id;
-  if (id.startsWith('tmdb:')) {
+
+  if (id.startsWith('drmfree:')) {
+    imdbTarget = await resolveDrmFreeImdb(id);
+    effectiveType = 'movie';
+  } else if (id.startsWith('tmdb:')) {
     try {
       if (type === 'movie') {
         const tmdbId = id.replace('tmdb:', '');
@@ -6333,40 +6797,77 @@ async function handleSubtitles(type, id, extraStr = '') {
   }
 
   const cleanId = imdbTarget;
-  const urlsToTry = extraStr
-    ? [
-        `https://opensubtitles-v3.strem.io/subtitles/${type}/${cleanId}/${extraStr}.json`,
-        `https://opensubtitles-v3.strem.io/subtitles/${type}/${cleanId}.json`
-      ]
-    : [`https://opensubtitles-v3.strem.io/subtitles/${type}/${cleanId}.json`];
+  const prefCodes = LANGUAGE_PROFILES[prefLang]?.subCodes || [];
+  const hasPrefMatch = (list) => prefLang === 'any'
+    ? list.length > 0
+    : list.some(s => prefCodes.includes(String(s.lang || '').toLowerCase()));
 
-  for (const upstreamSubUrl of urlsToTry) {
-    try {
-      const res = await fetch(upstreamSubUrl, {
-        headers: { 'User-Agent': 'Stremio/4.4.168' },
-        signal: AbortSignal.timeout(6000)
-      });
+  // 1. Fetch exact videoHash URL (if provided) AND full IMDb catalog URL in parallel (fixes foreign-hash early-return bug)
+  const v3Promises = [];
+  if (extraStr) {
+    v3Promises.push(fetchOpenSubtitlesV3(`https://opensubtitles-v3.strem.io/subtitles/${effectiveType}/${cleanId}/${extraStr}.json`, true));
+  }
+  v3Promises.push(fetchOpenSubtitlesV3(`https://opensubtitles-v3.strem.io/subtitles/${effectiveType}/${cleanId}.json`, false));
 
-      if (res.ok) {
-        const data = await res.json();
-        const rawSubs = data.subtitles || [];
-        if (rawSubs.length > 0 || urlsToTry.length === 1) {
-          const formatted = rawSubs.map((sub, idx) => ({
-            id: `nk_sub_${cleanId}_${sub.lang || 'eng'}_${idx}`,
-            url: sub.url,
-            lang: sub.lang || 'eng'
-          }));
-
-          setCache(cacheKey, formatted, 1800);
-          return formatted;
-        }
-      }
-    } catch (e) {
-      console.error(`Subtitle fetch error for ${type}/${cleanId}:`, e.message);
+  const v3Results = await Promise.allSettled(v3Promises);
+  let collected = [];
+  for (const r of v3Results) {
+    if (r.status === 'fulfilled' && Array.isArray(r.value)) {
+      collected.push(...r.value);
     }
   }
 
-  return [];
+  // 2. Anime & Multi-Season Absolute Episode Numbering Fallback (e.g., One Piece S21E1000 -> S1E1000)
+  let season1Id = '';
+  const epParts = cleanId.match(/^(tt\d+):(\d+):(\d+)$/);
+  if (effectiveType === 'series' && epParts && Number(epParts[2]) > 1) {
+    season1Id = `${epParts[1]}:1:${epParts[3]}`;
+    if (collected.length < 3 || !hasPrefMatch(collected)) {
+      const s1Subs = await fetchOpenSubtitlesV3(`https://opensubtitles-v3.strem.io/subtitles/series/${season1Id}.json`, false);
+      collected.push(...s1Subs);
+    }
+  }
+
+  // 3. Direct OpenSubtitles REST API Fallback / Supplement (bridged to Stremio UTF-8 SRT)
+  if (collected.length === 0 || !hasPrefMatch(collected)) {
+    const restTargetId = (collected.length === 0 && season1Id) ? season1Id : cleanId;
+    const osLangParam = (prefLang !== 'any' && prefCodes[0]) ? prefCodes[0] : '';
+    const restCalls = [fetchOpenSubtitlesRest(effectiveType, restTargetId, osLangParam)];
+    if (osLangParam && collected.length === 0) {
+      restCalls.push(fetchOpenSubtitlesRest(effectiveType, restTargetId, ''));
+    }
+    const restResults = await Promise.allSettled(restCalls);
+    for (const r of restResults) {
+      if (r.status === 'fulfilled' && Array.isArray(r.value)) {
+        collected.push(...r.value);
+      }
+    }
+  }
+
+  // Deduplicate by URL (keeping highest _hashMatch / _downloads entry)
+  const dedupedMap = new Map();
+  for (const sub of collected) {
+    if (!sub || !sub.url) continue;
+    const existing = dedupedMap.get(sub.url);
+    if (!existing) {
+      dedupedMap.set(sub.url, sub);
+    } else if (sub._hashMatch && !existing._hashMatch) {
+      dedupedMap.set(sub.url, { ...sub, _downloads: Math.max(sub._downloads || 0, existing._downloads || 0) });
+    }
+  }
+
+  const sortedSubs = sortSubtitlesByPrefLang(Array.from(dedupedMap.values()), prefLang);
+  const safeIdPrefix = cleanId.replace(/[^a-zA-Z0-9_-]/g, '_');
+  const formatted = sortedSubs.map((sub, idx) => ({
+    id: `nk_sub_${safeIdPrefix}_${sub.lang || 'eng'}_${idx}`,
+    url: sub.url,
+    lang: sub.lang || 'eng'
+  }));
+
+  if (formatted.length > 0) {
+    setCache(cacheKey, formatted, 1800);
+  }
+  return formatted;
 }
 
 // HTTP Server Request Handler
@@ -6668,12 +7169,17 @@ export async function handleRequest(req, res) {
     }
 
     // 2.5 Subtitles: /subtitles/:type/:id/:extra?.json
-    const subMatch = pathname.match(/^\/subtitles\/(movie|series)\/([^\/]+)(?:\/(.+))?\.json$/);
+    const subMatch = rawRoutePath.match(/^\/subtitles\/(movie|series|channel)\/([^\/]+)(?:\/(.+))?\.json$/);
     if (subMatch) {
       STATS.subtitleRequests = (STATS.subtitleRequests || 0) + 1;
       persistStats();
-      const [, type, id, extraStr] = subMatch;
-      const subtitles = await handleSubtitles(type, id, extraStr);
+      const [, type, rawSubId, rawExtra] = subMatch;
+      let id = rawSubId;
+      try { id = decodeURIComponent(rawSubId); } catch (_) {}
+      let extraStr = rawExtra || '';
+      try { extraStr = decodeURIComponent(extraStr); } catch (_) {}
+      extraStr = extraStr.replace(/\//g, '&');
+      const subtitles = await handleSubtitles(type, id, extraStr, userConfig);
       res.setHeader('Cache-Control', 'public, max-age=1800');
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
       res.end(JSON.stringify({ subtitles }));
@@ -6961,6 +7467,8 @@ export async function handleRequest(req, res) {
     if (pathname === '/' || pathname === '/configure') {
       const initialUpstream = escapeHtml(userConfig.upstream || 'https://torrentio.strem.fun');
       const initialRegion = userConfig.region || 'GB';
+      const initialPrefLang = userConfig.prefLang || 'en';
+      const initialDubPref = userConfig.dubPref || 'dub_or_orig';
       const initialHideRisk = userConfig.hideRisk;
       const initialRealDebrid = escapeHtml(userConfig.realDebrid || '');
       const initialYoutubeSubs = escapeHtml(userConfig.youtubeSubs || '');
@@ -7603,6 +8111,40 @@ export async function handleRequest(req, res) {
           📍 Automatically configures your local <strong>Live TV & Guide</strong> channel lineup (including 2,200+ Free-TV / IPTV-Org channels with Multi-Server Failover) and regional BYOA streaming hubs.
         </div>
       </div>
+
+      <div class="input-group" style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.28); border-radius: 8px; padding: 14px; margin-top: 14px; margin-bottom: 14px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+          <label style="font-size: 13px; font-weight: 700; color: #6ee7b7; margin-bottom: 0;">🌍 Priority Language, Dubbing &amp; Best Stream Sorter</label>
+          <span style="font-size: 11px; color: #94a3b8; background: rgba(255,255,255,0.06); padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1);">Streams + Subtitles</span>
+        </div>
+        <label style="font-size: 12px; color: #cbd5e1; margin-top: 4px;">Preferred Audio &amp; Subtitle Language:</label>
+        <select id="pref-lang-select" style="margin-bottom: 10px;">
+          <option value="en" ${initialPrefLang === 'en' ? 'selected' : ''}>🇬🇧/🇺🇸 English (Default)</option>
+          <option value="es" ${initialPrefLang === 'es' ? 'selected' : ''}>🇪🇸/🇲🇽 Spanish / Español</option>
+          <option value="fr" ${initialPrefLang === 'fr' ? 'selected' : ''}>🇫🇷 French / Français</option>
+          <option value="de" ${initialPrefLang === 'de' ? 'selected' : ''}>🇩🇪 German / Deutsch</option>
+          <option value="it" ${initialPrefLang === 'it' ? 'selected' : ''}>🇮🇹 Italian / Italiano</option>
+          <option value="pt" ${initialPrefLang === 'pt' ? 'selected' : ''}>🇵🇹/🇧🇷 Portuguese / Português</option>
+          <option value="hi" ${initialPrefLang === 'hi' ? 'selected' : ''}>🇮🇳 Hindi / हिन्दी</option>
+          <option value="ja" ${initialPrefLang === 'ja' ? 'selected' : ''}>🇯🇵 Japanese / 日本語</option>
+          <option value="ko" ${initialPrefLang === 'ko' ? 'selected' : ''}>🇰🇷 Korean / 한국어</option>
+          <option value="ru" ${initialPrefLang === 'ru' ? 'selected' : ''}>🇷🇺 Russian / Русский</option>
+          <option value="nl" ${initialPrefLang === 'nl' ? 'selected' : ''}>🇳🇱 Dutch / Nederlands</option>
+          <option value="pl" ${initialPrefLang === 'pl' ? 'selected' : ''}>🇵🇱 Polish / Polski</option>
+          <option value="tr" ${initialPrefLang === 'tr' ? 'selected' : ''}>🇹🇷 Turkish / Türkçe</option>
+          <option value="ar" ${initialPrefLang === 'ar' ? 'selected' : ''}>🇸🇦 Arabic / العربية</option>
+          <option value="any" ${initialPrefLang === 'any' ? 'selected' : ''}>🌐 Any Language (Pure Speed &amp; Seeders Only)</option>
+        </select>
+        <label style="font-size: 12px; color: #cbd5e1;">Dubbing &amp; Audio Priority Mode:</label>
+        <select id="dub-pref-select">
+          <option value="dub_or_orig" ${initialDubPref === 'dub_or_orig' ? 'selected' : ''}>⚡ Smart Best Match: Preferred Language, Dubbed/Multi-Audio + Best Stream First</option>
+          <option value="dub_first" ${initialDubPref === 'dub_first' ? 'selected' : ''}>🎙️ Dubbed Priority: Put Dubbed &amp; Multi-Audio Streams in Preferred Language First</option>
+          <option value="sub_orig" ${initialDubPref === 'sub_orig' ? 'selected' : ''}>💬 Subbed / Original Audio Priority: Original Audio + Multi-Subs First</option>
+        </select>
+        <div style="font-size: 11px; color: #94a3b8; margin-top: 8px; line-height: 1.4;">
+          💬 Automatically ranks streams by your language &amp; dubbing preference + speed/quality, demotes mismatched foreign dub packs, and puts matching UTF-8 subtitles at the top for every movie, series, anime, DRM-Free classic &amp; YouTube video.
+        </div>
+      </div>
       <div class="input-group" style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 8px; padding: 14px; margin-top: 14px; margin-bottom: 16px;">
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
           <label style="font-size: 13px; font-weight: 700; color: #93c5fd; margin-bottom: 0;">⚡ Real-Debrid API Token</label>
@@ -7834,6 +8376,8 @@ export async function handleRequest(req, res) {
     function updateInstallLink() {
       const upstream = document.getElementById('upstream-input').value.trim() || 'https://torrentio.strem.fun';
       const region = document.getElementById('region-select').value;
+      const prefLang = document.getElementById('pref-lang-select') ? document.getElementById('pref-lang-select').value : 'en';
+      const dubPref = document.getElementById('dub-pref-select') ? document.getElementById('dub-pref-select').value : 'dub_or_orig';
       const hideRisk = document.getElementById('filter-buffer-risk').checked;
       const realDebrid = document.getElementById('rd-input') ? document.getElementById('rd-input').value.trim() : '';
       const youtubeSubs = document.getElementById('yt-subs-input') ? document.getElementById('yt-subs-input').value.trim() : '';
@@ -7841,13 +8385,13 @@ export async function handleRequest(req, res) {
       const twitchFollows = document.getElementById('twitch-follows-input') ? document.getElementById('twitch-follows-input').value.trim() : '';
       const twitchClientId = document.getElementById('twitch-clientid-input') ? document.getElementById('twitch-clientid-input').value.trim() : '';
 
-      const isDefault = upstream === 'https://torrentio.strem.fun' && region === 'GB' && !hideRisk && !realDebrid && !youtubeSubs && !youtubeApiKey && !twitchFollows && !twitchClientId;
+      const isDefault = upstream === 'https://torrentio.strem.fun' && region === 'GB' && prefLang === 'en' && dubPref === 'dub_or_orig' && !hideRisk && !realDebrid && !youtubeSubs && !youtubeApiKey && !twitchFollows && !twitchClientId;
       const host = window.location.host;
 
       let href = 'stremio://' + host + '/manifest.json';
       let webHref = window.location.protocol + '//' + host + '/manifest.json';
       if (!isDefault) {
-        const configObj = { region, hideRisk };
+        const configObj = { region, hideRisk, prefLang, dubPref };
         if (upstream !== 'https://torrentio.strem.fun') configObj.upstream = upstream;
         if (realDebrid) configObj.realDebrid = realDebrid;
         if (youtubeSubs) configObj.youtubeSubs = youtubeSubs;
@@ -7869,6 +8413,8 @@ export async function handleRequest(req, res) {
 
     document.getElementById('upstream-input').addEventListener('input', updateInstallLink);
     document.getElementById('region-select').addEventListener('change', updateInstallLink);
+    if (document.getElementById('pref-lang-select')) document.getElementById('pref-lang-select').addEventListener('change', updateInstallLink);
+    if (document.getElementById('dub-pref-select')) document.getElementById('dub-pref-select').addEventListener('change', updateInstallLink);
     document.getElementById('filter-buffer-risk').addEventListener('change', updateInstallLink);
     ['yt-subs-input', 'yt-apikey-input', 'twitch-follows-input', 'twitch-clientid-input'].forEach(function(id) {
       var el = document.getElementById(id);
