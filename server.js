@@ -2190,8 +2190,19 @@ function recordPopularItem(category, id, title, extraMeta = {}) {
 const RECENT_ACTIVITY = [];
 
 function recordClient(req, userConfig = DEFAULT_USER_CONFIG, pathname = '/') {
+  // Capture latest Cloudflare Edge metrics regardless of route
+  if (req.headers['x-cf-colo']) {
+    STATS.lastEdgeColo = String(req.headers['x-cf-colo']).toUpperCase();
+  }
+  if (req.headers['x-cf-edge-hits'] !== undefined) {
+    STATS.edgeCacheHits = Math.max(STATS.edgeCacheHits || 0, parseInt(req.headers['x-cf-edge-hits'], 10) || 0);
+  }
+  if (req.headers['x-cf-edge-misses'] !== undefined) {
+    STATS.edgeCacheMisses = Math.max(STATS.edgeCacheMisses || 0, parseInt(req.headers['x-cf-edge-misses'], 10) || 0);
+  }
+
   // 1. Ignore internal APIs, health checks, static assets, and favicon
-  if (pathname === '/api/stats' || pathname === '/api/health' || pathname === '/config' || pathname === '/info' || pathname === '/gradio_api/info' || pathname === '/startup-events' || pathname === '/icon.png' || pathname === '/background.png' || pathname === '/favicon.ico') {
+  if (pathname.startsWith('/_vercel') || pathname === '/api/stats' || pathname === '/api/health' || pathname === '/config' || pathname === '/info' || pathname === '/gradio_api/info' || pathname === '/startup-events' || pathname === '/icon.png' || pathname === '/background.png' || pathname === '/favicon.ico') {
     return;
   }
 
@@ -7298,7 +7309,7 @@ export async function handleRequest(req, res) {
   const segments = rawPathname.split('/').filter(Boolean);
   if (segments.length > 0) {
     const first = segments[0];
-    if (!['catalog', 'meta', 'stream', 'subtitles', 'manifest.json', 'icon.png', 'logo.png', 'background.png', 'bg.png', 'configure', 'api', 'config', 'info', 'gradio_api', 'startup-events'].includes(first)) {
+    if (!['catalog', 'meta', 'stream', 'subtitles', 'manifest.json', 'icon.png', 'logo.png', 'background.png', 'bg.png', 'configure', 'api', 'config', 'info', 'gradio_api', 'startup-events', '_vercel'].includes(first)) {
       configSegment = first;
       userConfig = decodeUserConfig(configSegment);
       pathname = '/' + segments.slice(1).join('/');
@@ -7314,6 +7325,27 @@ export async function handleRequest(req, res) {
 
   try {
     recordClient(req, userConfig, pathname);
+
+    // Drop legacy Vercel telemetry paths cleanly
+    if (pathname.startsWith('/_vercel')) {
+      res.writeHead(204);
+      res.end();
+      return;
+    }
+
+    // Fast-path telemetry ping for requests served straight from Cloudflare Edge Cache
+    if (req.headers['x-cf-edge-only'] === '1') {
+      if (pathname === '/manifest.json') STATS.manifestRequests++;
+      else if (pathname.startsWith('/stream/')) STATS.streamRequests++;
+      else if (pathname.startsWith('/subtitles/')) STATS.subtitleRequests = (STATS.subtitleRequests || 0) + 1;
+      else if (pathname.startsWith('/catalog/')) STATS.catalogRequests++;
+      else if (pathname.startsWith('/meta/')) STATS.metaRequests++;
+      STATS.estimatedInstalls = Math.max(STATS.estimatedInstalls, STATS.uniqueClients ? STATS.uniqueClients.size : 0);
+      persistStats();
+      res.writeHead(204);
+      res.end();
+      return;
+    }
 
     // Static files: /icon.png & /background.png
     if (pathname === '/icon.png' || pathname === '/logo.png') {
@@ -7442,6 +7474,17 @@ export async function handleRequest(req, res) {
         tvGuideRequests: STATS.tvGuideRequests || 0,
         drmFreeRequests: STATS.drmFreeRequests || 0,
         lastRequestAt: STATS.lastRequestAt,
+        cloudflareEdge: {
+          provider: 'Cloudflare Workers Global Edge',
+          colo: STATS.lastEdgeColo || req.headers['x-cf-colo'] || 'GLOBAL',
+          edgeCacheHits: STATS.edgeCacheHits || 0,
+          dynamicRequests: Math.max(1, STATS.totalRequests - (STATS.edgeCacheHits || 0)),
+          dailyFreeLimit: 100000,
+          dailyQuotaUsedPct: Number(((Math.max(1, STATS.totalRequests - (STATS.edgeCacheHits || 0)) / 100000) * 100).toFixed(2)),
+          cacheHitRatePct: STATS.totalRequests > 0
+            ? Math.round(((STATS.edgeCacheHits || 0) / STATS.totalRequests) * 100)
+            : 0
+        },
         filterEngine: 'Verified Stremio Clients Only (IP normalized; bots, crawlers, and static page hits excluded)',
         privacy: '100% Zero-Knowledge Anonymized (No personal tokens, IPs, or user histories stored)'
       }, null, 2));
@@ -7876,13 +7919,6 @@ export async function handleRequest(req, res) {
   <title>NightKnight Cinema — Stremio Addon</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" type="image/png" href="/icon.png">
-  <!-- Vercel Web Analytics & Speed Insights -->
-  <script>
-    window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
-    window.si = window.si || function () { (window.siq = window.siq || []).push(arguments); };
-  </script>
-  <script defer src="/_vercel/insights/script.js"></script>
-  <script defer src="/_vercel/speed-insights/script.js"></script>
   <style>
     body {
       background: #090d16 url('/background.png') no-repeat center center fixed;
@@ -8684,6 +8720,20 @@ export async function handleRequest(req, res) {
         </div>
       </div>
 
+      <div style="margin-top: 14px; background: rgba(249, 115, 22, 0.08); border: 1px solid rgba(249, 115, 22, 0.28); border-radius: 12px; padding: 12px 14px; text-align: left;">
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 8px;">
+          <span style="font-size: 12px; font-weight: 700; color: #fdba74; text-transform: uppercase; letter-spacing: 0.6px;">☁️ Cloudflare Global Edge &amp; Quota Shield</span>
+          <span style="font-size: 11px; color: #cbd5e1; background: rgba(15,23,42,0.7); padding: 2px 8px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.1);">Edge POP: <strong id="cf-colo" style="color: #38bdf8;">GLOBAL</strong></span>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #cbd5e1; gap: 12px; flex-wrap: wrap; margin-bottom: 8px;">
+          <span>⚡ Free Edge Cache Hits: <strong id="cf-cache-hits" style="color: #4ade80;">0</strong> <span style="color: #94a3b8;">(0 quota cost)</span></span>
+          <span>📊 Dynamic Quota Used: <strong id="cf-quota-text" style="color: #f8fafc;">0 / 100,000 (0%)</strong></span>
+        </div>
+        <div style="width: 100%; height: 6px; background: rgba(15, 23, 42, 0.8); border-radius: 999px; overflow: hidden;">
+          <div id="cf-quota-bar" style="width: 1%; height: 100%; background: linear-gradient(90deg, #f97316, #38bdf8); border-radius: 999px; transition: width 0.4s ease;"></div>
+        </div>
+      </div>
+
       <div style="margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.08);">
         <div class="stats-title" style="margin-bottom: 10px;">🌍 Global Audience by Country</div>
         <div id="country-breakdown-list" style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;">
@@ -8706,6 +8756,13 @@ export async function handleRequest(req, res) {
             <div style="font-size: 11px; font-weight: 700; color: #c084fc; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 6px;">📡 Top Live Channels</div>
             <div id="top-channels-list" style="font-size: 12px; color: #cbd5e1; line-height: 1.55;">Loading...</div>
           </div>
+        </div>
+      </div>
+
+      <div style="margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.08); text-align: left;">
+        <div class="stats-title" style="margin-bottom: 10px;">⚡ Live Global Stream &amp; Request Feed</div>
+        <div id="recent-activity-list" style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: #cbd5e1;">
+          <div style="color: #64748b; font-size: 12px;">Waiting for live traffic...</div>
         </div>
       </div>
     </div>
@@ -8899,6 +8956,32 @@ export async function handleRequest(req, res) {
           renderLeaderboard('top-movies-list', d.topMovies, 'No movie streams yet');
           renderLeaderboard('top-series-list', d.topSeries, 'No series streams yet');
           renderLeaderboard('top-channels-list', d.topChannels, 'No channel hits yet');
+
+          if (d.cloudflareEdge) {
+            var cf = d.cloudflareEdge;
+            var coloEl = document.getElementById('cf-colo');
+            var hitsEl = document.getElementById('cf-cache-hits');
+            var quotaEl = document.getElementById('cf-quota-text');
+            var barEl = document.getElementById('cf-quota-bar');
+            if (coloEl) coloEl.textContent = cf.colo || 'GLOBAL';
+            if (hitsEl) hitsEl.textContent = (cf.edgeCacheHits || 0).toLocaleString();
+            if (quotaEl) quotaEl.textContent = (cf.dynamicRequests || 0).toLocaleString() + ' / ' + (cf.dailyFreeLimit || 100000).toLocaleString() + ' (' + (cf.dailyQuotaUsedPct || 0) + '%)';
+            if (barEl) barEl.style.width = Math.min(100, Math.max(1, cf.dailyQuotaUsedPct || 0)) + '%';
+          }
+
+          var actEl = document.getElementById('recent-activity-list');
+          if (actEl) {
+            if (!d.recentActivity || d.recentActivity.length === 0) {
+              actEl.innerHTML = '<div style="color: #64748b; font-size: 12px;">Waiting for live traffic...</div>';
+            } else {
+              actEl.innerHTML = d.recentActivity.slice(0, 6).map(function(ev) {
+                return '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; background:rgba(15,23,42,0.55); border:1px solid rgba(255,255,255,0.06); border-radius:8px; padding:6px 10px;">' +
+                  '<span>' + escHtml(ev.flag || '🌐') + ' <strong>' + escHtml(ev.country || 'UNK') + '</strong> • <code style="color:#38bdf8;">/' + escHtml(ev.endpoint || 'root') + '</code></span>' +
+                  '<span style="color:#94a3b8; font-size:11px; white-space:nowrap;">' + escHtml(ev.tier || '') + ' • ' + timeAgo(ev.time) + '</span>' +
+                  '</div>';
+              }).join('');
+            }
+          }
         })
         .catch(() => {});
     }
