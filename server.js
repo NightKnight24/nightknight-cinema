@@ -2173,7 +2173,7 @@ const RECENT_ACTIVITY = [];
 
 function recordClient(req, userConfig = DEFAULT_USER_CONFIG, pathname = '/') {
   // 1. Ignore internal APIs, health checks, static assets, and favicon
-  if (pathname === '/api/stats' || pathname === '/api/health' || pathname === '/icon.png' || pathname === '/background.png' || pathname === '/favicon.ico') {
+  if (pathname === '/api/stats' || pathname === '/api/health' || pathname === '/config' || pathname === '/info' || pathname === '/gradio_api/info' || pathname === '/startup-events' || pathname === '/icon.png' || pathname === '/background.png' || pathname === '/favicon.ico') {
     return;
   }
 
@@ -7267,7 +7267,7 @@ export async function handleRequest(req, res) {
   const segments = rawPathname.split('/').filter(Boolean);
   if (segments.length > 0) {
     const first = segments[0];
-    if (!['catalog', 'meta', 'stream', 'subtitles', 'manifest.json', 'icon.png', 'logo.png', 'background.png', 'bg.png', 'configure', 'api'].includes(first)) {
+    if (!['catalog', 'meta', 'stream', 'subtitles', 'manifest.json', 'icon.png', 'logo.png', 'background.png', 'bg.png', 'configure', 'api', 'config', 'info', 'gradio_api', 'startup-events'].includes(first)) {
       configSegment = first;
       userConfig = decodeUserConfig(configSegment);
       pathname = '/' + segments.slice(1).join('/');
@@ -7323,6 +7323,23 @@ export async function handleRequest(req, res) {
         version: ADDON_VERSION,
         status: 'online',
         upstream: UPSTREAM_HEALTH
+      }));
+      return;
+    }
+
+    // Hugging Face Gradio Space readiness & health probes
+    if (pathname === '/config' || pathname === '/info' || pathname === '/gradio_api/info' || pathname === '/startup-events') {
+      res.setHeader('Cache-Control', 'no-store, max-age=0');
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.end(JSON.stringify({
+        version: '5.0.0',
+        mode: 'blocks',
+        app_id: 'nightknight-cinema',
+        dev_mode: false,
+        analytics_enabled: false,
+        components: [],
+        dependencies: [],
+        named_endpoints: {}
       }));
       return;
     }
@@ -7485,7 +7502,7 @@ export async function handleRequest(req, res) {
       STATS.manifestRequests++;
       STATS.estimatedInstalls = Math.max(STATS.estimatedInstalls, STATS.uniqueClients.size);
       persistStats();
-      res.setHeader('Cache-Control', 'public, max-age=3600');
+      res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=7200, stale-while-revalidate=86400');
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
       res.end(JSON.stringify(getManifest(baseUrl, userConfig, rootUrl)));
       return;
@@ -7503,7 +7520,7 @@ export async function handleRequest(req, res) {
       persistStats();
       const [, type, id] = streamMatch;
       const streams = await handleStream(type, id, userConfig);
-      res.setHeader('Cache-Control', 'public, max-age=600');
+      res.setHeader('Cache-Control', 'public, max-age=600, s-maxage=1200, stale-while-revalidate=3600');
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
       res.end(JSON.stringify({ streams }));
       return;
@@ -7521,7 +7538,7 @@ export async function handleRequest(req, res) {
       try { extraStr = decodeURIComponent(extraStr); } catch (_) {}
       extraStr = extraStr.replace(/\//g, '&');
       const subtitles = await handleSubtitles(type, id, extraStr, userConfig);
-      res.setHeader('Cache-Control', 'public, max-age=1800');
+      res.setHeader('Cache-Control', 'public, max-age=1800, s-maxage=7200, stale-while-revalidate=86400');
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
       res.end(JSON.stringify({ subtitles }));
       return;
@@ -7530,7 +7547,7 @@ export async function handleRequest(req, res) {
     // 3. Catalog: /catalog/:type/:id/:extra?.json
     const catalogMatch = rawRoutePath.match(/^\/catalog\/(movie|series|channel)\/([^\/]+)(?:\/(.+))?\.json$/);
     if (catalogMatch) {
-      res.setHeader('Cache-Control', 'public, max-age=1800');
+      res.setHeader('Cache-Control', 'public, max-age=1800, s-maxage=3600, stale-while-revalidate=86400');
       STATS.catalogRequests++;
       const [, type, rawCatalogId, extraRaw] = catalogMatch;
       const catalogId = decodeURIComponent(rawCatalogId);
@@ -7798,7 +7815,7 @@ export async function handleRequest(req, res) {
       persistStats();
       const [, type, id] = metaMatch;
       const meta = await handleMeta(type, id, userConfig);
-      res.setHeader('Cache-Control', 'public, max-age=1800');
+      res.setHeader('Cache-Control', 'public, max-age=1800, s-maxage=7200, stale-while-revalidate=86400');
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
       res.end(JSON.stringify({ meta }));
       return;

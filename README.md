@@ -1,3 +1,17 @@
+---
+title: NightKnight Cinema
+emoji: ⚔️
+colorFrom: blue
+colorTo: purple
+sdk: gradio
+sdk_version: 5.0.0
+app_file: app.py
+app_port: 7860
+pinned: true
+license: mit
+short_description: All-in-One Stremio Addon (4K/RD, 80+ Subs, 2200+ Live TV)
+---
+
 # ⚔️ NightKnight Cinema — Stremio Addon (v2.0.0)
 
 > **Created by NightKnight**  
