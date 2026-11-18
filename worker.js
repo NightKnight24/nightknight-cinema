@@ -51,12 +51,6 @@ export default {
         const cached = await edgeCache.match(cacheKey);
         if (cached) {
           edgeCacheHits++;
-          const pingPromise = handleFetch(withEdgeHeaders(request, colo, cfCountry, true)).catch(() => {});
-          if (ctx && typeof ctx.waitUntil === 'function') {
-            ctx.waitUntil(pingPromise);
-          } else {
-            await pingPromise;
-          }
           const hitRes = new Response(cached.body, cached);
           hitRes.headers.set('X-NightKnight-Cache', 'HIT');
           return hitRes;

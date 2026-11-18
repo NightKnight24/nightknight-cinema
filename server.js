@@ -6974,14 +6974,14 @@ async function handleStream(type, id, userConfig = DEFAULT_USER_CONFIG) {
       }
     }
 
-    const optimized = optimizeAndRankStreams(rawStreams, userConfig, type, id);
+    const optimized = optimizeAndRankStreams(rawStreams, userConfig, type, id).slice(0, 35);
     const resolvedSubs = await inlineSubPromise;
     const inlineSubsSlice = Array.isArray(resolvedSubs) && resolvedSubs.length > 0
-      ? resolvedSubs.slice(0, 30)
+      ? resolvedSubs.slice(0, 10)
       : null;
 
     const optimizedWithSubs = inlineSubsSlice
-      ? optimized.map(st => (st.url || st.infoHash || st.ytId) && !st.subtitles
+      ? optimized.map((st, idx) => (idx < 12 && (st.url || st.infoHash || st.ytId) && !st.subtitles)
           ? { ...st, subtitles: inlineSubsSlice }
           : st)
       : optimized;
