@@ -1,7 +1,10 @@
 name = "nightknight-cinema"
+account_id = "3e9def960d3d3a5e08b4081530781cf6"
 main = "worker.js"
 compatibility_date = "2025-09-23"
 compatibility_flags = ["nodejs_compat"]
+workers_dev = true
 
 [assets]
 directory = "./public"
+binding = "ASSETS"

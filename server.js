@@ -8,7 +8,9 @@ import crypto from 'node:crypto';
 import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 
-const __filename = fileURLToPath(import.meta.url);
+const __filename = (typeof import.meta !== 'undefined' && import.meta.url && import.meta.url.startsWith('file:'))
+  ? fileURLToPath(import.meta.url)
+  : '/app/server.js';
 const __dirname = path.dirname(__filename);
 const CONFIG_PATH = path.join(__dirname, 'config.json');
 
@@ -1969,7 +1971,11 @@ const IS_SERVERLESS = Boolean(
   process.env.VERCEL || process.env.NETLIFY || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.CF_PAGES
 );
 const STATS_PATH = IS_SERVERLESS ? '/tmp/stats.json' : path.join(__dirname, 'stats.json');
-const STATS_SALT = crypto.randomBytes(16).toString('hex');
+let statsSalt = '';
+function getStatsSalt() {
+  if (!statsSalt) statsSalt = crypto.randomBytes(16).toString('hex');
+  return statsSalt;
+}
 
 const COUNTRY_METADATA = {
   GB: { name: 'United Kingdom', flag: '🇬🇧' },
@@ -2106,7 +2112,16 @@ function loadStats() {
 }
 
 const STATS = loadStats();
-const SERVER_BOOT_TIME = Date.now();
+let serverBootTime = 0;
+function getServerBootTime() {
+  if (!serverBootTime) {
+    serverBootTime = Date.now();
+    if (!STATS.startedAt || STATS.startedAt.startsWith('1970')) {
+      STATS.startedAt = new Date(serverBootTime).toISOString();
+    }
+  }
+  return serverBootTime;
+}
 
 let saveStatsTimer = null;
 function persistStats() {
@@ -2189,8 +2204,9 @@ function recordClient(req, userConfig = DEFAULT_USER_CONFIG, pathname = '/') {
   }
 
   // 3. Normalize client identity strictly by IP hash so Stremio UI + Player + Internal server on one device count as 1 user
+  getServerBootTime();
   const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket?.remoteAddress || 'unknown';
-  const hash = crypto.createHash('sha256').update(ip + STATS_SALT).digest('hex').slice(0, 16);
+  const hash = crypto.createHash('sha256').update(ip + getStatsSalt()).digest('hex').slice(0, 16);
 
   if (!STATS.uniqueClients) STATS.uniqueClients = new Set();
   if (!STATS.rdClients) STATS.rdClients = new Set();
@@ -7395,7 +7411,7 @@ export async function handleRequest(req, res) {
         addon: 'NightKnight Cinema',
         version: ADDON_VERSION,
         status: 'online',
-        uptime: formatUptime(Date.now() - SERVER_BOOT_TIME),
+        uptime: formatUptime(Date.now() - getServerBootTime()),
         startedAt: STATS.startedAt,
         estimatedInstalls: Math.max(STATS.estimatedInstalls, totalActive),
         uniqueActiveClients: totalActive,
@@ -7447,7 +7463,7 @@ export async function handleRequest(req, res) {
         try {
           const clientIp = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket?.remoteAddress || 'unknown';
           const ua = req.headers['user-agent'] || 'unknown';
-          const clientHash = crypto.createHash('sha256').update(clientIp + ua + STATS_SALT).digest('hex').slice(0, 16);
+          const clientHash = crypto.createHash('sha256').update(clientIp + ua + getStatsSalt()).digest('hex').slice(0, 16);
 
           // Rate limit: max 5 comments per 10 minutes per client
           const now = Date.now();
