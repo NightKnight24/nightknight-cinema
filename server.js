@@ -2129,35 +2129,7 @@ function persistStats() {
   saveStatsTimer = setTimeout(() => {
     saveStatsTimer = null;
     try {
-      const payload = {
-        startedAt: STATS.startedAt,
-        totalRequests: STATS.totalRequests,
-        manifestRequests: STATS.manifestRequests,
-        catalogRequests: STATS.catalogRequests,
-        metaRequests: STATS.metaRequests,
-        streamRequests: STATS.streamRequests,
-        rdStreamRequests: STATS.rdStreamRequests || 0,
-        freeStreamRequests: STATS.freeStreamRequests || 0,
-        subtitleRequests: STATS.subtitleRequests || 0,
-        youtubeSearches: STATS.youtubeSearches,
-        twitchRequests: STATS.twitchRequests || 0,
-        tvGuideRequests: STATS.tvGuideRequests || 0,
-        drmFreeRequests: STATS.drmFreeRequests || 0,
-        estimatedInstalls: Math.max(STATS.estimatedInstalls, STATS.uniqueClients.size),
-        rdClientsCount: STATS.rdClients ? STATS.rdClients.size : 0,
-        freeClientsCount: STATS.freeClients ? STATS.freeClients.size : 0,
-        uniqueClientHashes: Array.from(STATS.uniqueClients).slice(-5000),
-        rdClientHashes: Array.from(STATS.rdClients || []).slice(-2000),
-        freeClientHashes: Array.from(STATS.freeClients || []).slice(-5000),
-        countryCounts: STATS.countryCounts || {},
-        clientCountries: STATS.clientCountries || {},
-        popularMovies: STATS.popularMovies || {},
-        popularSeries: STATS.popularSeries || {},
-        popularChannels: STATS.popularChannels || {},
-        lastRequestAt: STATS.lastRequestAt,
-        savedAt: new Date().toISOString()
-      };
-      fs.writeFileSync(STATS_PATH, JSON.stringify(payload, null, 2), 'utf-8');
+      fs.writeFileSync(STATS_PATH, JSON.stringify(exportStatsSnapshot(), null, 2), 'utf-8');
     } catch (e) {}
   }, 3000);
 }
@@ -2188,6 +2160,99 @@ function recordPopularItem(category, id, title, extraMeta = {}) {
 }
 
 const RECENT_ACTIVITY = [];
+
+/** Serialize live telemetry & leaderboards for file/Edge persistence. */
+function exportStatsSnapshot() {
+  return {
+    startedAt: STATS.startedAt,
+    totalRequests: STATS.totalRequests || 0,
+    manifestRequests: STATS.manifestRequests || 0,
+    catalogRequests: STATS.catalogRequests || 0,
+    metaRequests: STATS.metaRequests || 0,
+    streamRequests: STATS.streamRequests || 0,
+    rdStreamRequests: STATS.rdStreamRequests || 0,
+    freeStreamRequests: STATS.freeStreamRequests || 0,
+    subtitleRequests: STATS.subtitleRequests || 0,
+    youtubeSearches: STATS.youtubeSearches || 0,
+    twitchRequests: STATS.twitchRequests || 0,
+    tvGuideRequests: STATS.tvGuideRequests || 0,
+    drmFreeRequests: STATS.drmFreeRequests || 0,
+    estimatedInstalls: Math.max(STATS.estimatedInstalls || 0, STATS.uniqueClients ? STATS.uniqueClients.size : 0),
+    rdClientsCount: STATS.rdClients ? STATS.rdClients.size : 0,
+    freeClientsCount: STATS.freeClients ? STATS.freeClients.size : 0,
+    uniqueClientHashes: Array.from(STATS.uniqueClients || []).slice(-5000),
+    rdClientHashes: Array.from(STATS.rdClients || []).slice(-2000),
+    freeClientHashes: Array.from(STATS.freeClients || []).slice(-5000),
+    countryCounts: STATS.countryCounts || {},
+    clientCountries: STATS.clientCountries || {},
+    popularMovies: STATS.popularMovies || {},
+    popularSeries: STATS.popularSeries || {},
+    popularChannels: STATS.popularChannels || {},
+    lastRequestAt: STATS.lastRequestAt || null,
+    edgeCacheHits: STATS.edgeCacheHits || 0,
+    edgeCacheMisses: STATS.edgeCacheMisses || 0,
+    lastEdgeColo: STATS.lastEdgeColo || '',
+    recentActivity: RECENT_ACTIVITY.slice(0, 15),
+    savedAt: new Date().toISOString()
+  };
+}
+
+/** Merge a persisted telemetry snapshot into the active STATS store without regressing counts. */
+function importStatsSnapshot(data) {
+  if (!data || typeof data !== 'object') return;
+  const numericFields = [
+    'totalRequests', 'manifestRequests', 'catalogRequests', 'metaRequests',
+    'streamRequests', 'rdStreamRequests', 'freeStreamRequests', 'subtitleRequests',
+    'youtubeSearches', 'twitchRequests', 'tvGuideRequests', 'drmFreeRequests',
+    'estimatedInstalls', 'edgeCacheHits', 'edgeCacheMisses'
+  ];
+  for (const field of numericFields) {
+    if (typeof data[field] === 'number' && Number.isFinite(data[field])) {
+      STATS[field] = Math.max(STATS[field] || 0, data[field]);
+    }
+  }
+  if (typeof data.startedAt === 'string' && !data.startedAt.startsWith('1970')) {
+    if (!STATS.startedAt || STATS.startedAt.startsWith('1970') || data.startedAt < STATS.startedAt) {
+      STATS.startedAt = data.startedAt;
+    }
+  }
+  if (typeof data.lastRequestAt === 'string' && (!STATS.lastRequestAt || data.lastRequestAt > STATS.lastRequestAt)) {
+    STATS.lastRequestAt = data.lastRequestAt;
+  }
+  if (typeof data.lastEdgeColo === 'string' && !STATS.lastEdgeColo) {
+    STATS.lastEdgeColo = data.lastEdgeColo;
+  }
+  if (!STATS.uniqueClients) STATS.uniqueClients = new Set();
+  if (!STATS.rdClients) STATS.rdClients = new Set();
+  if (!STATS.freeClients) STATS.freeClients = new Set();
+  for (const h of (data.uniqueClientHashes || [])) STATS.uniqueClients.add(h);
+  for (const h of (data.rdClientHashes || [])) STATS.rdClients.add(h);
+  for (const h of (data.freeClientHashes || [])) STATS.freeClients.add(h);
+
+  if (data.countryCounts && typeof data.countryCounts === 'object') {
+    if (!STATS.countryCounts) STATS.countryCounts = {};
+    for (const [cc, count] of Object.entries(data.countryCounts)) {
+      STATS.countryCounts[cc] = Math.max(STATS.countryCounts[cc] || 0, Number(count) || 0);
+    }
+  }
+  if (data.clientCountries && typeof data.clientCountries === 'object') {
+    STATS.clientCountries = { ...data.clientCountries, ...(STATS.clientCountries || {}) };
+  }
+  for (const bucketKey of ['popularMovies', 'popularSeries', 'popularChannels']) {
+    if (data[bucketKey] && typeof data[bucketKey] === 'object') {
+      if (!STATS[bucketKey]) STATS[bucketKey] = {};
+      for (const [k, item] of Object.entries(data[bucketKey])) {
+        const cur = STATS[bucketKey][k];
+        if (!cur || (item && (item.count || 0) > (cur.count || 0))) {
+          STATS[bucketKey][k] = item;
+        }
+      }
+    }
+  }
+  if (RECENT_ACTIVITY.length === 0 && Array.isArray(data.recentActivity)) {
+    RECENT_ACTIVITY.push(...data.recentActivity.slice(0, 15));
+  }
+}
 
 function recordClient(req, userConfig = DEFAULT_USER_CONFIG, pathname = '/') {
   // Capture latest Cloudflare Edge metrics regardless of route
@@ -9202,5 +9267,5 @@ if (!IS_SERVERLESS && isMainModule) {
   });
 }
 
-export { REGIONAL_CHANNELS, DRM_FREE_MOVIES, optimizeAndRankStreams, getManifest, ADDON_VERSION, server, handleFetch };
+export { REGIONAL_CHANNELS, DRM_FREE_MOVIES, optimizeAndRankStreams, getManifest, ADDON_VERSION, server, handleFetch, exportStatsSnapshot, importStatsSnapshot };
 export default handleRequest;

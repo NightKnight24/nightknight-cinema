@@ -1,9 +1,12 @@
-import { handleFetch } from './server.js';
+import { handleFetch, exportStatsSnapshot, importStatsSnapshot } from './server.js';
 
+const STATE_CACHE_URL = 'https://nightknight-state.internal/stats-v2.json';
 let edgeCacheHits = 0;
 let edgeCacheMisses = 0;
+let stateHydrated = false;
+let lastStatePersistAt = 0;
 
-function withEdgeHeaders(request, colo, cfCountry, edgeOnly = false) {
+function withEdgeHeaders(request, colo, cfCountry) {
   const reqHeaders = new Headers(request.headers);
   reqHeaders.set('x-cf-colo', colo);
   reqHeaders.set('x-cf-edge-hits', String(edgeCacheHits));
@@ -11,14 +14,34 @@ function withEdgeHeaders(request, colo, cfCountry, edgeOnly = false) {
   if (cfCountry && !reqHeaders.has('cf-ipcountry')) {
     reqHeaders.set('cf-ipcountry', cfCountry);
   }
-  if (edgeOnly) {
-    reqHeaders.set('x-cf-edge-only', '1');
-  }
   const init = { method: request.method, headers: reqHeaders };
-  if (!edgeOnly && request.method !== 'GET' && request.method !== 'HEAD' && request.body) {
+  if (request.method !== 'GET' && request.method !== 'HEAD' && request.body) {
     init.body = request.body;
   }
   return new Request(request.url, init);
+}
+
+function persistStateToEdge(edgeCache, ctx) {
+  if (!edgeCache) return;
+  try {
+    lastStatePersistAt = Date.now();
+    const snap = {
+      ...exportStatsSnapshot(),
+      edgeCacheHits,
+      edgeCacheMisses
+    };
+    const stateRes = new Response(JSON.stringify(snap), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'public, max-age=2592000'
+      }
+    });
+    const putPromise = edgeCache.put(STATE_CACHE_URL, stateRes);
+    if (ctx && typeof ctx.waitUntil === 'function') {
+      ctx.waitUntil(putPromise);
+    }
+  } catch (_) {}
 }
 
 export default {
@@ -41,9 +64,24 @@ export default {
       }
     }
 
-    // 2. Check Cloudflare Edge Cache (caches.default) for cacheable Stremio JSON endpoints
-    const isCacheableGet = request.method === 'GET' && /\/(manifest\.json|catalog\/|meta\/|subtitles\/|stream\/)/.test(url.pathname);
     const edgeCache = (typeof caches !== 'undefined' && caches.default) ? caches.default : null;
+
+    // 2. Hydrate telemetry snapshot into fresh Worker isolates from persistent edge cache
+    if (!stateHydrated && edgeCache) {
+      stateHydrated = true;
+      try {
+        const savedRes = await edgeCache.match(STATE_CACHE_URL);
+        if (savedRes && savedRes.ok) {
+          const savedData = await savedRes.json();
+          importStatsSnapshot(savedData);
+          edgeCacheHits = Math.max(edgeCacheHits, Number(savedData?.edgeCacheHits) || 0);
+          edgeCacheMisses = Math.max(edgeCacheMisses, Number(savedData?.edgeCacheMisses) || 0);
+        }
+      } catch (_) {}
+    }
+
+    // 3. Check Cloudflare Edge Cache (caches.default) for cacheable Stremio JSON endpoints
+    const isCacheableGet = request.method === 'GET' && /\/(manifest\.json|catalog\/|meta\/|subtitles\/|stream\/)/.test(url.pathname);
     const cacheKey = isCacheableGet && edgeCache ? new Request(url.toString(), { method: 'GET' }) : null;
 
     if (cacheKey) {
@@ -51,6 +89,9 @@ export default {
         const cached = await edgeCache.match(cacheKey);
         if (cached) {
           edgeCacheHits++;
+          if (Date.now() - lastStatePersistAt > 5000) {
+            persistStateToEdge(edgeCache, ctx);
+          }
           const hitRes = new Response(cached.body, cached);
           hitRes.headers.set('X-NightKnight-Cache', 'HIT');
           return hitRes;
@@ -59,10 +100,10 @@ export default {
       edgeCacheMisses++;
     }
 
-    // 3. Dispatch to universal NightKnight Cinema handler with edge metadata headers
-    const response = await handleFetch(withEdgeHeaders(request, colo, cfCountry, false));
+    // 4. Dispatch to universal NightKnight Cinema handler with edge metadata headers
+    const response = await handleFetch(withEdgeHeaders(request, colo, cfCountry));
 
-    // 4. Populate Cloudflare Edge Cache on 200 public JSON responses
+    // 5. Populate Cloudflare Edge Cache on 200 public JSON responses & persist stats snapshot
     if (cacheKey && response && response.status === 200) {
       const cc = response.headers.get('cache-control') || '';
       if (cc.includes('public')) {
@@ -75,6 +116,10 @@ export default {
           }
         } catch (_) {}
       }
+    }
+
+    if (edgeCache && url.pathname !== '/api/stats' && (Date.now() - lastStatePersistAt > 3000 || url.pathname.includes('/stream/') || url.pathname.endsWith('/manifest.json'))) {
+      persistStateToEdge(edgeCache, ctx);
     }
 
     return response;
