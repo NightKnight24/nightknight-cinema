@@ -1965,7 +1965,10 @@ const UPSTREAM_HEALTH = { lastStatus: null, lastError: null, lastStreams: null, 
 // Tracks installs & request volume using SHA-256 salted hashes.
 // Zero raw IPs or personal info are ever logged or persisted.
 // -------------------------------------------------------------
-const STATS_PATH = process.env.VERCEL ? '/tmp/stats.json' : path.join(__dirname, 'stats.json');
+const IS_SERVERLESS = Boolean(
+  process.env.VERCEL || process.env.NETLIFY || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.CF_PAGES
+);
+const STATS_PATH = IS_SERVERLESS ? '/tmp/stats.json' : path.join(__dirname, 'stats.json');
 const STATS_SALT = crypto.randomBytes(16).toString('hex');
 
 const COUNTRY_METADATA = {
@@ -2249,6 +2252,16 @@ function formatUptime(ms) {
 
 // Helper to safely parse incoming JSON request bodies (max 32KB)
 function readJsonBody(req, maxBytes = 32768) {
+  if (typeof req._rawBody === 'string') {
+    if (Buffer.byteLength(req._rawBody, 'utf8') > maxBytes) {
+      return Promise.reject(new Error('Payload too large'));
+    }
+    try {
+      return Promise.resolve(req._rawBody ? JSON.parse(req._rawBody) : {});
+    } catch (e) {
+      return Promise.reject(new Error('Invalid JSON format'));
+    }
+  }
   return new Promise((resolve, reject) => {
     let body = '';
     let bytes = 0;
@@ -2276,7 +2289,7 @@ function readJsonBody(req, maxBytes = 32768) {
 // COMMUNITY FEEDBACK & COMMENTS ENGINE
 // Anonymized community discussion & suggestions system.
 // -------------------------------------------------------------
-const FEEDBACK_PATH = process.env.VERCEL ? '/tmp/feedback.json' : path.join(__dirname, 'feedback.json');
+const FEEDBACK_PATH = IS_SERVERLESS ? '/tmp/feedback.json' : path.join(__dirname, 'feedback.json');
 function loadFeedback() {
   try {
     if (fs.existsSync(FEEDBACK_PATH)) {
@@ -7243,8 +7256,10 @@ export async function handleRequest(req, res) {
     incomingPath = p.startsWith('/') ? p : '/' + p;
   }
 
-  // Strip Vercel /api/index.js internal routing prefix if present
-  if (incomingPath.startsWith('/api/index.js')) {
+  // Strip Vercel /api/index.js or Netlify /.netlify/functions/addon internal routing prefix if present
+  if (incomingPath.startsWith('/.netlify/functions/addon')) {
+    incomingPath = incomingPath.slice('/.netlify/functions/addon'.length) || '/';
+  } else if (incomingPath.startsWith('/api/index.js')) {
     incomingPath = incomingPath.slice('/api/index.js'.length) || '/';
   } else if (incomingPath.startsWith('/api') && !incomingPath.startsWith('/api/feedback') && !incomingPath.startsWith('/api/stats') && !incomingPath.startsWith('/api/health')) {
     incomingPath = incomingPath.slice('/api'.length) || '/';
@@ -8975,16 +8990,118 @@ export async function handleRequest(req, res) {
   }
 }
 
+// Universal Web Fetch adapter for Cloudflare Workers, Netlify Functions v2, etc.
+async function handleFetch(webRequest) {
+  const reqUrl = new URL(webRequest.url);
+  const headers = {};
+  webRequest.headers.forEach((value, key) => {
+    headers[key.toLowerCase()] = value;
+  });
+  if (!headers.host) headers.host = reqUrl.host;
+  if (!headers['x-forwarded-proto']) headers['x-forwarded-proto'] = reqUrl.protocol.replace(':', '');
+
+  let rawBody;
+  if (webRequest.method !== 'GET' && webRequest.method !== 'HEAD') {
+    try {
+      rawBody = await webRequest.text();
+    } catch (_) {
+      rawBody = '';
+    }
+  }
+
+  // Handle binary public assets directly in Web Fetch runtimes
+  const relPath = reqUrl.pathname.replace(/^\/\.netlify\/functions\/addon/, '') || '/';
+  const assetMatch = relPath.match(/(?:^|\/)(icon|logo|background|bg)\.png$/);
+  if (assetMatch && webRequest.method === 'GET') {
+    const fileName = (assetMatch[1] === 'icon' || assetMatch[1] === 'logo') ? 'icon.png' : 'background.png';
+    try {
+      const assetPath = path.join(__dirname, 'public', fileName);
+      if (fs.existsSync(assetPath)) {
+        const bytes = fs.readFileSync(assetPath);
+        return new Response(bytes, {
+          status: 200,
+          headers: {
+            'Content-Type': 'image/png',
+            'Cache-Control': 'public, max-age=86400',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+      }
+    } catch (_) {}
+  }
+
+  return new Promise((resolve) => {
+    let statusCode = 200;
+    const resHeaders = {};
+    const chunks = [];
+    let finished = false;
+
+    const req = {
+      method: webRequest.method || 'GET',
+      url: `${reqUrl.pathname}${reqUrl.search}`,
+      headers,
+      socket: { remoteAddress: headers['cf-connecting-ip'] || headers['x-nf-client-connection-ip'] || '0.0.0.0' },
+      _rawBody: rawBody,
+      on() {},
+      once() {}
+    };
+
+    const finish = (chunk) => {
+      if (finished) return;
+      finished = true;
+      if (chunk !== undefined && chunk !== null) {
+        chunks.push(typeof chunk === 'string' ? Buffer.from(chunk, 'utf8') : chunk);
+      }
+      const body = chunks.length === 0 ? null : Buffer.concat(chunks);
+      resolve(new Response(body, { status: statusCode, headers: resHeaders }));
+    };
+
+    const res = {
+      statusCode: 200,
+      setHeader(k, v) { resHeaders[String(k).toLowerCase()] = String(v); },
+      getHeader(k) { return resHeaders[String(k).toLowerCase()]; },
+      writeHead(code, hdrs) {
+        statusCode = code || 200;
+        if (hdrs && typeof hdrs === 'object') {
+          for (const [k, v] of Object.entries(hdrs)) {
+            resHeaders[String(k).toLowerCase()] = String(v);
+          }
+        }
+      },
+      write(chunk) {
+        if (chunk !== undefined && chunk !== null) {
+          chunks.push(typeof chunk === 'string' ? Buffer.from(chunk, 'utf8') : chunk);
+        }
+        return true;
+      },
+      end(chunk) { finish(chunk); },
+      on() {},
+      once() {},
+      emit() {},
+      removeListener() {}
+    };
+
+    Promise.resolve(handleRequest(req, res)).catch((err) => {
+      if (!finished) {
+        resolve(new Response(JSON.stringify({ error: err?.message || 'Internal Error' }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+        }));
+      }
+    });
+  });
+}
+
 const server = http.createServer(handleRequest);
 
-// Bind to port only when executed directly (not when imported by Vercel or tests)
+// Bind to port only when executed directly (not when imported by Vercel/Netlify/Workers or tests)
 const isMainModule = process.argv[1] && path.resolve(process.argv[1]) === __filename;
-if (!process.env.VERCEL && isMainModule) {
+if (!IS_SERVERLESS && isMainModule) {
   server.listen(PORT, HOST, () => {
     console.log(`🚀 NightKnight Cinema Addon (v${ADDON_VERSION}) running at http://${HOST}:${PORT}`);
     console.log(`👉 Stremio Install URL: stremio://${HOST}:${PORT}/manifest.json`);
   });
 }
 
-export { REGIONAL_CHANNELS, DRM_FREE_MOVIES, optimizeAndRankStreams, getManifest, ADDON_VERSION, server };
+export { REGIONAL_CHANNELS, DRM_FREE_MOVIES, optimizeAndRankStreams, getManifest, ADDON_VERSION, server, handleFetch };
 export default handleRequest;
