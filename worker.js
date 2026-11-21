@@ -14,6 +14,19 @@ function safeAtob(str) {
   }
 }
 
+function decodeEdgeConfig(configSegment) {
+  if (!configSegment) return {};
+  if (configSegment.startsWith('realdebrid=')) {
+    return { realDebrid: configSegment.slice('realdebrid='.length).trim() };
+  }
+  try {
+    const decoded = JSON.parse(safeAtob(configSegment));
+    return (decoded && typeof decoded === 'object') ? decoded : {};
+  } catch (_) {
+    return {};
+  }
+}
+
 // Canonicalize cache keys across all users to maximize Edge Cache hit rate and avoid Cloudflare limits
 function getCanonicalCacheUrl(requestUrl) {
   const url = new URL(requestUrl);
@@ -30,6 +43,12 @@ function getCanonicalCacheUrl(requestUrl) {
 
   const endpoint = pathSegments[0];
   if (!endpoint) return null;
+  const cfg = decodeEdgeConfig(configSegment);
+
+  // 0. Dynamic Signs SRT Extractor route
+  if (endpoint === 'api' && pathSegments[1] === 'sub-signs' && pathSegments[2]) {
+    return `https://nightknight-cache.internal/v2/api/sub-signs/${pathSegments[2]}`;
+  }
 
   // 1. Meta: 100% universal across all users worldwide
   if (endpoint === 'meta' && pathSegments.length >= 3) {
@@ -44,54 +63,45 @@ function getCanonicalCacheUrl(requestUrl) {
     const catId = pathSegments[2];
     const extra = pathSegments.slice(3).join('/');
     if (catId === 'regional_live_tv') {
-      let region = 'GB';
-      try {
-        const decoded = JSON.parse(safeAtob(configSegment));
-        if (decoded && decoded.region) region = String(decoded.region).toUpperCase();
-      } catch (_) {}
+      const region = cfg.region ? String(cfg.region).toUpperCase() : 'GB';
       return `https://nightknight-cache.internal/catalog/${type}/${catId}/${region}/${extra}`;
     }
     return `https://nightknight-cache.internal/catalog/${type}/${catId}/${extra}`;
   }
 
-  // 3. Subtitles: Partitioned by language preference
+  // 3. Subtitles: Partitioned by language preference and subtitle track mode
   if (endpoint === 'subtitles' && pathSegments.length >= 3) {
     const type = pathSegments[1];
     const id = pathSegments.slice(2).join('/');
-    let prefLang = 'en';
-    try {
-      const decoded = JSON.parse(safeAtob(configSegment));
-      if (decoded && decoded.prefLang) prefLang = String(decoded.prefLang).toLowerCase();
-    } catch (_) {}
-    return `https://nightknight-cache.internal/subtitles/${type}/${id}/${prefLang}`;
+    const prefLang = cfg.prefLang ? String(cfg.prefLang).toLowerCase() : 'en';
+    const subMode = cfg.subMode ? String(cfg.subMode).toLowerCase() : 'all';
+    return `https://nightknight-cache.internal/v2/subtitles/${type}/${id}/${prefLang}/${subMode}`;
   }
 
   // 4. Manifest: Partitioned by Real-Debrid flag and region
   if (endpoint === 'manifest.json') {
-    let hasRd = 'free';
-    let region = 'GB';
-    try {
-      const decoded = JSON.parse(safeAtob(configSegment));
-      if (decoded && decoded.realDebrid) hasRd = 'rd';
-      if (decoded && decoded.region) region = String(decoded.region).toUpperCase();
-    } catch (_) {}
+    const hasRd = cfg.realDebrid ? 'rd' : 'free';
+    const region = cfg.region ? String(cfg.region).toUpperCase() : 'GB';
     return `https://nightknight-cache.internal/manifest/${hasRd}/${region}.json`;
   }
 
-  // 5. Streams: Free P2P streams shared globally; Real-Debrid streams token-isolated
+  // 5. Streams: Free P2P streams shared by preference profile; Real-Debrid streams token-isolated
   if (endpoint === 'stream' && pathSegments.length >= 3) {
     const type = pathSegments[1];
     const id = pathSegments.slice(2).join('/');
     let rdKey = 'free';
-    let region = 'GB';
-    try {
-      const decoded = JSON.parse(safeAtob(configSegment));
-      if (decoded && decoded.realDebrid) {
-        rdKey = 'rd_' + String(decoded.realDebrid).slice(0, 8);
-      }
-      if (decoded && decoded.region) region = String(decoded.region).toUpperCase();
-    } catch (_) {}
-    return `https://nightknight-cache.internal/stream/${type}/${id}/${rdKey}/${region}`;
+    const rawTok = String(cfg.realDebrid || cfg.rdToken || cfg.debridToken || '').trim();
+    if (rawTok) {
+      rdKey = `rd_${rawTok.slice(0, 8)}_${rawTok.slice(-8)}`;
+    }
+    const region = cfg.region ? String(cfg.region).toUpperCase() : 'GB';
+    const prefLang = cfg.prefLang ? String(cfg.prefLang).toLowerCase() : 'en';
+    const dubPref = cfg.dubPref ? String(cfg.dubPref).toLowerCase() : 'dub_or_orig';
+    const maxQuality = cfg.maxQuality ? String(cfg.maxQuality).toLowerCase() : 'any';
+    const hideRisk = cfg.hideRisk ? '1' : '0';
+    const subMode = cfg.subMode ? String(cfg.subMode).toLowerCase() : 'all';
+    const upTag = cfg.upstream ? encodeURIComponent(String(cfg.upstream).slice(0, 48)) : 'def';
+    return `https://nightknight-cache.internal/v2/stream/${type}/${id}/${rdKey}/${region}/${prefLang}/${dubPref}/${maxQuality}/${hideRisk}/${subMode}/${upTag}`;
   }
 
   return url.toString();
@@ -172,7 +182,7 @@ export default {
     }
 
     // 3. Check Cloudflare Edge Cache (caches.default) using canonicalized multi-user cache keys
-    const isCacheableGet = request.method === 'GET' && /\/(manifest\.json|catalog\/|meta\/|subtitles\/|stream\/)/.test(url.pathname);
+    const isCacheableGet = request.method === 'GET' && /\/(manifest\.json|catalog\/|meta\/|subtitles\/|stream\/|api\/sub-signs\/)/.test(url.pathname);
     const canonicalCacheUrl = isCacheableGet ? getCanonicalCacheUrl(request.url) : null;
     const cacheKey = canonicalCacheUrl && edgeCache ? new Request(canonicalCacheUrl, { method: 'GET' }) : null;
 

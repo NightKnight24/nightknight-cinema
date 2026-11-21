@@ -1868,6 +1868,7 @@ function isSafeUpstream(u) {
 const SUPPORTED_PREF_LANGS = ['en', 'es', 'fr', 'de', 'it', 'pt', 'hi', 'ja', 'ko', 'ru', 'nl', 'pl', 'tr', 'ar', 'any'];
 const SUPPORTED_DUB_PREFS = ['dub_or_orig', 'dub_first', 'sub_orig'];
 const SUPPORTED_MAX_QUALITIES = ['any', '1080p', '4k_only'];
+const SUPPORTED_SUB_MODES = ['all', 'signs_only'];
 
 const DEFAULT_USER_CONFIG = {
   upstream: normalizeUpstream(APP_CONFIG.upstreamScraper) || 'https://torrentio.strem.fun',
@@ -1880,7 +1881,8 @@ const DEFAULT_USER_CONFIG = {
   twitchClientId: '',
   prefLang: 'en',
   dubPref: 'dub_or_orig',
-  maxQuality: 'any'
+  maxQuality: 'any',
+  subMode: 'all'
 };
 
 function decodeUserConfig(segment) {
@@ -1917,6 +1919,10 @@ function decodeUserConfig(segment) {
       if (typeof json.maxQuality === 'string') {
         const cleanQual = json.maxQuality.trim().toLowerCase();
         if (SUPPORTED_MAX_QUALITIES.includes(cleanQual)) cfg.maxQuality = cleanQual;
+      }
+      if (typeof json.subMode === 'string') {
+        const cleanSubMode = json.subMode.trim().toLowerCase();
+        if (SUPPORTED_SUB_MODES.includes(cleanSubMode)) cfg.subMode = cleanSubMode;
       }
       const rawRd = json.realDebrid || json.rdToken || json.debridToken || '';
       if (typeof rawRd === 'string') {
@@ -6480,15 +6486,16 @@ function optimizeAndRankStreams(rawStreams, userConfig = DEFAULT_USER_CONFIG, ty
 
   const parsed = [];
   for (const s of rawStreams) {
-    const title = s.title || '';
+    const title = s.title || s.description || '';
     const name = s.name || '';
     const filename = s.behaviorHints?.filename || '';
     const fullStreamText = `${title} ${name} ${filename}`;
 
-    // Check for Debrid & Usenet Cached Streams (Real-Debrid, AllDebrid, TorBox, Premiumize, EasyDebrid, Debrid-Link, Offcloud, Usenet)
+    // Check for Debrid & Usenet Streams (Instant Cached [RD+] / [RD⚡] / ⚡️ [RD] vs Uncached [RD download])
     let debridProvider = '';
     const combinedText = `${name} ${title}`;
-    const debridMatch = combinedText.match(/\[(RD|AD|TB|PM|ED|DL|OC|PP|PIO|NZB|USENET)\+?\]/i);
+    const debridMatch = combinedText.match(/\[(RD|AD|TB|PM|ED|DL|OC|PP|PIO|NZB|USENET)(?:\+|⚡|⬇|\s+download)?\]/i)
+      || combinedText.match(/⚡\uFE0F?\s*\[(RD|AD|TB|PM|ED|DL|OC|PP|PIO)\]/i);
     if (debridMatch) {
       const code = debridMatch[1].toUpperCase();
       const codeMap = {
@@ -6510,6 +6517,9 @@ function optimizeAndRankStreams(rawStreams, userConfig = DEFAULT_USER_CONFIG, ty
       debridProvider = wordMatch[1];
     }
     const isDebrid = Boolean(debridProvider);
+    const isDebridCached = isDebrid
+      && /\[(RD|AD|TB|PM|ED|DL|OC|PP|PIO)\+\]|\[(RD|AD|TB|PM|ED|DL|OC|PP|PIO)\s*⚡\]|⚡\uFE0F?\s*\[(RD|AD|TB|PM|ED|DL|OC|PP|PIO)\]/i.test(combinedText)
+      && !/download|⬇|⏳/i.test(combinedText);
     const isDirectHttp = Boolean(s.url && /^https?:\/\//i.test(s.url) && !s.infoHash);
 
     // Parse Seeders (supports 👤 emoji or text Seeds:/Seeders:)
@@ -6517,12 +6527,16 @@ function optimizeAndRankStreams(rawStreams, userConfig = DEFAULT_USER_CONFIG, ty
     const hasSeederInfo = Boolean(seedMatch);
     const seeders = seedMatch ? parseInt(seedMatch[1], 10) : 0;
 
-    // Parse File Size in GB
-    const sizeMatch = title.match(/💾\s*([\d\.]+)\s*(GB|MB)/i) || title.match(/\b([\d\.]+)\s*(GB|MB)\b/i);
+    // Parse File Size in GB (💾, 📦, or behaviorHints.videoSize fallback)
+    const sizeMatch = title.match(/💾\s*([\d\.]+)\s*(GB|MB)/i)
+      || title.match(/📦\s*([\d\.]+)\s*(GB|MB)/i)
+      || title.match(/\b([\d\.]+)\s*(GB|MB)\b/i);
     let sizeGB = 0;
     if (sizeMatch) {
       const val = parseFloat(sizeMatch[1]);
       sizeGB = sizeMatch[2].toUpperCase() === 'MB' ? val / 1024 : val;
+    } else if (s.behaviorHints?.videoSize) {
+      sizeGB = Number(s.behaviorHints.videoSize) / (1024 ** 3);
     }
 
     // Quality & Codec Detection
@@ -6571,12 +6585,20 @@ function optimizeAndRankStreams(rawStreams, userConfig = DEFAULT_USER_CONFIG, ty
     let isDead = false;
     let isBufferRisk = false;
 
-    if (isDebrid) {
-      speedScore = 100000 + qualBonus - (sizeGB * 0.1) + langScoreDelta + camPenalty;
-      speedBadge = isCamOrScreener ? '⚠️ [CAM • INSTANT CDN]' : '🚀 [INSTANT CDN • 0 BUFFER]';
+    if (isDebrid && isDebridCached) {
+      speedScore = 200000 + qualBonus - (sizeGB * 0.1) + langScoreDelta + camPenalty;
+      speedBadge = isCamOrScreener
+        ? '⚠️ [CAM • INSTANT CDN]'
+        : (debridProvider === 'Real-Debrid' ? '🚀 [RD+ INSTANT • 0 BUFFER]' : '🚀 [INSTANT CDN • 0 BUFFER]');
       recommendation = isCamOrScreener
         ? 'Theater recording (CAM/TS) — lower visual & audio quality'
-        : `⚡ ${debridProvider} High-Speed Cloud Stream`;
+        : `⚡ ${debridProvider} Instant Cached Cloud Stream`;
+    } else if (isDebrid) {
+      speedScore = 95000 + qualBonus - (sizeGB * 0.1) + langScoreDelta + camPenalty;
+      speedBadge = isCamOrScreener ? '⚠️ [CAM • RD CLOUD]' : '☁️ [RD CLOUD DOWNLOAD]';
+      recommendation = isCamOrScreener
+        ? 'Theater recording (CAM/TS) — lower visual & audio quality'
+        : `⚡ ${debridProvider} Cloud Cache Download`;
     } else if (isDirectHttp) {
       speedScore = 80000 + qualBonus - (sizeGB * 0.1) + langScoreDelta + camPenalty;
       speedBadge = isCamOrScreener ? '⚠️ [CAM • DIRECT HTTP]' : '🌐 [DIRECT HTTP • INSTANT]';
@@ -6629,7 +6651,14 @@ function optimizeAndRankStreams(rawStreams, userConfig = DEFAULT_USER_CONFIG, ty
     }
 
     const qualityLabel = [quality, isDv ? 'DV' : '', isHdr && !isDv ? 'HDR' : ''].filter(Boolean).join(' ');
-    const cleanAddonName = (s.name || '').replace(/^Torrentio\n?/i, '').replace(/^\[[^\]]+\]\s*/, '').trim() || qualityLabel || 'Stream';
+    const sourceTag = s._sourceScraper || '';
+    let cleanAddonName = (s.name || '')
+      .replace(/^(?:⚡️?|⚡)\s*/u, '')
+      .replace(/\[[^\]]+\]\s*/g, '')
+      .replace(/\b(?:Torrentio|Comet|StremThru\s*Torz|Torz|TorrentsDB|Jackettio|Peerflix)\b\s*\|?\s*/gi, '')
+      .replace(/\s*\n\s*/g, ' ')
+      .trim() || qualityLabel || 'Stream';
+    const sourceSuffix = (sourceTag && !cleanAddonName.toLowerCase().includes(sourceTag.toLowerCase())) ? ` • ${sourceTag}` : '';
 
     // BehaviorHints & BingeGroup for seamless Next Episode / Outro transition
     const isSeries = type === 'series' || (typeof id === 'string' && id.split(':').length >= 3);
@@ -6651,14 +6680,16 @@ function optimizeAndRankStreams(rawStreams, userConfig = DEFAULT_USER_CONFIG, ty
       ...(bingeGroup ? { bingeGroup } : {})
     };
 
+    const { description: _dropDesc, _sourceScraper: _dropScraper, ...restStream } = s;
+
     parsed.push({
-      ...s,
+      ...restStream,
       behaviorHints,
       _speedScore: speedScore,
       _seeders: seeders,
       _isDead: isDead,
       _isBufferRisk: isBufferRisk,
-      name: `${speedBadge}\n${cleanAddonName} • ${langBadge}${cinemaTag}`,
+      name: `${speedBadge}\n${cleanAddonName}${sourceSuffix} • ${langBadge}${cinemaTag}`,
       title: `${title}${title ? '\n' : ''}🗣️ Audio & Subs: ${langBadge}\n🎬 Cinema Format: ${cinemaHighlights.join(' | ') || 'Standard Digital'}\n🛡️ NightKnight Buffer Shield: ${recommendation}`
     });
   }
@@ -6675,8 +6706,63 @@ function optimizeAndRankStreams(rawStreams, userConfig = DEFAULT_USER_CONFIG, ty
   return activeStreams.map(({ _speedScore, _seeders, _isDead, _isBufferRisk, ...clean }) => clean);
 }
 
+function encodeBase64Json(obj) {
+  return Buffer.from(JSON.stringify(obj), 'utf-8').toString('base64');
+}
+
+function isPlaceholderStream(s) {
+  if (!s || (!s.url && !s.infoHash)) return true;
+  const nm = String(s.name || '');
+  if (/⛔|não autenticado|donation needed|donate to|invalid api|invalid.*key|not authenticated/i.test(nm)) return true;
+  return false;
+}
+
+function extractStreamDedupeKey(s) {
+  if (s.infoHash && /^[a-f0-9]{40}$/i.test(String(s.infoHash).trim())) {
+    return `hash:${String(s.infoHash).trim().toLowerCase()}:${s.fileIdx ?? ''}`;
+  }
+  const bg = String(s.behaviorHints?.bingeGroup || '');
+  const bgHash = bg.match(/\b([a-f0-9]{40})\b/i);
+  if (bgHash) return `hash:${bgHash[1].toLowerCase()}:${s.fileIdx ?? ''}`;
+  const urlHash = String(s.url || '').match(/([a-f0-9]{40})/i);
+  if (urlHash) return `hash:${urlHash[1].toLowerCase()}`;
+  const fn = String(s.behaviorHints?.filename || '').trim().toLowerCase();
+  if (fn) return `file:${fn}`;
+  return `raw:${String(s.url || s.title || s.description || '').trim().toLowerCase()}`;
+}
+
+function isCachedRdEntry(s) {
+  const txt = `${s.name || ''} ${s.title || ''} ${s.description || ''}`;
+  return /\[(RD|AD|TB|PM|ED|DL|OC|PP|PIO)\+\]|\[(RD|AD|TB|PM|ED|DL|OC|PP|PIO)\s*⚡\]|⚡\uFE0F?\s*\[(RD|AD|TB|PM|ED|DL|OC|PP|PIO)\]/i.test(txt)
+    && !/download|⬇|⏳/i.test(txt);
+}
+
+function extractSeederCount(s) {
+  const txt = `${s.title || ''} ${s.description || ''}`;
+  const m = txt.match(/👤\s*(\d+)/) || txt.match(/\b(?:seeds?|seeders?)\s*[:=]\s*(\d+)/i);
+  return m ? parseInt(m[1], 10) : 0;
+}
+
+async function fetchScraperStreams(label, url, timeoutMs = 5200) {
+  try {
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'Stremio/4.4.168' },
+      signal: AbortSignal.timeout(timeoutMs)
+    });
+    if (!res.ok) {
+      return { label, status: res.status, ok: false, streams: [], error: `HTTP ${res.status}` };
+    }
+    const data = await res.json();
+    const list = Array.isArray(data?.streams) ? data.streams : [];
+    const tagged = list.map(st => ({ ...st, _sourceScraper: label }));
+    return { label, status: res.status, ok: true, streams: tagged, error: null };
+  } catch (e) {
+    return { label, status: 0, ok: false, streams: [], error: e.message || 'Fetch error' };
+  }
+}
+
 // Handle Streams Request
-async function handleStream(type, id, userConfig = DEFAULT_USER_CONFIG) {
+async function handleStream(type, id, userConfig = DEFAULT_USER_CONFIG, rootUrl = '') {
   if (id.startsWith('tv:')) {
     STATS.tvGuideRequests = (STATS.tvGuideRequests || 0) + 1;
     STATS.drmFreeRequests = (STATS.drmFreeRequests || 0) + 1;
@@ -6886,8 +6972,10 @@ async function handleStream(type, id, userConfig = DEFAULT_USER_CONFIG) {
   const region = userConfig.region || 'GB';
   const prefLang = userConfig.prefLang || 'en';
   const dubPref = userConfig.dubPref || 'dub_or_orig';
+  const maxQuality = userConfig.maxQuality || 'any';
+  const subMode = userConfig.subMode || 'all';
   const rdKey = userConfig.realDebrid ? crypto.createHash('sha256').update(userConfig.realDebrid).digest('hex').slice(0, 12) : 'none';
-  const cacheKey = `stream:${type}:${id}:${region}:${userConfig.upstream}:${userConfig.hideRisk}:${rdKey}:${prefLang}:${dubPref}`;
+  const cacheKey = `stream:${type}:${id}:${region}:${userConfig.upstream}:${userConfig.hideRisk}:${rdKey}:${prefLang}:${dubPref}:${maxQuality}:${subMode}`;
   const baseLookupId = id.startsWith('tt') ? id.split(':')[0] : (id.startsWith('tmdb:') ? `tmdb:${id.replace('tmdb:', '').split(':')[0]}` : id);
   const cachedTitleInfo = ID_TITLE_CACHE.get(baseLookupId);
   const cached = getCache(cacheKey);
@@ -6964,79 +7052,161 @@ async function handleStream(type, id, userConfig = DEFAULT_USER_CONFIG) {
       }
     }
 
-    const upstreamUrl = `${scraperBase}/stream/${type}/${imdbTarget}.json`;
     const inlineSubPromise = Promise.race([
-      handleSubtitles(type, imdbTarget, '', userConfig).catch(() => []),
-      new Promise(resolve => setTimeout(() => resolve([]), 2500))
+      handleSubtitles(type, imdbTarget, '', userConfig, rootUrl).catch(() => []),
+      new Promise(resolve => setTimeout(() => resolve([]), 2800))
     ]);
 
-    let rawStreams = [];
-    try {
-      const res = await fetch(upstreamUrl, {
-        headers: { 'User-Agent': 'Stremio/4.4.168' },
-        signal: AbortSignal.timeout(6500)
+    const dedupedMap = new Map();
+    const scraperTargets = [];
+
+    if (activeRdToken) {
+      // Real-Debrid Cloud Multi-Indexer Mode (NEVER fall back to raw P2P infoHashes)
+      const primaryUrl = `${scraperBase}/stream/${type}/${imdbTarget}.json`;
+      scraperTargets.push(fetchScraperStreams('Torrentio RD', primaryUrl, 4500));
+
+      const stRdB64 = encodeBase64Json({ stores: [{ c: 'rd', t: activeRdToken }] });
+      scraperTargets.push(fetchScraperStreams(
+        'StremThru Torz RD',
+        `https://stremthru.elfhosted.com/stremio/torz/${stRdB64}/stream/${type}/${imdbTarget}.json`,
+        5500
+      ));
+
+      const cometRdB64 = encodeBase64Json({
+        maxResultsPerResolution: 5,
+        maxSize: 0,
+        cachedOnly: false,
+        removeTrash: true,
+        resultFormat: ['all'],
+        debridService: 'realdebrid',
+        debridApiKey: activeRdToken,
+        debridStreamProxyPassword: '',
+        languages: { required: [], exclude: [], preferred: [prefLang === 'any' ? 'en' : prefLang] },
+        resolutions: {},
+        options: { remove_ranks_under: -10000000000, allow_english_in_languages: false, remove_unknown_languages: false }
       });
-      UPSTREAM_HEALTH.lastStatus = res.status;
-      UPSTREAM_HEALTH.at = new Date().toISOString();
-      if (res.ok) {
-        const data = await res.json();
-        rawStreams = data.streams || [];
-        UPSTREAM_HEALTH.lastStreams = rawStreams.length;
-        UPSTREAM_HEALTH.lastError = null;
-      } else {
-        UPSTREAM_HEALTH.lastError = `HTTP ${res.status}`;
-      }
-    } catch (e) {
-      UPSTREAM_HEALTH.lastError = e.message;
-      UPSTREAM_HEALTH.at = new Date().toISOString();
+      scraperTargets.push(fetchScraperStreams(
+        'Comet RD',
+        `https://comet.elfhosted.com/${cometRdB64}/stream/${type}/${imdbTarget}.json`,
+        5500
+      ));
+
+      const tdbRdB64 = encodeBase64Json({ realdebrid: activeRdToken });
+      scraperTargets.push(fetchScraperStreams(
+        'TorrentsDB RD',
+        `https://torrentsdb.com/${tdbRdB64}/stream/${type}/${imdbTarget}.json`,
+        5500
+      ));
+
+      const jackettioRdB64 = encodeBase64Json({
+        maxTorrents: 8,
+        priotizePackQuality: true,
+        excludeKeywords: [],
+        debridId: 'realdebrid',
+        debridApiKey: activeRdToken,
+        hideUncached: false,
+        sortCached: [['quality', true], ['size', true]],
+        sortUncached: [['seeders', true]],
+        forceCacheNextEpisode: false,
+        priotizeLanguages: ['english'],
+        indexerTimeoutSec: 5,
+        metaLanguage: '',
+        enableMediaFlow: false,
+        qualities: [0, 720, 1080, 2160]
+      });
+      scraperTargets.push(fetchScraperStreams(
+        'Jackettio RD',
+        `https://jackettio.elfhosted.com/${jackettioRdB64}/stream/${type}/${imdbTarget}.json`,
+        5500
+      ));
+    } else {
+      // Free Tokenless P2P Multi-Indexer Mode (No tokens or Real-Debrid required)
+      scraperTargets.push(fetchScraperStreams(
+        'Torrentio',
+        `${scraperBase}/stream/${type}/${imdbTarget}.json`,
+        5200
+      ));
+
+      const stP2pB64 = encodeBase64Json({ stores: [{ c: 'p2p', t: '' }] });
+      scraperTargets.push(fetchScraperStreams(
+        'StremThru Torz',
+        `https://stremthru.elfhosted.com/stremio/torz/${stP2pB64}/stream/${type}/${imdbTarget}.json`,
+        5200
+      ));
+
+      scraperTargets.push(fetchScraperStreams(
+        'TorrentsDB',
+        `https://torrentsdb.com/stream/${type}/${imdbTarget}.json`,
+        5200
+      ));
+
+      scraperTargets.push(fetchScraperStreams(
+        'Peerflix',
+        `https://peerflix.mov/stream/${type}/${imdbTarget}.json`,
+        5200
+      ));
     }
 
-    // Fallback safeguard: If Real-Debrid returned 0 streams, query public Torrentio so user is never stranded
-    if (rawStreams.length === 0 && activeRdToken && scraperBase.includes('realdebrid=')) {
-      try {
-        const fbUrl = `https://torrentio.strem.fun/stream/${type}/${imdbTarget}.json`;
-        const fbRes = await fetch(fbUrl, {
-          headers: { 'User-Agent': 'Stremio/4.4.168' },
-          signal: AbortSignal.timeout(4500)
-        });
-        if (fbRes.ok) {
-          const fbData = await fbRes.json();
-          if (Array.isArray(fbData.streams) && fbData.streams.length > 0) {
-            rawStreams = fbData.streams;
-          }
+    const settledScrapers = await Promise.allSettled(scraperTargets);
+    let firstErrorStatus = null;
+    let firstErrorMsg = null;
+
+    for (const item of settledScrapers) {
+      if (item.status !== 'fulfilled' || !item.value) continue;
+      const resObj = item.value;
+      if (!resObj.ok) {
+        if (firstErrorStatus === null && resObj.status > 0) {
+          firstErrorStatus = resObj.status;
+          firstErrorMsg = `${resObj.label}: ${resObj.error}`;
         }
-      } catch (fbErr) {
-        // Fallback network failure -> proceed
+        continue;
       }
-    }
 
-    // Multi-Indexer Stream Failover & Aggregation (v2.0):
-    // If primary upstream returned < 3 streams (e.g. rate-limited or rare title), aggregate from secondary indexer
-    if (rawStreams.length < 3 && !scraperBase.includes('thepiratebay-plus')) {
-      try {
-        const secUrl = `https://thepiratebay-plus.strem.fun/stream/${type}/${imdbTarget}.json`;
-        const secRes = await fetch(secUrl, {
-          headers: { 'User-Agent': 'Stremio/4.4.168' },
-          signal: AbortSignal.timeout(4500)
-        });
-        if (secRes.ok) {
-          const secData = await secRes.json();
-          if (Array.isArray(secData.streams) && secData.streams.length > 0) {
-            const seenKeys = new Set(
-              rawStreams.map(s => (s.infoHash || s.url || s.title || '').toString().toLowerCase()).filter(Boolean)
-            );
-            for (const secStream of secData.streams) {
-              const dedupeKey = (secStream.infoHash || secStream.url || secStream.title || '').toString().toLowerCase();
-              if (!dedupeKey || !seenKeys.has(dedupeKey)) {
-                if (dedupeKey) seenKeys.add(dedupeKey);
-                rawStreams.push(secStream);
-              }
+      for (const st of resObj.streams) {
+        if (isPlaceholderStream(st)) continue;
+
+        if (activeRdToken) {
+          // Strict Real-Debrid guarantee: only HTTPS resolved debrid URLs, never P2P infoHashes
+          if (!st.url || !/^https?:\/\//i.test(st.url) || st.infoHash) continue;
+          const dKey = extractStreamDedupeKey(st);
+          const existing = dedupedMap.get(dKey);
+          if (!existing) {
+            dedupedMap.set(dKey, st);
+          } else {
+            const newCached = isCachedRdEntry(st);
+            const oldCached = isCachedRdEntry(existing);
+            if ((newCached && !oldCached) || (newCached === oldCached && st.behaviorHints?.filename && !existing.behaviorHints?.filename)) {
+              dedupedMap.set(dKey, st);
+            }
+          }
+        } else {
+          // Free tokenless mode: accept P2P infoHash or direct free HTTPS streams
+          if (!st.infoHash && (!st.url || !/^https?:\/\//i.test(st.url))) continue;
+          const dKey = extractStreamDedupeKey(st);
+          const existing = dedupedMap.get(dKey);
+          if (!existing) {
+            dedupedMap.set(dKey, st);
+          } else {
+            const newSeeds = extractSeederCount(st);
+            const oldSeeds = extractSeederCount(existing);
+            if (newSeeds > oldSeeds || (newSeeds === oldSeeds && st.behaviorHints?.filename && !existing.behaviorHints?.filename)) {
+              dedupedMap.set(dKey, st);
             }
           }
         }
-      } catch (_) {
-        // Secondary indexer unreachable -> proceed gracefully
       }
+    }
+
+    const rawStreams = Array.from(dedupedMap.values());
+    UPSTREAM_HEALTH.at = new Date().toISOString();
+    if (rawStreams.length > 0) {
+      UPSTREAM_HEALTH.lastStatus = 200;
+      UPSTREAM_HEALTH.lastStreams = rawStreams.length;
+      UPSTREAM_HEALTH.lastError = null;
+    } else if (firstErrorStatus !== null) {
+      UPSTREAM_HEALTH.lastStatus = firstErrorStatus;
+      UPSTREAM_HEALTH.lastStreams = 0;
+      UPSTREAM_HEALTH.lastError = firstErrorMsg;
     }
 
     const optimized = optimizeAndRankStreams(rawStreams, userConfig, type, id).slice(0, 35);
@@ -7061,9 +7231,152 @@ async function handleStream(type, id, userConfig = DEFAULT_USER_CONFIG) {
 }
 
 // -------------------------------------------------------------
-// SUBTITLES HANDLER (NightKnight Universal Multi-Language Subtitles)
-// Resolves clean, synchronized subtitles across 80+ languages for every title.
+// SUBTITLES HANDLER (NightKnight Universal Multi-Language & Signs/Forced Subtitles)
+// Resolves clean UTF-8 SRT subtitles across 80+ languages + dedicated Signs & Forced tracks.
 // -------------------------------------------------------------
+function parseAssTimeToMs(ts) {
+  const m = String(ts || '').trim().match(/^(\d+):(\d{1,2}):(\d{1,2})[.:](\d{1,3})$/);
+  if (!m) return -1;
+  const h = parseInt(m[1], 10);
+  const min = parseInt(m[2], 10);
+  const sec = parseInt(m[3], 10);
+  const frac = m[4].padEnd(3, '0').slice(0, 3);
+  return ((h * 3600) + (min * 60) + sec) * 1000 + parseInt(frac, 10);
+}
+
+function formatMsToSrtTime(ms) {
+  const safe = Math.max(0, ms);
+  const h = Math.floor(safe / 3600000);
+  const m = Math.floor((safe % 3600000) / 60000);
+  const s = Math.floor((safe % 60000) / 1000);
+  const rem = safe % 1000;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')},${String(rem).padStart(3, '0')}`;
+}
+
+function extractSignsSrtFromAss(rawText) {
+  if (!rawText || typeof rawText !== 'string') return '';
+  if (!/\[Events\]/i.test(rawText) || !/^Dialogue:/im.test(rawText)) {
+    return rawText;
+  }
+
+  const lines = rawText.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+  let inEvents = false;
+  let startIdx = 1;
+  let endIdx = 2;
+  let styleIdx = 3;
+  let nameIdx = 4;
+  let textIdx = 9;
+  const rows = [];
+
+  for (const rawLine of lines) {
+    const trimmed = rawLine.trim();
+    if (!trimmed) continue;
+    if (/^\[(.+)\]$/.test(trimmed)) {
+      inEvents = /^\[Events\]$/i.test(trimmed);
+      continue;
+    }
+    if (!inEvents) continue;
+
+    if (/^Format:/i.test(trimmed)) {
+      const cols = trimmed.slice(7).split(',').map(c => c.trim().toLowerCase());
+      const findCol = (...names) => {
+        for (const n of names) {
+          const idx = cols.indexOf(n);
+          if (idx !== -1) return idx;
+        }
+        return -1;
+      };
+      const sI = findCol('start'); if (sI !== -1) startIdx = sI;
+      const eI = findCol('end'); if (eI !== -1) endIdx = eI;
+      const stI = findCol('style'); if (stI !== -1) styleIdx = stI;
+      const nI = findCol('name', 'actor'); if (nI !== -1) nameIdx = nI;
+      const tI = findCol('text'); if (tI !== -1) textIdx = tI;
+      continue;
+    }
+
+    if (/^Dialogue:/i.test(trimmed)) {
+      const body = trimmed.slice(9).trimStart();
+      const parts = [];
+      let pos = 0;
+      let count = 0;
+      while (count < textIdx) {
+        const comma = body.indexOf(',', pos);
+        if (comma === -1) break;
+        parts.push(body.slice(pos, comma).trim());
+        pos = comma + 1;
+        count++;
+      }
+      parts.push(body.slice(pos));
+      if (parts.length > textIdx) {
+        rows.push({
+          start: parts[startIdx] || '',
+          end: parts[endIdx] || '',
+          style: (parts[styleIdx] || '').trim(),
+          actor: (parts[nameIdx] || '').trim(),
+          rawSubText: parts[textIdx] || ''
+        });
+      }
+    }
+  }
+
+  if (rows.length === 0) return rawText;
+
+  const REG_DIALOGUE_STYLE_RE = /^(?:default|dialogue|dialog|main|speech|italics?|overlap|flashback|narrat(?:or|ion)?|subtitle|eng|english)(?:[\s_-].*)?$/i;
+  const SIGN_HINT_RE = /sign|title|caption|note|text|screen|card|insert|board|label|letter|phone|msg|op|ed|song|lyric|forced|foreign|top|typeset|\bts\b|credits/i;
+  const hasRegularDialogue = rows.some(r => REG_DIALOGUE_STYLE_RE.test(r.style));
+
+  const buildCues = (signsOnlyFilter) => {
+    const cues = [];
+    const seen = new Set();
+    for (const r of rows) {
+      // Always skip vector drawing geometry cues ({\p1...})
+      if (/\{[^}]*\\p[1-9]\d*(?:\\|\}|\s|$)/i.test(r.rawSubText)) continue;
+
+      if (signsOnlyFilter && hasRegularDialogue) {
+        const styleAndActor = `${r.style} ${r.actor}`;
+        const isExplicitSign = SIGN_HINT_RE.test(styleAndActor);
+        const isNonRegularStyle = Boolean(r.style) && !REG_DIALOGUE_STYLE_RE.test(r.style);
+        const hasPosOverride = /\{[^}]*(?:\\pos\(|\\move\(|\\an[13456789](?:\\|\}|$))/i.test(r.rawSubText);
+        if (!isExplicitSign && !isNonRegularStyle && !hasPosOverride) continue;
+      }
+
+      const startMs = parseAssTimeToMs(r.start);
+      const endMs = parseAssTimeToMs(r.end);
+      if (startMs < 0 || endMs <= startMs) continue;
+
+      const cleanText = r.rawSubText
+        .replace(/\{[^}]*\}/g, '')
+        .replace(/\\N/g, '\n')
+        .replace(/\\n/g, '\n')
+        .replace(/\\h/g, ' ')
+        .split('\n')
+        .map(l => l.trim())
+        .filter(Boolean)
+        .join('\n')
+        .trim();
+
+      if (!cleanText) continue;
+
+      const dedupeKey = `${startMs}|${endMs}|${cleanText}`;
+      if (seen.has(dedupeKey)) continue;
+      seen.add(dedupeKey);
+      cues.push({ startMs, endMs, text: cleanText });
+    }
+    return cues;
+  };
+
+  let cues = buildCues(true);
+  if (cues.length === 0) {
+    cues = buildCues(false);
+  }
+  if (cues.length === 0) return '';
+
+  cues.sort((a, b) => (a.startMs - b.startMs) || (a.endMs - b.endMs));
+  return cues
+    .map((c, i) => `${i + 1}\n${formatMsToSrtTime(c.startMs)} --> ${formatMsToSrtTime(c.endMs)}\n${c.text}\n`)
+    .join('\n');
+}
+
 function sortSubtitlesByPrefLang(subs = [], prefLang = 'en') {
   if (!Array.isArray(subs) || subs.length === 0) return [];
   const cleanPref = SUPPORTED_PREF_LANGS.includes(prefLang) ? prefLang : 'en';
@@ -7088,7 +7401,7 @@ function sortSubtitlesByPrefLang(subs = [], prefLang = 'en') {
   });
 
   return ranked.map(({ sub }) => {
-    const { _hashMatch, _downloads, ...clean } = sub;
+    const { _hashMatch, _downloads, _fileId, _foreignOnly, _subFormat, _fileName, _isSignsNamed, _isAssConverted, ...clean } = sub;
     return clean;
   });
 }
@@ -7162,29 +7475,45 @@ async function fetchOpenSubtitlesRest(type, cleanId, osLangCode = '') {
 
     return data
       .filter(item => item && item.IDSubtitleFile)
-      .map(item => ({
-        url: `https://subs5.strem.io/en/download/subencoding-stremio-utf8/src-api/file/${item.IDSubtitleFile}`,
-        lang: item.SubLanguageID || item.ISO639 || 'eng',
-        _hashMatch: false,
-        _downloads: Number(item.SubDownloadsCnt || 0)
-      }));
+      .map(item => {
+        const fileId = String(item.IDSubtitleFile);
+        const fileName = String(item.SubFileName || '');
+        const subFormat = String(item.SubFormat || 'srt').toLowerCase();
+        const foreignOnly = String(item.SubForeignPartsOnly || '0') === '1';
+        const isSignsNamed = /\b(forced|signs?\s*(?:&|and|n)?\s*songs?|signs?\s*only|signs|non[- ]?english|foreign\s*parts?)\b/i.test(fileName);
+        return {
+          url: `https://subs5.strem.io/en/download/subencoding-stremio-utf8/src-api/file/${fileId}`,
+          lang: item.SubLanguageID || item.ISO639 || 'eng',
+          _hashMatch: false,
+          _downloads: Number(item.SubDownloadsCnt || 0),
+          _fileId: fileId,
+          _fileName: fileName,
+          _subFormat: subFormat,
+          _foreignOnly: foreignOnly,
+          _isSignsNamed: isSignsNamed
+        };
+      });
   } catch (e) {
     return [];
   }
 }
 
-async function handleSubtitles(type, id, extraStr = '', userConfig = DEFAULT_USER_CONFIG) {
+async function handleSubtitles(type, id, extraStr = '', userConfig = DEFAULT_USER_CONFIG, rootUrl = '') {
   if (type !== 'movie' && type !== 'series' && type !== 'channel') return [];
 
   const prefLang = (userConfig && typeof userConfig === 'object' && SUPPORTED_PREF_LANGS.includes(userConfig.prefLang))
     ? userConfig.prefLang
     : 'en';
-  const cacheKey = `subtitles:v2:${type}:${id}:${extraStr}:${prefLang}`;
+  const subMode = (userConfig && typeof userConfig === 'object' && SUPPORTED_SUB_MODES.includes(userConfig.subMode))
+    ? userConfig.subMode
+    : 'all';
+  const cacheKey = `subtitles:v3:${type}:${id}:${extraStr}:${prefLang}:${subMode}:${rootUrl ? 'r' : 'n'}`;
   const cached = getCache(cacheKey);
   if (cached) return cached;
 
   // Handle YouTube captions for channels & videos
   if (id.startsWith('yt:') || type === 'channel') {
+    if (subMode === 'signs_only') return [];
     const cleanYt = id.replace(/^yt:/, '');
     let targetVid = /^[a-zA-Z0-9_-]{11}$/.test(cleanYt) ? cleanYt : '';
     if (!targetVid && cleanYt.startsWith('channel:')) {
@@ -7244,55 +7573,113 @@ async function handleSubtitles(type, id, extraStr = '', userConfig = DEFAULT_USE
 
   const cleanId = imdbTarget;
   const prefCodes = LANGUAGE_PROFILES[prefLang]?.subCodes || [];
+  const osLangParam = (prefLang !== 'any' && prefCodes[0]) ? prefCodes[0] : 'eng';
   const hasPrefMatch = (list) => prefLang === 'any'
     ? list.length > 0
     : list.some(s => prefCodes.includes(String(s.lang || '').toLowerCase()));
 
-  // 1. Fetch exact videoHash URL (if provided) AND full IMDb catalog URL in parallel (fixes foreign-hash early-return bug)
+  // 1. Query OpenSubtitles v3 + REST API (for Forced & Signs/ASS tracks) in parallel
   const v3Promises = [];
-  if (extraStr) {
+  if (extraStr && subMode !== 'signs_only') {
     v3Promises.push(fetchOpenSubtitlesV3(`https://opensubtitles-v3.strem.io/subtitles/${effectiveType}/${cleanId}/${extraStr}.json`, true));
   }
-  v3Promises.push(fetchOpenSubtitlesV3(`https://opensubtitles-v3.strem.io/subtitles/${effectiveType}/${cleanId}.json`, false));
+  if (subMode !== 'signs_only') {
+    v3Promises.push(fetchOpenSubtitlesV3(`https://opensubtitles-v3.strem.io/subtitles/${effectiveType}/${cleanId}.json`, false));
+  }
+  const restPromise = fetchOpenSubtitlesRest(effectiveType, cleanId, osLangParam);
 
-  const v3Results = await Promise.allSettled(v3Promises);
-  let collected = [];
+  const [v3Results, initialRestSubs] = await Promise.all([
+    Promise.allSettled(v3Promises),
+    restPromise
+  ]);
+
+  let collectedV3 = [];
   for (const r of v3Results) {
     if (r.status === 'fulfilled' && Array.isArray(r.value)) {
-      collected.push(...r.value);
+      collectedV3.push(...r.value);
     }
   }
+  let restSubs = Array.isArray(initialRestSubs) ? [...initialRestSubs] : [];
 
   // 2. Anime & Multi-Season Absolute Episode Numbering Fallback (e.g., One Piece S21E1000 -> S1E1000)
   let season1Id = '';
   const epParts = cleanId.match(/^(tt\d+):(\d+):(\d+)$/);
   if (effectiveType === 'series' && epParts && Number(epParts[2]) > 1) {
     season1Id = `${epParts[1]}:1:${epParts[3]}`;
-    if (collected.length < 3 || !hasPrefMatch(collected)) {
-      const s1Subs = await fetchOpenSubtitlesV3(`https://opensubtitles-v3.strem.io/subtitles/series/${season1Id}.json`, false);
-      collected.push(...s1Subs);
+    if ((collectedV3.length < 3 && subMode !== 'signs_only') || (restSubs.length === 0)) {
+      const [s1V3, s1Rest] = await Promise.all([
+        subMode !== 'signs_only'
+          ? fetchOpenSubtitlesV3(`https://opensubtitles-v3.strem.io/subtitles/series/${season1Id}.json`, false)
+          : Promise.resolve([]),
+        restSubs.length === 0
+          ? fetchOpenSubtitlesRest(effectiveType, season1Id, osLangParam)
+          : Promise.resolve([])
+      ]);
+      collectedV3.push(...s1V3);
+      restSubs.push(...s1Rest);
     }
   }
 
-  // 3. Direct OpenSubtitles REST API Fallback / Supplement (bridged to Stremio UTF-8 SRT)
-  if (collected.length === 0 || !hasPrefMatch(collected)) {
-    const restTargetId = (collected.length === 0 && season1Id) ? season1Id : cleanId;
-    const osLangParam = (prefLang !== 'any' && prefCodes[0]) ? prefCodes[0] : '';
-    const restCalls = [fetchOpenSubtitlesRest(effectiveType, restTargetId, osLangParam)];
-    if (osLangParam && collected.length === 0) {
-      restCalls.push(fetchOpenSubtitlesRest(effectiveType, restTargetId, ''));
-    }
-    const restResults = await Promise.allSettled(restCalls);
-    for (const r of restResults) {
-      if (r.status === 'fulfilled' && Array.isArray(r.value)) {
-        collected.push(...r.value);
-      }
-    }
+  // 3. Language fallback on REST if preferred language returned zero tracks
+  if (collectedV3.length === 0 && restSubs.length === 0 && osLangParam) {
+    const restTargetId = season1Id || cleanId;
+    const anyRest = await fetchOpenSubtitlesRest(effectiveType, restTargetId, '');
+    restSubs.push(...anyRest);
   }
 
-  // Deduplicate by URL (keeping highest _hashMatch / _downloads entry)
+  // 4. Identify & prepare dedicated Signs & Forced tracks (SRT forced OR ASS Signs & Songs converted to SRT)
+  const langLabel = (prefLang !== 'any' && LANGUAGE_PROFILES[prefLang]?.short)
+    ? LANGUAGE_PROFILES[prefLang].short
+    : 'EN';
+
+  let candidateSigns = restSubs.filter(s => s._foreignOnly || s._isSignsNamed);
+  if (candidateSigns.length === 0 && rootUrl) {
+    // Anime fansubs often ship full dialogue + Signs/OP/ED together in .ass; extract Signs on the fly
+    candidateSigns = restSubs.filter(s => (s._subFormat === 'ass' || s._subFormat === 'ssa') && s._fileId);
+  }
+
+  candidateSigns.sort((a, b) => {
+    const aScore = (a._foreignOnly ? 4 : 0) + (a._isSignsNamed ? 3 : 0) + (a._subFormat === 'srt' ? 2 : 1);
+    const bScore = (b._foreignOnly ? 4 : 0) + (b._isSignsNamed ? 3 : 0) + (b._subFormat === 'srt' ? 2 : 1);
+    if (bScore !== aScore) return bScore - aScore;
+    return (b._downloads || 0) - (a._downloads || 0);
+  });
+
+  const signsMap = new Map();
+  for (const s of candidateSigns) {
+    if (!s._fileId || signsMap.has(s._fileId)) continue;
+    const isAss = s._subFormat === 'ass' || s._subFormat === 'ssa';
+    const signsUrl = (isAss && rootUrl)
+      ? `${rootUrl}/api/sub-signs/${s._fileId}.srt`
+      : s.url;
+    if (isAss && !rootUrl) continue;
+    signsMap.set(s._fileId, {
+      url: signsUrl,
+      lang: `Signs & Forced (${langLabel})`,
+      _downloads: s._downloads || 0
+    });
+    if (signsMap.size >= 4) break;
+  }
+
+  const safeIdPrefix = cleanId.replace(/[^a-zA-Z0-9_-]/g, '_');
+  const formattedSigns = Array.from(signsMap.values()).map((sub, idx) => ({
+    id: `nk_signs_${safeIdPrefix}_${langLabel.toLowerCase()}_${idx}`,
+    url: sub.url,
+    lang: sub.lang
+  }));
+
+  if (subMode === 'signs_only') {
+    if (formattedSigns.length > 0) setCache(cacheKey, formattedSigns, 1800);
+    return formattedSigns;
+  }
+
+  // 5. Merge regular SRT/V3 subtitles (excluding raw .ass URLs that fail on TV players)
+  const regularPool = [
+    ...collectedV3,
+    ...restSubs.filter(s => s._subFormat !== 'ass' && s._subFormat !== 'ssa')
+  ];
   const dedupedMap = new Map();
-  for (const sub of collected) {
+  for (const sub of regularPool) {
     if (!sub || !sub.url) continue;
     const existing = dedupedMap.get(sub.url);
     if (!existing) {
@@ -7303,17 +7690,21 @@ async function handleSubtitles(type, id, extraStr = '', userConfig = DEFAULT_USE
   }
 
   const sortedSubs = sortSubtitlesByPrefLang(Array.from(dedupedMap.values()), prefLang);
-  const safeIdPrefix = cleanId.replace(/[^a-zA-Z0-9_-]/g, '_');
-  const formatted = sortedSubs.map((sub, idx) => ({
+  const formattedNormal = sortedSubs.map((sub, idx) => ({
     id: `nk_sub_${safeIdPrefix}_${sub.lang || 'eng'}_${idx}`,
     url: sub.url,
     lang: sub.lang || 'eng'
   }));
 
-  if (formatted.length > 0) {
-    setCache(cacheKey, formatted, 1800);
+  // Keep top 2 normal dialogue tracks first for auto-select, then place Signs & Forced tracks right below them
+  const combined = formattedSigns.length > 0
+    ? [...formattedNormal.slice(0, 2), ...formattedSigns, ...formattedNormal.slice(2)]
+    : formattedNormal;
+
+  if (combined.length > 0) {
+    setCache(cacheKey, combined, 1800);
   }
-  return formatted;
+  return combined;
 }
 
 // HTTP Server Request Handler
@@ -7353,7 +7744,7 @@ export async function handleRequest(req, res) {
     incomingPath = incomingPath.slice('/.netlify/functions/addon'.length) || '/';
   } else if (incomingPath.startsWith('/api/index.js')) {
     incomingPath = incomingPath.slice('/api/index.js'.length) || '/';
-  } else if (incomingPath.startsWith('/api') && !incomingPath.startsWith('/api/feedback') && !incomingPath.startsWith('/api/stats') && !incomingPath.startsWith('/api/health')) {
+  } else if (incomingPath.startsWith('/api') && !incomingPath.startsWith('/api/feedback') && !incomingPath.startsWith('/api/stats') && !incomingPath.startsWith('/api/health') && !incomingPath.startsWith('/api/sub-signs/')) {
     incomingPath = incomingPath.slice('/api'.length) || '/';
   }
 
@@ -7452,6 +7843,33 @@ export async function handleRequest(req, res) {
         status: 'online',
         upstream: UPSTREAM_HEALTH
       }));
+      return;
+    }
+
+    // Dynamic ASS/SSA -> clean Signs & Forced SRT Extractor
+    const signsSubMatch = pathname.match(/^\/api\/sub-signs\/(\d{4,15})\.srt$/);
+    if (signsSubMatch) {
+      const subFileId = signsSubMatch[1];
+      const sourceSubUrl = `https://subs5.strem.io/en/download/subencoding-stremio-utf8/src-api/file/${subFileId}`;
+      try {
+        const subRes = await fetch(sourceSubUrl, {
+          headers: { 'User-Agent': 'Stremio/4.4.168' },
+          signal: AbortSignal.timeout(5000)
+        });
+        if (!subRes.ok) {
+          res.writeHead(subRes.status === 404 ? 404 : 502, { 'Content-Type': 'text/plain; charset=utf-8' });
+          res.end('');
+          return;
+        }
+        const rawSubText = await subRes.text();
+        const signsSrt = extractSignsSrtFromAss(rawSubText);
+        res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=604800');
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        res.end(signsSrt);
+      } catch (e) {
+        res.writeHead(502, { 'Content-Type': 'text/plain; charset=utf-8' });
+        res.end('');
+      }
       return;
     }
 
@@ -7658,7 +8076,7 @@ export async function handleRequest(req, res) {
       }
       persistStats();
       const [, type, id] = streamMatch;
-      const streams = await handleStream(type, id, userConfig);
+      const streams = await handleStream(type, id, userConfig, rootUrl);
       res.setHeader('Cache-Control', 'public, max-age=600, s-maxage=1200, stale-while-revalidate=3600');
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
       res.end(JSON.stringify({ streams }));
@@ -7676,7 +8094,7 @@ export async function handleRequest(req, res) {
       let extraStr = rawExtra || '';
       try { extraStr = decodeURIComponent(extraStr); } catch (_) {}
       extraStr = extraStr.replace(/\//g, '&');
-      const subtitles = await handleSubtitles(type, id, extraStr, userConfig);
+      const subtitles = await handleSubtitles(type, id, extraStr, userConfig, rootUrl);
       res.setHeader('Cache-Control', 'public, max-age=43200, s-maxage=604800, stale-while-revalidate=604800');
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
       res.end(JSON.stringify({ subtitles }));
@@ -7972,6 +8390,7 @@ export async function handleRequest(req, res) {
       const initialPrefLang = userConfig.prefLang || 'en';
       const initialDubPref = userConfig.dubPref || 'dub_or_orig';
       const initialMaxQuality = userConfig.maxQuality || 'any';
+      const initialSubMode = userConfig.subMode || 'all';
       const initialHideRisk = userConfig.hideRisk;
       const initialRealDebrid = escapeHtml(userConfig.realDebrid || '');
       const initialYoutubeSubs = escapeHtml(userConfig.youtubeSubs || '');
@@ -8638,13 +9057,18 @@ export async function handleRequest(req, res) {
           <option value="sub_orig" ${initialDubPref === 'sub_orig' ? 'selected' : ''}>💬 Subbed / Original Audio Priority: Original Audio + Multi-Subs First</option>
         </select>
         <label style="font-size: 12px; color: #cbd5e1;">Preferred Resolution &amp; Stream Quality Priority:</label>
-        <select id="max-quality-select">
+        <select id="max-quality-select" style="margin-bottom: 10px;">
           <option value="any" ${initialMaxQuality === 'any' ? 'selected' : ''}>🎬 Best Available (4K UHD + 1080p Full HD — Default)</option>
           <option value="1080p" ${initialMaxQuality === '1080p' ? 'selected' : ''}>📺 1080p Full HD Priority (Fastest Load for TV, Firestick &amp; Mobile)</option>
           <option value="4k_only" ${initialMaxQuality === '4k_only' ? 'selected' : ''}>💎 4K Ultra HD / Dolby Vision / HDR Priority (Home Theater)</option>
         </select>
+        <label style="font-size: 12px; color: #cbd5e1;">Subtitle Track Mode (Full Dialogue vs. Signs &amp; Forced):</label>
+        <select id="sub-mode-select">
+          <option value="all" ${initialSubMode === 'all' ? 'selected' : ''}>💬 All Subtitles + Signs &amp; Forced Tracks (Default)</option>
+          <option value="signs_only" ${initialSubMode === 'signs_only' ? 'selected' : ''}>🪧 Signs &amp; Forced Subtitles Only (Best for Dubs &amp; On-Screen Text)</option>
+        </select>
         <div style="font-size: 11px; color: #94a3b8; margin-top: 8px; line-height: 1.4;">
-          💬 Automatically ranks streams by your language, dubbing, resolution priority &amp; multi-indexer failover, demotes CAM/Screener rips, and puts matching UTF-8 subtitles at the top for every movie, series, anime, DRM-Free classic &amp; YouTube video.
+          💬 Automatically ranks streams by your language, dubbing, resolution priority &amp; multi-indexer failover, demotes CAM/Screener rips, and puts matching UTF-8 subtitles (plus clean 🪧 Signs &amp; Forced tracks) at the top for every movie, series, anime, DRM-Free classic &amp; YouTube video.
         </div>
       </div>
       <div class="input-group" style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 8px; padding: 14px; margin-top: 14px; margin-bottom: 16px;">
@@ -8657,7 +9081,7 @@ export async function handleRequest(req, res) {
           <button type="button" id="toggle-rd-vis" style="position: absolute; right: 8px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #cbd5e1; border-radius: 6px; padding: 4px 8px; font-size: 11px; cursor: pointer;">Show</button>
         </div>
         <div style="font-size: 11px; color: #94a3b8; margin-top: 8px; line-height: 1.4;">
-          🚀 <strong>Off by default</strong>: If left blank, NightKnight Cinema uses standard free Torrentio P2P. If you paste your token, it unlocks instant cached cloud streaming (zero P2P seeding, zero buffer). Find your token at <a href="https://real-debrid.com/apitoken" target="_blank" style="color: #60a5fa; text-decoration: underline;">real-debrid.com/apitoken</a>.
+          🚀 <strong>Off by default</strong>: If left blank, NightKnight Cinema scrapes free tokenless P2P sources (<code>Torrentio + StremThru Torz + TorrentsDB + Peerflix</code>). If you paste your Real-Debrid token, it scrapes RD cloud sources in parallel (<code>Torrentio RD + StremThru Torz RD + Comet RD + TorrentsDB RD + Jackettio RD</code>) for instant zero-P2P HTTPS streaming. Find your token at <a href="https://real-debrid.com/apitoken" target="_blank" style="color: #60a5fa; text-decoration: underline;">real-debrid.com/apitoken</a>.
         </div>
       </div>
 
@@ -8922,6 +9346,7 @@ export async function handleRequest(req, res) {
       const prefLang = document.getElementById('pref-lang-select') ? document.getElementById('pref-lang-select').value : 'en';
       const dubPref = document.getElementById('dub-pref-select') ? document.getElementById('dub-pref-select').value : 'dub_or_orig';
       const maxQuality = document.getElementById('max-quality-select') ? document.getElementById('max-quality-select').value : 'any';
+      const subMode = document.getElementById('sub-mode-select') ? document.getElementById('sub-mode-select').value : 'all';
       const hideRisk = document.getElementById('filter-buffer-risk').checked;
       const realDebrid = document.getElementById('rd-input') ? document.getElementById('rd-input').value.trim() : '';
       const youtubeSubs = document.getElementById('yt-subs-input') ? document.getElementById('yt-subs-input').value.trim() : '';
@@ -8929,13 +9354,14 @@ export async function handleRequest(req, res) {
       const twitchFollows = document.getElementById('twitch-follows-input') ? document.getElementById('twitch-follows-input').value.trim() : '';
       const twitchClientId = document.getElementById('twitch-clientid-input') ? document.getElementById('twitch-clientid-input').value.trim() : '';
 
-      const isDefault = upstream === 'https://torrentio.strem.fun' && region === 'GB' && prefLang === 'en' && dubPref === 'dub_or_orig' && maxQuality === 'any' && !hideRisk && !realDebrid && !youtubeSubs && !youtubeApiKey && !twitchFollows && !twitchClientId;
+      const isDefault = upstream === 'https://torrentio.strem.fun' && region === 'GB' && prefLang === 'en' && dubPref === 'dub_or_orig' && maxQuality === 'any' && subMode === 'all' && !hideRisk && !realDebrid && !youtubeSubs && !youtubeApiKey && !twitchFollows && !twitchClientId;
       const host = window.location.host;
 
       let href = 'stremio://' + host + '/manifest.json';
       let webHref = window.location.protocol + '//' + host + '/manifest.json';
       if (!isDefault) {
         const configObj = { region, hideRisk, prefLang, dubPref, maxQuality };
+        if (subMode !== 'all') configObj.subMode = subMode;
         if (upstream !== 'https://torrentio.strem.fun') configObj.upstream = upstream;
         if (realDebrid) configObj.realDebrid = realDebrid;
         if (youtubeSubs) configObj.youtubeSubs = youtubeSubs;
@@ -8960,6 +9386,7 @@ export async function handleRequest(req, res) {
     if (document.getElementById('pref-lang-select')) document.getElementById('pref-lang-select').addEventListener('change', updateInstallLink);
     if (document.getElementById('dub-pref-select')) document.getElementById('dub-pref-select').addEventListener('change', updateInstallLink);
     if (document.getElementById('max-quality-select')) document.getElementById('max-quality-select').addEventListener('change', updateInstallLink);
+    if (document.getElementById('sub-mode-select')) document.getElementById('sub-mode-select').addEventListener('change', updateInstallLink);
     document.getElementById('filter-buffer-risk').addEventListener('change', updateInstallLink);
     ['yt-subs-input', 'yt-apikey-input', 'twitch-follows-input', 'twitch-clientid-input'].forEach(function(id) {
       var el = document.getElementById(id);
