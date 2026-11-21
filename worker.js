@@ -6,6 +6,97 @@ let edgeCacheMisses = 0;
 let stateHydrated = false;
 let lastStatePersistAt = 0;
 
+function safeAtob(str) {
+  try {
+    return atob(str.replace(/-/g, '+').replace(/_/g, '/'));
+  } catch (_) {
+    return '';
+  }
+}
+
+// Canonicalize cache keys across all users to maximize Edge Cache hit rate and avoid Cloudflare limits
+function getCanonicalCacheUrl(requestUrl) {
+  const url = new URL(requestUrl);
+  const segments = url.pathname.split('/').filter(Boolean);
+  if (segments.length === 0) return null;
+
+  let configSegment = '';
+  let pathSegments = segments;
+  const first = segments[0];
+  if (!['catalog', 'meta', 'stream', 'subtitles', 'manifest.json', 'icon.png', 'logo.png', 'background.png', 'bg.png', 'configure', 'api', 'config', 'info', 'gradio_api', 'startup-events', '_vercel'].includes(first)) {
+    configSegment = first;
+    pathSegments = segments.slice(1);
+  }
+
+  const endpoint = pathSegments[0];
+  if (!endpoint) return null;
+
+  // 1. Meta: 100% universal across all users worldwide
+  if (endpoint === 'meta' && pathSegments.length >= 3) {
+    const type = pathSegments[1];
+    const id = pathSegments.slice(2).join('/');
+    return `https://nightknight-cache.internal/meta/${type}/${id}`;
+  }
+
+  // 2. Catalogs: Shared global catalog cache (region partitioned for live TV only)
+  if (endpoint === 'catalog' && pathSegments.length >= 3) {
+    const type = pathSegments[1];
+    const catId = pathSegments[2];
+    const extra = pathSegments.slice(3).join('/');
+    if (catId === 'regional_live_tv') {
+      let region = 'GB';
+      try {
+        const decoded = JSON.parse(safeAtob(configSegment));
+        if (decoded && decoded.region) region = String(decoded.region).toUpperCase();
+      } catch (_) {}
+      return `https://nightknight-cache.internal/catalog/${type}/${catId}/${region}/${extra}`;
+    }
+    return `https://nightknight-cache.internal/catalog/${type}/${catId}/${extra}`;
+  }
+
+  // 3. Subtitles: Partitioned by language preference
+  if (endpoint === 'subtitles' && pathSegments.length >= 3) {
+    const type = pathSegments[1];
+    const id = pathSegments.slice(2).join('/');
+    let prefLang = 'en';
+    try {
+      const decoded = JSON.parse(safeAtob(configSegment));
+      if (decoded && decoded.prefLang) prefLang = String(decoded.prefLang).toLowerCase();
+    } catch (_) {}
+    return `https://nightknight-cache.internal/subtitles/${type}/${id}/${prefLang}`;
+  }
+
+  // 4. Manifest: Partitioned by Real-Debrid flag and region
+  if (endpoint === 'manifest.json') {
+    let hasRd = 'free';
+    let region = 'GB';
+    try {
+      const decoded = JSON.parse(safeAtob(configSegment));
+      if (decoded && decoded.realDebrid) hasRd = 'rd';
+      if (decoded && decoded.region) region = String(decoded.region).toUpperCase();
+    } catch (_) {}
+    return `https://nightknight-cache.internal/manifest/${hasRd}/${region}.json`;
+  }
+
+  // 5. Streams: Free P2P streams shared globally; Real-Debrid streams token-isolated
+  if (endpoint === 'stream' && pathSegments.length >= 3) {
+    const type = pathSegments[1];
+    const id = pathSegments.slice(2).join('/');
+    let rdKey = 'free';
+    let region = 'GB';
+    try {
+      const decoded = JSON.parse(safeAtob(configSegment));
+      if (decoded && decoded.realDebrid) {
+        rdKey = 'rd_' + String(decoded.realDebrid).slice(0, 8);
+      }
+      if (decoded && decoded.region) region = String(decoded.region).toUpperCase();
+    } catch (_) {}
+    return `https://nightknight-cache.internal/stream/${type}/${id}/${rdKey}/${region}`;
+  }
+
+  return url.toString();
+}
+
 function withEdgeHeaders(request, colo, cfCountry) {
   const reqHeaders = new Headers(request.headers);
   reqHeaders.set('x-cf-colo', colo);
@@ -59,7 +150,7 @@ export default {
       if (assetRes && assetRes.ok) {
         const out = new Response(assetRes.body, assetRes);
         out.headers.set('Access-Control-Allow-Origin', '*');
-        out.headers.set('Cache-Control', 'public, max-age=86400');
+        out.headers.set('Cache-Control', 'public, max-age=604800, immutable');
         return out;
       }
     }
@@ -80,20 +171,22 @@ export default {
       } catch (_) {}
     }
 
-    // 3. Check Cloudflare Edge Cache (caches.default) for cacheable Stremio JSON endpoints
+    // 3. Check Cloudflare Edge Cache (caches.default) using canonicalized multi-user cache keys
     const isCacheableGet = request.method === 'GET' && /\/(manifest\.json|catalog\/|meta\/|subtitles\/|stream\/)/.test(url.pathname);
-    const cacheKey = isCacheableGet && edgeCache ? new Request(url.toString(), { method: 'GET' }) : null;
+    const canonicalCacheUrl = isCacheableGet ? getCanonicalCacheUrl(request.url) : null;
+    const cacheKey = canonicalCacheUrl && edgeCache ? new Request(canonicalCacheUrl, { method: 'GET' }) : null;
 
     if (cacheKey) {
       try {
         const cached = await edgeCache.match(cacheKey);
         if (cached) {
           edgeCacheHits++;
-          if (Date.now() - lastStatePersistAt > 5000) {
+          if (Date.now() - lastStatePersistAt > 15000) {
             persistStateToEdge(edgeCache, ctx);
           }
           const hitRes = new Response(cached.body, cached);
           hitRes.headers.set('X-NightKnight-Cache', 'HIT');
+          hitRes.headers.set('Access-Control-Allow-Origin', '*');
           return hitRes;
         }
       } catch (_) {}
@@ -118,7 +211,7 @@ export default {
       }
     }
 
-    if (edgeCache && url.pathname !== '/api/stats' && (Date.now() - lastStatePersistAt > 3000 || url.pathname.includes('/stream/') || url.pathname.endsWith('/manifest.json'))) {
+    if (edgeCache && url.pathname !== '/api/stats' && (Date.now() - lastStatePersistAt > 8000 || url.pathname.includes('/stream/') || url.pathname.endsWith('/manifest.json'))) {
       persistStateToEdge(edgeCache, ctx);
     }
 

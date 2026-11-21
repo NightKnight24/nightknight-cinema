@@ -7417,7 +7417,7 @@ export async function handleRequest(req, res) {
       const iconPath = path.join(__dirname, 'public', 'icon.png');
       if (fs.existsSync(iconPath)) {
         res.setHeader('Content-Type', 'image/png');
-        res.setHeader('Cache-Control', 'public, max-age=86400');
+        res.setHeader('Cache-Control', 'public, max-age=604800, s-maxage=2592000, immutable');
         fs.createReadStream(iconPath).pipe(res);
         return;
       }
@@ -7432,7 +7432,7 @@ export async function handleRequest(req, res) {
       const bgPath = path.join(__dirname, 'public', 'background.png');
       if (fs.existsSync(bgPath)) {
         res.setHeader('Content-Type', 'image/png');
-        res.setHeader('Cache-Control', 'public, max-age=86400');
+        res.setHeader('Cache-Control', 'public, max-age=604800, s-maxage=2592000, immutable');
         fs.createReadStream(bgPath).pipe(res);
         return;
       }
@@ -7641,7 +7641,7 @@ export async function handleRequest(req, res) {
       STATS.manifestRequests++;
       STATS.estimatedInstalls = Math.max(STATS.estimatedInstalls, STATS.uniqueClients.size);
       persistStats();
-      res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=7200, stale-while-revalidate=86400');
+      res.setHeader('Cache-Control', 'public, max-age=14400, s-maxage=86400, stale-while-revalidate=604800');
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
       res.end(JSON.stringify(getManifest(baseUrl, userConfig, rootUrl)));
       return;
@@ -7677,7 +7677,7 @@ export async function handleRequest(req, res) {
       try { extraStr = decodeURIComponent(extraStr); } catch (_) {}
       extraStr = extraStr.replace(/\//g, '&');
       const subtitles = await handleSubtitles(type, id, extraStr, userConfig);
-      res.setHeader('Cache-Control', 'public, max-age=1800, s-maxage=7200, stale-while-revalidate=86400');
+      res.setHeader('Cache-Control', 'public, max-age=43200, s-maxage=604800, stale-while-revalidate=604800');
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
       res.end(JSON.stringify({ subtitles }));
       return;
@@ -7686,10 +7686,15 @@ export async function handleRequest(req, res) {
     // 3. Catalog: /catalog/:type/:id/:extra?.json
     const catalogMatch = rawRoutePath.match(/^\/catalog\/(movie|series|channel)\/([^\/]+)(?:\/(.+))?\.json$/);
     if (catalogMatch) {
-      res.setHeader('Cache-Control', 'public, max-age=1800, s-maxage=3600, stale-while-revalidate=86400');
       STATS.catalogRequests++;
       const [, type, rawCatalogId, extraRaw] = catalogMatch;
       const catalogId = decodeURIComponent(rawCatalogId);
+      const isStaticCatalog = catalogId.includes('franchises') || catalogId.includes('decades') || catalogId.includes('top_rated') || catalogId.includes('drmfree') || catalogId.includes('streaming_hub');
+      if (isStaticCatalog) {
+        res.setHeader('Cache-Control', 'public, max-age=43200, s-maxage=86400, stale-while-revalidate=604800');
+      } else {
+        res.setHeader('Cache-Control', 'public, max-age=7200, s-maxage=14400, stale-while-revalidate=86400');
+      }
       let extra = {};
       if (extraRaw) {
         const parts = extraRaw.split(/(?:\/|&)(?=(?:genre|search|skip|calendarVideosIds)=)/);
@@ -7954,7 +7959,7 @@ export async function handleRequest(req, res) {
       persistStats();
       const [, type, id] = metaMatch;
       const meta = await handleMeta(type, id, userConfig);
-      res.setHeader('Cache-Control', 'public, max-age=1800, s-maxage=7200, stale-while-revalidate=86400');
+      res.setHeader('Cache-Control', 'public, max-age=43200, s-maxage=604800, stale-while-revalidate=604800');
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
       res.end(JSON.stringify({ meta }));
       return;
@@ -8693,6 +8698,23 @@ export async function handleRequest(req, res) {
     <div style="display: flex; gap: 12px; margin-top: 18px; margin-bottom: 20px; flex-wrap: wrap;">
       <a id="install-btn" href="stremio://${host}/manifest.json" class="btn" style="flex: 1.3; min-width: 200px; margin-bottom: 0;">🚀 Install on Stremio</a>
       <button id="copy-manifest-btn" type="button" class="btn" style="flex: 1; min-width: 180px; margin-bottom: 0; background: linear-gradient(135deg, #334155, #1e293b); border: 1px solid rgba(255,255,255,0.15); box-shadow: none;">📋 Copy Manifest Link</button>
+    </div>
+
+    <!-- Stremio Addons Star Callout -->
+    <div style="background: linear-gradient(135deg, rgba(234, 179, 8, 0.12), rgba(168, 85, 247, 0.12)); border: 1px solid rgba(234, 179, 8, 0.4); border-radius: 12px; padding: 14px 18px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
+      <div style="display: flex; align-items: center; gap: 14px; flex: 1; min-width: 240px;">
+        <div style="font-size: 28px; line-height: 1;">⭐</div>
+        <div style="flex: 1;">
+          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <span style="font-weight: 700; font-size: 14px; color: #fef08a;">Star us on Stremio-Addons!</span>
+            <span style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; background: rgba(234, 179, 8, 0.2); border: 1px solid rgba(234, 179, 8, 0.55); color: #fde047; padding: 2px 7px; border-radius: 999px;">Help Us Hit Top 100</span>
+          </div>
+          <div style="font-size: 12px; color: #cbd5e1; margin-top: 2px;">Leave a quick 1-click star on the Stremio Addons Registry to boost NightKnight Cinema into the global top rankings!</div>
+        </div>
+      </div>
+      <a href="https://stremio-addons.net/addons/nightknight-cinema" target="_blank" rel="noopener" style="background: linear-gradient(135deg, #eab308, #a855f7); color: #0f172a; text-decoration: none; font-weight: 800; font-size: 13px; padding: 10px 18px; border-radius: 8px; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 14px rgba(234, 179, 8, 0.35); white-space: nowrap; transition: transform 0.15s ease;">
+        <span>⭐ Leave a Star (stremio-addons.net) →</span>
+      </a>
     </div>
 
     <div style="background: linear-gradient(135deg, rgba(236, 72, 153, 0.1), rgba(139, 92, 246, 0.1)); border: 1px solid rgba(236, 72, 153, 0.3); border-radius: 12px; padding: 14px 18px; margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
