@@ -6325,40 +6325,107 @@ const LANGUAGE_PROFILES = {
   }
 };
 
+function detectLangsInText(str = '', { flagsOnly = false } = {}) {
+  const found = [];
+  if (!str) return found;
+  for (const [code, prof] of Object.entries(LANGUAGE_PROFILES)) {
+    const hasFlag = prof.flags.some(f => str.includes(f));
+    const hasToken = !flagsOnly && prof.tokenRe.test(str);
+    if (hasFlag || hasToken) found.push(code);
+  }
+  if (!flagsOnly && /[А-Яа-яЁё]/.test(str) && !found.includes('ru')) {
+    found.push('ru');
+  }
+  if (
+    ['🇨🇳', '🇹🇼', '🇭🇰'].some(f => str.includes(f)) ||
+    (!flagsOnly && /\b(?:chi|zho|zh-cn|zh-tw|mandarin|cantonese|chinese)\b/i.test(str))
+  ) {
+    if (!found.includes('zh')) found.push('zh');
+  }
+  return found;
+}
+
 function analyzeStreamLanguageAndDub(fullText = '', prefLang = 'en', dubPref = 'dub_or_orig') {
   const cleanPref = SUPPORTED_PREF_LANGS.includes(prefLang) ? prefLang : 'en';
   const cleanDubPref = SUPPORTED_DUB_PREFS.includes(dubPref) ? dubPref : 'dub_or_orig';
 
-  const detectedLangs = [];
-  for (const [code, prof] of Object.entries(LANGUAGE_PROFILES)) {
-    const hasFlag = prof.flags.some(f => fullText.includes(f));
-    const hasToken = prof.tokenRe.test(fullText);
-    if (hasFlag || hasToken) detectedLangs.push(code);
+  const lines = String(fullText || '').split(/\r?\n/);
+  const hasExplicitSubLine = lines.some(l => l.includes('💬'));
+  const micLines = [];
+  const subLines = [];
+  const otherLines = [];
+  for (const l of lines) {
+    if (l.includes('💬') || l.includes('🔤') || /\b(?:multi[\s.-]*subs?|multiple\s+subtitles?)\b/i.test(l)) {
+      subLines.push(l);
+    } else if (
+      l.includes('🎙️') ||
+      l.includes('🎙') ||
+      (hasExplicitSubLine && l.includes('🌐')) ||
+      (l.includes('🔊') && detectLangsInText(l, { flagsOnly: true }).length > 0)
+    ) {
+      micLines.push(l);
+    } else {
+      otherLines.push(l);
+    }
   }
 
-  const hasCyrillic = /[А-Яа-яЁё]/.test(fullText);
-  if (hasCyrillic && !detectedLangs.includes('ru')) {
-    detectedLangs.push('ru');
+  // 1. Subtitle language detection (explicit 💬 lines + inline subtitle clauses like EngSub / Sub (Rus Eng))
+  const otherText = otherLines.join('\n');
+  const subClauses = otherText.match(/\b(?:multi[\s.-]*subs?|multiple\s+subtitles?|subtitles?|subs?)\s*(?:\([^)]*\)|[:\/-][^|\[\]\n]*)?/gi) || [];
+  const combinedSubText = `${subLines.join('\n')}\n${subClauses.join(' ')}`;
+  const detectedSubLangs = detectLangsInText(combinedSubText);
+  if (/\b(eng|en|english)[\s._-]*subs?\b|\besubs?\b/i.test(fullText) && !detectedSubLangs.includes('en')) {
+    detectedSubLangs.push('en');
   }
 
-  const isMultiAudio = /\b(multi[\s.-]*audio|dual[\s.-]*audio|multi\+|multi)\b/i.test(fullText) && !/\bmulti[\s.-]*subs?\b/i.test(fullText)
-    ? true
-    : (/\b(multi[\s.-]*audio|dual[\s.-]*audio|multi\+)\b/i.test(fullText) || detectedLangs.length >= 2);
+  // 2. Audio language detection (strictly prefer 🎙️ line when present; otherwise strip subtitle clauses)
+  const micText = micLines.join('\n');
+  let micLangs = detectLangsInText(micText, { flagsOnly: true });
+  if (micLangs.length === 0 && micText) {
+    micLangs = detectLangsInText(micText, { flagsOnly: false });
+  }
+  const hasAuthoritativeMic = micLangs.length > 0;
+
+  const sanitizedAudioText = otherText
+    .replace(/\b(?:multi[\s.-]*subs?|multiple\s+subtitles?|subtitles?|subs?)\s*(?:\([^)]*\)|[:\/-][^|\[\]\n]*)?/gi, ' ')
+    .replace(/\b(?:eng|en|english|spa|fre|ger|ita|por|rus|ara|tur|hin|jpn|kor)[\s._-]*subs?\b/gi, ' ')
+    .replace(/\besubs?\b/gi, ' ');
+
+  const detectedAudioLangs = hasAuthoritativeMic
+    ? micLangs
+    : detectLangsInText(sanitizedAudioText, { flagsOnly: false });
+
+  const isMultiAudio = hasAuthoritativeMic
+    ? detectedAudioLangs.length >= 2
+    : (
+        detectedAudioLangs.length >= 2 ||
+        /\b(multi[\s.-]*audio|dual[\s.-]*audio|multi\+)\b/i.test(sanitizedAudioText) ||
+        (/\bmulti\b/i.test(sanitizedAudioText) && !/\bmulti[\s.-]*subs?\b/i.test(fullText))
+      );
+
   const isDubbed = /\b(dubbed|dub\b|eng[\s.-]*dub|english[\s.-]*dub|dublado|synchro|lektor|dvo\b|mvo\b)/i.test(fullText);
-  const hasMultiSubs = /\b(multi[\s.-]*subs?|multisub|subbed|esub|eng[\s.-]*sub)\b/i.test(fullText);
+  const hasMultiSubs = subLines.length > 0 || detectedSubLangs.length > 0 || /\b(multi[\s.-]*subs?|multiple\s+subtitles?|multisub|subbed|esub|eng[\s.-]*sub)\b/i.test(fullText);
   const isOrigTag = /\b(original|orig\b|subbed|vostfr|raw\b)\b/i.test(fullText);
-  const isHeavyRuPack = (hasCyrillic || /\b(rutracker|lostfilm|hdrezka|red head sound|jaskier|newstudio|kubik|tvshows|mvo|dvo)\b/i.test(fullText)) && cleanPref !== 'ru';
+  const isHeavyRuPack = (/[А-Яа-яЁё]/.test(fullText) || /\b(rutracker|lostfilm|hdrezka|red head sound|jaskier|newstudio|kubik|tvshows|mvo|dvo)\b/i.test(fullText)) && cleanPref !== 'ru';
+
+  const hasPrefSub = cleanPref === 'any' ? hasMultiSubs : detectedSubLangs.includes(cleanPref);
+  const nonEnNonJaAudio = detectedAudioLangs.filter(c => c !== 'en' && c !== 'ja');
+  const explicitForeignDubHint = /\b(latino|castellano|dublado|vostfr|german|deutsch|french|vff|vfq|truefrench|italian|italiano|russian|hindi|turkish|polish|lektor|arabic)\b/i.test(sanitizedAudioText || fullText);
 
   const prefProf = LANGUAGE_PROFILES[cleanPref] || null;
   const hasPrefLang = cleanPref === 'any'
     ? true
-    : Boolean(
-        detectedLangs.includes(cleanPref) ||
-        (cleanPref === 'en' && /\b(eng[\s.-]*dub|english[\s.-]*dub|dual[\s.-]*audio)\b/i.test(fullText))
-      );
+    : hasAuthoritativeMic
+      ? detectedAudioLangs.includes(cleanPref)
+      : Boolean(
+          detectedAudioLangs.includes(cleanPref) ||
+          (cleanPref === 'en' && /\b(eng[\s.-]*dub|english[\s.-]*dub)\b/i.test(fullText)) ||
+          (cleanPref === 'en' && /\bdual[\s.-]*audio\b/i.test(fullText) && nonEnNonJaAudio.length === 0 && !explicitForeignDubHint)
+        );
 
-  const nonPrefLangs = detectedLangs.filter(c => c !== cleanPref);
-  const hasOtherForeignOnly = cleanPref !== 'any' && nonPrefLangs.length > 0 && !hasPrefLang;
+  const nonPrefAudioLangs = detectedAudioLangs.filter(c => c !== cleanPref);
+  const hasOtherForeignAudioOnly = cleanPref !== 'any' && nonPrefAudioLangs.length > 0 && !hasPrefLang;
+  const isOrigSingleLangWithPrefSub = hasOtherForeignAudioOnly && nonPrefAudioLangs.length === 1 && ['ja', 'ko', 'hi'].includes(nonPrefAudioLangs[0]) && hasPrefSub && !isDubbed && !isHeavyRuPack;
 
   let langScoreDelta = 0;
   if (cleanPref === 'any') {
@@ -6368,42 +6435,54 @@ function analyzeStreamLanguageAndDub(fullText = '', prefLang = 'en', dubPref = '
       langScoreDelta = 2200;
     } else if (hasPrefLang && !isHeavyRuPack) {
       langScoreDelta = 1600;
-    } else if (detectedLangs.length === 0 && !isHeavyRuPack) {
+    } else if (detectedAudioLangs.length === 0 && !isHeavyRuPack) {
       langScoreDelta = 900;
+    } else if (isOrigSingleLangWithPrefSub) {
+      langScoreDelta = 350;
+    } else if (hasOtherForeignAudioOnly && hasPrefSub && !isHeavyRuPack) {
+      langScoreDelta = -800;
     } else if (!hasPrefLang && hasMultiSubs && !isHeavyRuPack) {
       langScoreDelta = 400;
     } else if (isHeavyRuPack && hasPrefLang) {
       langScoreDelta = -600;
-    } else if (hasOtherForeignOnly || isHeavyRuPack) {
+    } else if (hasOtherForeignAudioOnly || isHeavyRuPack) {
       langScoreDelta = -2500;
     } else {
       langScoreDelta = 500;
     }
   } else if (cleanDubPref === 'sub_orig') {
-    if ((hasMultiSubs || isOrigTag) && !isDubbed && !isHeavyRuPack && !hasOtherForeignOnly) {
+    if (isOrigSingleLangWithPrefSub) {
+      langScoreDelta = 2150;
+    } else if ((hasMultiSubs || isOrigTag) && !isDubbed && !isHeavyRuPack && !hasOtherForeignAudioOnly) {
       langScoreDelta = 2050;
-    } else if ((hasMultiSubs || isOrigTag || isMultiAudio) && !isHeavyRuPack) {
+    } else if (hasPrefLang && isMultiAudio && !isHeavyRuPack) {
       langScoreDelta = 1900;
-    } else if (!isHeavyRuPack && !hasOtherForeignOnly && (!isDubbed || !hasPrefLang)) {
+    } else if (!isHeavyRuPack && !hasOtherForeignAudioOnly && (!isDubbed || !hasPrefLang)) {
       langScoreDelta = 1350;
+    } else if (hasOtherForeignAudioOnly && hasPrefSub && !isHeavyRuPack) {
+      langScoreDelta = 500;
     } else if (isDubbed && !isMultiAudio && !isOrigTag && !isHeavyRuPack) {
       langScoreDelta = 400;
     } else {
       langScoreDelta = -2200;
     }
   } else {
-    // Default: dub_or_orig (Preferred Language, Dubbed/Multi-Audio & Clean Best Stream)
+    // Default: dub_or_orig (Preferred Audio Language, Dubbed/Multi-Audio & Clean Best Stream)
     if (hasPrefLang && (isDubbed || isMultiAudio) && !isHeavyRuPack) {
       langScoreDelta = 1800;
     } else if (hasPrefLang && !isHeavyRuPack) {
       langScoreDelta = 1650;
-    } else if (detectedLangs.length === 0 && !isHeavyRuPack) {
+    } else if (detectedAudioLangs.length === 0 && !isHeavyRuPack) {
       langScoreDelta = 1200;
+    } else if (isOrigSingleLangWithPrefSub) {
+      langScoreDelta = 900;
+    } else if (hasOtherForeignAudioOnly && hasPrefSub && !isHeavyRuPack) {
+      langScoreDelta = -400;
     } else if (hasMultiSubs && !isHeavyRuPack) {
       langScoreDelta = 700;
     } else if (isHeavyRuPack && hasPrefLang) {
       langScoreDelta = -700;
-    } else if (hasOtherForeignOnly || isHeavyRuPack) {
+    } else if (hasOtherForeignAudioOnly || isHeavyRuPack) {
       langScoreDelta = -2500;
     } else {
       langScoreDelta = 800;
@@ -6411,13 +6490,20 @@ function analyzeStreamLanguageAndDub(fullText = '', prefLang = 'en', dubPref = '
   }
 
   const prefShort = prefProf ? prefProf.short : 'MULTI';
-  const detectedShorts = detectedLangs.map(c => LANGUAGE_PROFILES[c]?.short || c.toUpperCase());
+  const audioShorts = detectedAudioLangs.map(c => LANGUAGE_PROFILES[c]?.short || c.toUpperCase());
   let langBadge = '';
   let langKey = 'std';
 
-  if (hasOtherForeignOnly || (isHeavyRuPack && !hasPrefLang)) {
-    const fLabel = detectedShorts.length > 0 ? detectedShorts.slice(0, 3).join('/') : 'Foreign';
-    langBadge = `🌐 Foreign Dub (${fLabel})`;
+  if (isOrigSingleLangWithPrefSub) {
+    langBadge = `💬 ${audioShorts[0]} Audio • ${prefShort} Subs`;
+    langKey = `${detectedAudioLangs[0]}_sub_${cleanPref}`;
+  } else if (hasOtherForeignAudioOnly && hasPrefSub && !isHeavyRuPack) {
+    const fLabel = audioShorts.length > 0 ? audioShorts.slice(0, 3).join('/') : 'Foreign';
+    langBadge = `🌐 Foreign ${isDubbed ? 'Dub' : 'Audio'} (${fLabel}) • ${prefShort} Subs`;
+    langKey = `foreign_${fLabel.toLowerCase().replace(/[^a-z0-9]/g, '')}_sub_${cleanPref}`;
+  } else if (hasOtherForeignAudioOnly || (isHeavyRuPack && !hasPrefLang)) {
+    const fLabel = audioShorts.length > 0 ? audioShorts.slice(0, 3).join('/') : 'Foreign';
+    langBadge = `🌐 Foreign ${isDubbed ? 'Dub' : 'Audio'} (${fLabel})`;
     langKey = `foreign_${fLabel.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
   } else if (isHeavyRuPack && hasPrefLang) {
     langBadge = `🌐 Multi-VO / ${prefShort}`;
@@ -6435,8 +6521,8 @@ function analyzeStreamLanguageAndDub(fullText = '', prefLang = 'en', dubPref = '
     langBadge = `🗣️ ${prefShort} Audio`;
     langKey = `${cleanPref}_audio`;
   } else if (hasMultiSubs) {
-    langBadge = `💬 Multi-Subs`;
-    langKey = 'multisub';
+    langBadge = hasPrefSub ? `💬 ${prefShort} Subs` : `💬 Multi-Subs`;
+    langKey = hasPrefSub ? `${cleanPref}_subs` : 'multisub';
   } else if (isMultiAudio) {
     langBadge = `🗣️ Multi-Audio`;
     langKey = 'multiaudio';
@@ -6489,12 +6575,12 @@ function optimizeAndRankStreams(rawStreams, userConfig = DEFAULT_USER_CONFIG, ty
     const title = s.title || s.description || '';
     const name = s.name || '';
     const filename = s.behaviorHints?.filename || '';
-    const fullStreamText = `${title} ${name} ${filename}`;
+    const fullStreamText = `${title}\n${name}\n${filename}`;
 
-    // Check for Debrid & Usenet Streams (Instant Cached [RD+] / [RD⚡] / ⚡️ [RD] vs Uncached [RD download])
+    // Check for Debrid & Usenet Streams (Instant Cached [RD+] / [RD⚡] / [RD🌩️] / ⚡️ [RD] vs Uncached [RD download] / [RD☁️])
     let debridProvider = '';
     const combinedText = `${name} ${title}`;
-    const debridMatch = combinedText.match(/\[(RD|AD|TB|PM|ED|DL|OC|PP|PIO|NZB|USENET)(?:\+|⚡|⬇|\s+download)?\]/i)
+    const debridMatch = combinedText.match(/\[(RD|AD|TB|PM|ED|DL|OC|PP|PIO|NZB|USENET)(?:\+|⚡\uFE0F?|🌩\uFE0F?|☁\uFE0F?|⬇\uFE0F?|\s+download)?\]/i)
       || combinedText.match(/⚡\uFE0F?\s*\[(RD|AD|TB|PM|ED|DL|OC|PP|PIO)\]/i);
     if (debridMatch) {
       const code = debridMatch[1].toUpperCase();
@@ -6518,23 +6604,25 @@ function optimizeAndRankStreams(rawStreams, userConfig = DEFAULT_USER_CONFIG, ty
     }
     const isDebrid = Boolean(debridProvider);
     const isDebridCached = isDebrid
-      && /\[(RD|AD|TB|PM|ED|DL|OC|PP|PIO)\+\]|\[(RD|AD|TB|PM|ED|DL|OC|PP|PIO)\s*⚡\]|⚡\uFE0F?\s*\[(RD|AD|TB|PM|ED|DL|OC|PP|PIO)\]/i.test(combinedText)
-      && !/download|⬇|⏳/i.test(combinedText);
+      && /\[(RD|AD|TB|PM|ED|DL|OC|PP|PIO)(?:\+|\s*⚡\uFE0F?|\s*🌩\uFE0F?)\]|⚡\uFE0F?\s*\[(RD|AD|TB|PM|ED|DL|OC|PP|PIO)\]/i.test(combinedText)
+      && !/download|⬇|⏳|☁/i.test(combinedText);
     const isDirectHttp = Boolean(s.url && /^https?:\/\//i.test(s.url) && !s.infoHash);
 
-    // Parse Seeders (supports 👤 emoji or text Seeds:/Seeders:)
-    const seedMatch = title.match(/👤\s*(\d+)/) || title.match(/\b(?:seeds?|seeders?)\s*[:=]\s*(\d+)/i);
-    const hasSeederInfo = Boolean(seedMatch);
-    const seeders = seedMatch ? parseInt(seedMatch[1], 10) : 0;
+    // Parse Seeders (supports 👤, 👥 emoji, behaviorHints.seeders, or text Seeds:/Seeders:)
+    const seedMatch = title.match(/[👤👥]\s*(\d+)/) || title.match(/\b(?:seeds?|seeders?)\s*[:=]\s*(\d+)/i);
+    const hintSeeders = Number(s.behaviorHints?.seeders || 0);
+    const hasSeederInfo = Boolean(seedMatch) || hintSeeders > 0;
+    const seeders = seedMatch ? parseInt(seedMatch[1], 10) : hintSeeders;
 
-    // Parse File Size in GB (💾, 📦, or behaviorHints.videoSize fallback)
-    const sizeMatch = title.match(/💾\s*([\d\.]+)\s*(GB|MB)/i)
-      || title.match(/📦\s*([\d\.]+)\s*(GB|MB)/i)
-      || title.match(/\b([\d\.]+)\s*(GB|MB)\b/i);
+    // Parse File Size in GB (💾, 📦, GiB/MiB, or behaviorHints.videoSize fallback)
+    const sizeMatch = title.match(/💾\s*([\d\.]+)\s*(GB|MB|GiB|MiB)/i)
+      || title.match(/📦\s*([\d\.]+)\s*(GB|MB|GiB|MiB)/i)
+      || title.match(/\b([\d\.]+)\s*(GB|MB|GiB|MiB)\b/i);
     let sizeGB = 0;
     if (sizeMatch) {
       const val = parseFloat(sizeMatch[1]);
-      sizeGB = sizeMatch[2].toUpperCase() === 'MB' ? val / 1024 : val;
+      const unit = sizeMatch[2].toUpperCase();
+      sizeGB = (unit === 'MB' || unit === 'MIB') ? val / 1024 : val;
     } else if (s.behaviorHints?.videoSize) {
       sizeGB = Number(s.behaviorHints.videoSize) / (1024 ** 3);
     }
@@ -6653,11 +6741,15 @@ function optimizeAndRankStreams(rawStreams, userConfig = DEFAULT_USER_CONFIG, ty
     const qualityLabel = [quality, isDv ? 'DV' : '', isHdr && !isDv ? 'HDR' : ''].filter(Boolean).join(' ');
     const sourceTag = s._sourceScraper || '';
     let cleanAddonName = (s.name || '')
-      .replace(/^(?:⚡️?|⚡)\s*/u, '')
+      .replace(/(?:⚡️?|⚡|🔑|🌩️?|☁️?|🌊|⭐|🌐)\s*/gu, '')
       .replace(/\[[^\]]+\]\s*/g, '')
-      .replace(/\b(?:Torrentio|Comet|StremThru\s*Torz|Torz|TorrentsDB|Jackettio|Peerflix)\b\s*\|?\s*/gi, '')
+      .replace(/\b(?:Torrentio|Comet|StremThru\s*Torz|Torz|TorrentsDB|Jackettio|Peerflix|Meteor|TorrentClaw)\b\s*[\|·]?\s*/gi, '')
+      .replace(/^[\s·|•-]+|[\s·|•-]+$/g, '')
       .replace(/\s*\n\s*/g, ' ')
-      .trim() || qualityLabel || 'Stream';
+      .trim();
+    if (!cleanAddonName || !/[a-z0-9]/i.test(cleanAddonName)) {
+      cleanAddonName = qualityLabel || 'Stream';
+    }
     const sourceSuffix = (sourceTag && !cleanAddonName.toLowerCase().includes(sourceTag.toLowerCase())) ? ` • ${sourceTag}` : '';
 
     // BehaviorHints & BingeGroup for seamless Next Episode / Outro transition
@@ -6710,10 +6802,16 @@ function encodeBase64Json(obj) {
   return Buffer.from(JSON.stringify(obj), 'utf-8').toString('base64');
 }
 
+function encodeBase64UrlJson(obj) {
+  return Buffer.from(JSON.stringify(obj), 'utf-8').toString('base64url');
+}
+
 function isPlaceholderStream(s) {
   if (!s || (!s.url && !s.infoHash)) return true;
-  const nm = String(s.name || '');
-  if (/⛔|não autenticado|donation needed|donate to|invalid api|invalid.*key|not authenticated/i.test(nm)) return true;
+  const checkStr = `${s.name || ''} ${s.title || ''} ${s.description || ''} ${s.torrentTitle || ''} ${s.url || ''}`;
+  if (/public-rate-limit-exceeded|elfhosted\.com\/assets\/|fnky\.nz\/elf-stremio|rate[- ]?limit\s+exceeded|🐢|⛔|não autenticado|donation needed|donate to|invalid api|invalid.*key|not authenticated/i.test(checkStr)) {
+    return true;
+  }
   return false;
 }
 
@@ -6733,14 +6831,66 @@ function extractStreamDedupeKey(s) {
 
 function isCachedRdEntry(s) {
   const txt = `${s.name || ''} ${s.title || ''} ${s.description || ''}`;
-  return /\[(RD|AD|TB|PM|ED|DL|OC|PP|PIO)\+\]|\[(RD|AD|TB|PM|ED|DL|OC|PP|PIO)\s*⚡\]|⚡\uFE0F?\s*\[(RD|AD|TB|PM|ED|DL|OC|PP|PIO)\]/i.test(txt)
-    && !/download|⬇|⏳/i.test(txt);
+  return /\[(RD|AD|TB|PM|ED|DL|OC|PP|PIO)(?:\+|\s*⚡\uFE0F?|\s*🌩\uFE0F?)\]|⚡\uFE0F?\s*\[(RD|AD|TB|PM|ED|DL|OC|PP|PIO)\]/i.test(txt)
+    && !/download|⬇|⏳|☁/i.test(txt);
 }
 
 function extractSeederCount(s) {
   const txt = `${s.title || ''} ${s.description || ''}`;
-  const m = txt.match(/👤\s*(\d+)/) || txt.match(/\b(?:seeds?|seeders?)\s*[:=]\s*(\d+)/i);
-  return m ? parseInt(m[1], 10) : 0;
+  const m = txt.match(/[👤👥]\s*(\d+)/) || txt.match(/\b(?:seeds?|seeders?)\s*[:=]\s*(\d+)/i);
+  return m ? parseInt(m[1], 10) : Number(s.behaviorHints?.seeders || 0);
+}
+
+function mergeScraperResults(settledList, activeRdToken, dedupedMap) {
+  let firstErrorStatus = null;
+  let firstErrorMsg = null;
+
+  for (const item of settledList) {
+    if (item.status !== 'fulfilled' || !item.value) continue;
+    const resObj = item.value;
+    if (!resObj.ok) {
+      if (firstErrorStatus === null && resObj.status > 0) {
+        firstErrorStatus = resObj.status;
+        firstErrorMsg = `${resObj.label}: ${resObj.error}`;
+      }
+      continue;
+    }
+
+    for (const st of resObj.streams) {
+      if (isPlaceholderStream(st)) continue;
+
+      if (activeRdToken) {
+        // Strict Real-Debrid guarantee: only HTTPS resolved debrid URLs, never P2P infoHashes
+        if (!st.url || !/^https?:\/\//i.test(st.url) || st.infoHash) continue;
+        const dKey = extractStreamDedupeKey(st);
+        const existing = dedupedMap.get(dKey);
+        if (!existing) {
+          dedupedMap.set(dKey, st);
+        } else {
+          const newCached = isCachedRdEntry(st);
+          const oldCached = isCachedRdEntry(existing);
+          if ((newCached && !oldCached) || (newCached === oldCached && st.behaviorHints?.filename && !existing.behaviorHints?.filename)) {
+            dedupedMap.set(dKey, st);
+          }
+        }
+      } else {
+        // Free tokenless mode: accept P2P infoHash or direct free HTTPS streams
+        if (!st.infoHash && (!st.url || !/^https?:\/\//i.test(st.url))) continue;
+        const dKey = extractStreamDedupeKey(st);
+        const existing = dedupedMap.get(dKey);
+        if (!existing) {
+          dedupedMap.set(dKey, st);
+        } else {
+          const newSeeds = extractSeederCount(st);
+          const oldSeeds = extractSeederCount(existing);
+          if (newSeeds > oldSeeds || (newSeeds === oldSeeds && st.behaviorHints?.filename && !existing.behaviorHints?.filename)) {
+            dedupedMap.set(dKey, st);
+          }
+        }
+      }
+    }
+  }
+  return { firstErrorStatus, firstErrorMsg };
 }
 
 async function fetchScraperStreams(label, url, timeoutMs = 5200) {
@@ -6975,7 +7125,7 @@ async function handleStream(type, id, userConfig = DEFAULT_USER_CONFIG, rootUrl 
   const maxQuality = userConfig.maxQuality || 'any';
   const subMode = userConfig.subMode || 'all';
   const rdKey = userConfig.realDebrid ? crypto.createHash('sha256').update(userConfig.realDebrid).digest('hex').slice(0, 12) : 'none';
-  const cacheKey = `stream:${type}:${id}:${region}:${userConfig.upstream}:${userConfig.hideRisk}:${rdKey}:${prefLang}:${dubPref}:${maxQuality}:${subMode}`;
+  const cacheKey = `stream:v5:${type}:${id}:${region}:${userConfig.upstream}:${userConfig.hideRisk}:${rdKey}:${prefLang}:${dubPref}:${maxQuality}:${subMode}`;
   const baseLookupId = id.startsWith('tt') ? id.split(':')[0] : (id.startsWith('tmdb:') ? `tmdb:${id.replace('tmdb:', '').split(':')[0]}` : id);
   const cachedTitleInfo = ID_TITLE_CACHE.get(baseLookupId);
   const cached = getCache(cacheKey);
@@ -7058,142 +7208,124 @@ async function handleStream(type, id, userConfig = DEFAULT_USER_CONFIG, rootUrl 
     ]);
 
     const dedupedMap = new Map();
-    const scraperTargets = [];
+    const wave1Targets = [];
 
     if (activeRdToken) {
-      // Real-Debrid Cloud Multi-Indexer Mode (NEVER fall back to raw P2P infoHashes)
-      const primaryUrl = `${scraperBase}/stream/${type}/${imdbTarget}.json`;
-      scraperTargets.push(fetchScraperStreams('Torrentio RD', primaryUrl, 4500));
-
-      const stRdB64 = encodeBase64Json({ stores: [{ c: 'rd', t: activeRdToken }] });
-      scraperTargets.push(fetchScraperStreams(
-        'StremThru Torz RD',
-        `https://stremthru.elfhosted.com/stremio/torz/${stRdB64}/stream/${type}/${imdbTarget}.json`,
-        5500
-      ));
-
-      const cometRdB64 = encodeBase64Json({
-        maxResultsPerResolution: 5,
-        maxSize: 0,
-        cachedOnly: false,
-        removeTrash: true,
-        resultFormat: ['all'],
+      // Real-Debrid Mode Wave 1: 3 independent non-ElfHosted scrapers + 1 ElfHosted StremThru
+      const meteorRdB64 = encodeBase64UrlJson({
         debridService: 'realdebrid',
-        debridApiKey: activeRdToken,
-        debridStreamProxyPassword: '',
-        languages: { required: [], exclude: [], preferred: [prefLang === 'any' ? 'en' : prefLang] },
-        resolutions: {},
-        options: { remove_ranks_under: -10000000000, allow_english_in_languages: false, remove_unknown_languages: false }
+        debridApiKey: activeRdToken
       });
-      scraperTargets.push(fetchScraperStreams(
-        'Comet RD',
-        `https://comet.elfhosted.com/${cometRdB64}/stream/${type}/${imdbTarget}.json`,
+      wave1Targets.push(fetchScraperStreams(
+        'Meteor RD',
+        `https://meteorfortheweebs.midnightignite.me/${meteorRdB64}/stream/${type}/${imdbTarget}.json`,
         5500
       ));
+
+      const primaryUrl = `${scraperBase}/stream/${type}/${imdbTarget}.json`;
+      wave1Targets.push(fetchScraperStreams('Torrentio RD', primaryUrl, 4500));
 
       const tdbRdB64 = encodeBase64Json({ realdebrid: activeRdToken });
-      scraperTargets.push(fetchScraperStreams(
+      wave1Targets.push(fetchScraperStreams(
         'TorrentsDB RD',
         `https://torrentsdb.com/${tdbRdB64}/stream/${type}/${imdbTarget}.json`,
-        5500
+        5000
       ));
 
-      const jackettioRdB64 = encodeBase64Json({
-        maxTorrents: 8,
-        priotizePackQuality: true,
-        excludeKeywords: [],
-        debridId: 'realdebrid',
-        debridApiKey: activeRdToken,
-        hideUncached: false,
-        sortCached: [['quality', true], ['size', true]],
-        sortUncached: [['seeders', true]],
-        forceCacheNextEpisode: false,
-        priotizeLanguages: ['english'],
-        indexerTimeoutSec: 5,
-        metaLanguage: '',
-        enableMediaFlow: false,
-        qualities: [0, 720, 1080, 2160]
-      });
-      scraperTargets.push(fetchScraperStreams(
-        'Jackettio RD',
-        `https://jackettio.elfhosted.com/${jackettioRdB64}/stream/${type}/${imdbTarget}.json`,
-        5500
+      const stRdB64 = encodeBase64Json({ stores: [{ c: 'rd', t: activeRdToken }] });
+      wave1Targets.push(fetchScraperStreams(
+        'StremThru Torz RD',
+        `https://stremthru.elfhosted.com/stremio/torz/${stRdB64}/stream/${type}/${imdbTarget}.json`,
+        5000
       ));
     } else {
-      // Free Tokenless P2P Multi-Indexer Mode (No tokens or Real-Debrid required)
-      scraperTargets.push(fetchScraperStreams(
+      // Free Tokenless Mode Wave 1: 4 independent non-ElfHosted P2P scrapers
+      wave1Targets.push(fetchScraperStreams(
         'Torrentio',
         `${scraperBase}/stream/${type}/${imdbTarget}.json`,
-        5200
+        5000
       ));
 
-      const stP2pB64 = encodeBase64Json({ stores: [{ c: 'p2p', t: '' }] });
-      scraperTargets.push(fetchScraperStreams(
-        'StremThru Torz',
-        `https://stremthru.elfhosted.com/stremio/torz/${stP2pB64}/stream/${type}/${imdbTarget}.json`,
-        5200
+      wave1Targets.push(fetchScraperStreams(
+        'TorrentClaw',
+        `https://torrentclaw.com/api/stremio/stream/${type}/${imdbTarget}.json`,
+        5000
       ));
 
-      scraperTargets.push(fetchScraperStreams(
+      wave1Targets.push(fetchScraperStreams(
         'TorrentsDB',
         `https://torrentsdb.com/stream/${type}/${imdbTarget}.json`,
-        5200
+        5000
       ));
 
-      scraperTargets.push(fetchScraperStreams(
+      wave1Targets.push(fetchScraperStreams(
         'Peerflix',
         `https://peerflix.mov/stream/${type}/${imdbTarget}.json`,
-        5200
+        4500
       ));
     }
 
-    const settledScrapers = await Promise.allSettled(scraperTargets);
-    let firstErrorStatus = null;
-    let firstErrorMsg = null;
+    const wave1Settled = await Promise.allSettled(wave1Targets);
+    let { firstErrorStatus, firstErrorMsg } = mergeScraperResults(wave1Settled, activeRdToken, dedupedMap);
 
-    for (const item of settledScrapers) {
-      if (item.status !== 'fulfilled' || !item.value) continue;
-      const resObj = item.value;
-      if (!resObj.ok) {
-        if (firstErrorStatus === null && resObj.status > 0) {
-          firstErrorStatus = resObj.status;
-          firstErrorMsg = `${resObj.label}: ${resObj.error}`;
-        }
-        continue;
+    // Wave 2 Conditional Backup: only invoke extra ElfHosted endpoints if Wave 1 returned < 8 unique streams
+    if (dedupedMap.size < 8) {
+      const wave2Targets = [];
+      if (activeRdToken) {
+        const cometRdB64 = encodeBase64Json({
+          maxResultsPerResolution: 5,
+          maxSize: 0,
+          cachedOnly: false,
+          removeTrash: true,
+          resultFormat: ['all'],
+          debridService: 'realdebrid',
+          debridApiKey: activeRdToken,
+          debridStreamProxyPassword: '',
+          languages: { required: [], exclude: [], preferred: [prefLang === 'any' ? 'en' : prefLang] },
+          resolutions: {},
+          options: { remove_ranks_under: -10000000000, allow_english_in_languages: false, remove_unknown_languages: false }
+        });
+        wave2Targets.push(fetchScraperStreams(
+          'Comet RD',
+          `https://comet.elfhosted.com/${cometRdB64}/stream/${type}/${imdbTarget}.json`,
+          5000
+        ));
+
+        const jackettioRdB64 = encodeBase64Json({
+          maxTorrents: 8,
+          priotizePackQuality: true,
+          excludeKeywords: [],
+          debridId: 'realdebrid',
+          debridApiKey: activeRdToken,
+          hideUncached: false,
+          sortCached: [['quality', true], ['size', true]],
+          sortUncached: [['seeders', true]],
+          forceCacheNextEpisode: false,
+          priotizeLanguages: ['english'],
+          indexerTimeoutSec: 5,
+          metaLanguage: '',
+          enableMediaFlow: false,
+          qualities: [0, 720, 1080, 2160]
+        });
+        wave2Targets.push(fetchScraperStreams(
+          'Jackettio RD',
+          `https://jackettio.elfhosted.com/${jackettioRdB64}/stream/${type}/${imdbTarget}.json`,
+          5000
+        ));
+      } else {
+        const stP2pB64 = encodeBase64Json({ stores: [{ c: 'p2p', t: '' }] });
+        wave2Targets.push(fetchScraperStreams(
+          'StremThru Torz',
+          `https://stremthru.elfhosted.com/stremio/torz/${stP2pB64}/stream/${type}/${imdbTarget}.json`,
+          5000
+        ));
       }
 
-      for (const st of resObj.streams) {
-        if (isPlaceholderStream(st)) continue;
-
-        if (activeRdToken) {
-          // Strict Real-Debrid guarantee: only HTTPS resolved debrid URLs, never P2P infoHashes
-          if (!st.url || !/^https?:\/\//i.test(st.url) || st.infoHash) continue;
-          const dKey = extractStreamDedupeKey(st);
-          const existing = dedupedMap.get(dKey);
-          if (!existing) {
-            dedupedMap.set(dKey, st);
-          } else {
-            const newCached = isCachedRdEntry(st);
-            const oldCached = isCachedRdEntry(existing);
-            if ((newCached && !oldCached) || (newCached === oldCached && st.behaviorHints?.filename && !existing.behaviorHints?.filename)) {
-              dedupedMap.set(dKey, st);
-            }
-          }
-        } else {
-          // Free tokenless mode: accept P2P infoHash or direct free HTTPS streams
-          if (!st.infoHash && (!st.url || !/^https?:\/\//i.test(st.url))) continue;
-          const dKey = extractStreamDedupeKey(st);
-          const existing = dedupedMap.get(dKey);
-          if (!existing) {
-            dedupedMap.set(dKey, st);
-          } else {
-            const newSeeds = extractSeederCount(st);
-            const oldSeeds = extractSeederCount(existing);
-            if (newSeeds > oldSeeds || (newSeeds === oldSeeds && st.behaviorHints?.filename && !existing.behaviorHints?.filename)) {
-              dedupedMap.set(dKey, st);
-            }
-          }
-        }
+      const wave2Settled = await Promise.allSettled(wave2Targets);
+      const w2Err = mergeScraperResults(wave2Settled, activeRdToken, dedupedMap);
+      if (firstErrorStatus === null && w2Err.firstErrorStatus !== null) {
+        firstErrorStatus = w2Err.firstErrorStatus;
+        firstErrorMsg = w2Err.firstErrorMsg;
       }
     }
 
@@ -7222,7 +7354,9 @@ async function handleStream(type, id, userConfig = DEFAULT_USER_CONFIG, rootUrl 
       : optimized;
 
     const combined = [...byoaStreams, ...optimizedWithSubs];
-    setCache(cacheKey, combined, 600);
+    if (optimized.length > 0) {
+      setCache(cacheKey, combined, 600);
+    }
     return combined;
   } catch (e) {
     console.error(`Stream lookup error for ${type}/${id}:`, e.message);
@@ -7480,7 +7614,7 @@ async function fetchOpenSubtitlesRest(type, cleanId, osLangCode = '') {
         const fileName = String(item.SubFileName || '');
         const subFormat = String(item.SubFormat || 'srt').toLowerCase();
         const foreignOnly = String(item.SubForeignPartsOnly || '0') === '1';
-        const isSignsNamed = /\b(forced|signs?\s*(?:&|and|n)?\s*songs?|signs?\s*only|signs|non[- ]?english|foreign\s*parts?)\b/i.test(fileName);
+        const isSignsNamed = /\b(forced|forzados?|forc[eé]s?|for[cç]ados?|erzwungen|signs?\s*(?:&|and|n)?\s*songs?|signs?\s*only|signs|non[- ]?english|foreign\s*parts?)\b/i.test(fileName);
         return {
           url: `https://subs5.strem.io/en/download/subencoding-stremio-utf8/src-api/file/${fileId}`,
           lang: item.SubLanguageID || item.ISO639 || 'eng',
@@ -8077,7 +8211,13 @@ export async function handleRequest(req, res) {
       persistStats();
       const [, type, id] = streamMatch;
       const streams = await handleStream(type, id, userConfig, rootUrl);
-      res.setHeader('Cache-Control', 'public, max-age=600, s-maxage=1200, stale-while-revalidate=3600');
+      const isMovieOrSeriesStream = id.startsWith('tt') || id.startsWith('tmdb:');
+      const hasPlayable = Array.isArray(streams) && streams.some(st => st && (st.url || st.infoHash || (!isMovieOrSeriesStream && st.ytId)));
+      if (hasPlayable) {
+        res.setHeader('Cache-Control', 'public, max-age=600, s-maxage=1200, stale-while-revalidate=3600');
+      } else {
+        res.setHeader('Cache-Control', 'no-store, max-age=0');
+      }
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
       res.end(JSON.stringify({ streams }));
       return;
