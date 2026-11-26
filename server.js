@@ -977,14 +977,14 @@ const REGIONAL_CHANNELS = {
     },
     {
       id: 'tv:fr_bfmtv',
-      name: 'BFMTV Live HD',
-      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/63/BFMTV_logo_2019.svg/512px-BFMTV_logo_2019.svg.png',
-      background: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=1280&q=80',
+      name: 'TV5MONDE Europe HD',
+      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/42/TV5_Monde_logo.svg/512px-TV5_Monde_logo.svg.png',
+      background: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=1280&q=80',
       genres: ['News & Info', 'Live TV'],
-      streamUrl: 'https://ncdn-live-bfm.pfd.sfr.net/shls/LIVE$BFM_TV/index.m3u8?end=END&start=LIVE',
+      streamUrl: 'https://ott.tv5monde.com/Content/HLS/Live/channel(europe)/index.m3u8',
       backupUrl: 'https://ott.tv5monde.com/Content/HLS/Live/channel(info)/index.m3u8',
-      summary: 'France’s most-watched 24-hour breaking news network with live political coverage, economy, sports, and Paris studio debates.',
-      network: 'BFM',
+      summary: '24/7 European French-language live news, cinema, series, and cultural programming broadcast internationally from Paris.',
+      network: 'TV5MONDE',
       guideSchedule: GENRE_SCHEDULE_TEMPLATES.news
     },
     {
@@ -3636,7 +3636,7 @@ async function fetchYouTubeChannelMeta(channelIdOrHandle, userConfig = DEFAULT_U
 }
 
 // YouTube Search, Channels & Video Scraper (Zero-Auth, DRM-Free & BYOA)
-async function searchYouTube(query = 'Trending', skip = 0, userConfig = DEFAULT_USER_CONFIG, genre = '') {
+async function searchYouTube(query = 'Trending', skip = 0, userConfig = DEFAULT_USER_CONFIG, genre = '', isExplicitSearch = false) {
   if (genre === 'Channels & Creators' && (!query || query === 'Trending' || query === 'Channels & Creators')) {
     const featuredCards = FEATURED_YT_CHANNELS.map(c =>
       buildYouTubeChannelCard(c.id, c.name, null, c.handle, c.desc)
@@ -3674,7 +3674,7 @@ async function searchYouTube(query = 'Trending', skip = 0, userConfig = DEFAULT_
     ? 'live news music gaming stream'
     : (query || genre || 'Trending');
   const apiKey = userConfig?.youtubeApiKey || '';
-  const cacheKey = `yt:query:${effectiveQuery}:${genre}:${apiKey ? 'api' : 'web'}`;
+  const cacheKey = `yt:query:v2:${effectiveQuery}:${genre}:${isExplicitSearch ? 's' : 'b'}:${apiKey ? 'api' : 'web'}`;
   let videos = getCache(cacheKey);
 
   if (!videos) {
@@ -3720,8 +3720,10 @@ async function searchYouTube(query = 'Trending', skip = 0, userConfig = DEFAULT_
     }
 
     try {
-      const liveFilter = genre === 'Live Now' ? '&sp=EgJAAQ%253D%253D' : '';
-      const url = `https://www.youtube.com/results?search_query=${encodeURIComponent(effectiveQuery)}${liveFilter}`;
+      const spFilter = genre === 'Live Now'
+        ? '&sp=EgJAAQ%3D%3D'
+        : ((genre !== 'Channels & Creators' && !isExplicitSearch) ? '&sp=EgIQAQ%3D%3D' : '');
+      const url = `https://www.youtube.com/results?search_query=${encodeURIComponent(effectiveQuery)}${spFilter}`;
       const res = await fetch(url, {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -3733,12 +3735,26 @@ async function searchYouTube(query = 'Trending', skip = 0, userConfig = DEFAULT_
       const match = html.match(/ytInitialData\s*=\s*({.+?});<\/script>/);
       if (match) {
         const data = JSON.parse(match[1]);
-        const contents = data.contents?.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer?.contents?.[0]?.itemSectionRenderer?.contents || [];
+        const sections = data.contents?.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer?.contents || [];
+        const contents = [];
+        for (const sec of sections) {
+          for (const entry of (sec.itemSectionRenderer?.contents || [])) {
+            if (entry.shelfRenderer?.content?.verticalListRenderer?.items) {
+              contents.push(...entry.shelfRenderer.content.verticalListRenderer.items);
+            } else {
+              contents.push(entry);
+            }
+          }
+        }
         videos = [];
+        const seenYtIds = new Set();
 
         for (const item of contents) {
           const cr = item.channelRenderer;
           if (cr && cr.channelId) {
+            const cardId = `yt:channel:${cr.channelId}`;
+            if (seenYtIds.has(cardId)) continue;
+            seenYtIds.add(cardId);
             const cTitle = cr.title?.simpleText || cr.title?.runs?.[0]?.text || 'YouTube Channel';
             const cAvatar = extractYtThumb(cr.thumbnail?.thumbnails);
             const cHandle = cr.navigationEndpoint?.browseEndpoint?.canonicalBaseUrl || '';
@@ -3749,6 +3765,9 @@ async function searchYouTube(query = 'Trending', skip = 0, userConfig = DEFAULT_
 
           const vr = item.videoRenderer;
           if (vr && vr.videoId) {
+            const vidKey = `yt:${vr.videoId}`;
+            if (seenYtIds.has(vidKey)) continue;
+            seenYtIds.add(vidKey);
             const title = vr.title?.runs?.[0]?.text || '';
             const channel = vr.ownerText?.runs?.[0]?.text || '';
             const thumbnail = extractYtThumb(vr.thumbnail?.thumbnails, vr.videoId);
@@ -3760,7 +3779,7 @@ async function searchYouTube(query = 'Trending', skip = 0, userConfig = DEFAULT_
             const prefix = isLive ? '🔴 LIVE: ' : (isUpcoming ? '⏰ UPCOMING: ' : '');
 
             const videoMeta = {
-              id: `yt:${vr.videoId}`,
+              id: vidKey,
               type: 'channel',
               name: `${prefix}${title}`,
               poster: thumbnail,
@@ -3768,14 +3787,16 @@ async function searchYouTube(query = 'Trending', skip = 0, userConfig = DEFAULT_
               description: `Channel: ${channel} • ${isLive ? '🔴 Streaming Live Now' : `Duration: ${length || 'Video'}`}\n\n▶️ Plays ad-free inside Stremio player or opens in YouTube app (BYOA).`,
               releaseInfo: isLive ? '🔴 LIVE' : (length || channel),
               behaviorHints: {
-                defaultVideoId: `yt:${vr.videoId}`
+                defaultVideoId: vidKey
               }
             };
             videos.push(videoMeta);
             setCache(`yt:meta:${vr.videoId}`, videoMeta, 86400);
           }
         }
-        setCache(cacheKey, videos, 1800);
+        if (videos.length > 0) {
+          setCache(cacheKey, videos, 1800);
+        }
       }
     } catch (e) {
       console.error('YouTube search error:', e.message);
@@ -8617,11 +8638,6 @@ export async function handleRequest(req, res) {
       const [, type, rawCatalogId, extraRaw] = catalogMatch;
       const catalogId = decodeURIComponent(rawCatalogId);
       const isStaticCatalog = catalogId.includes('franchises') || catalogId.includes('decades') || catalogId.includes('top_rated') || catalogId.includes('drmfree') || catalogId.includes('streaming_hub');
-      if (isStaticCatalog) {
-        res.setHeader('Cache-Control', 'public, max-age=43200, s-maxage=86400, stale-while-revalidate=604800');
-      } else {
-        res.setHeader('Cache-Control', 'public, max-age=7200, s-maxage=14400, stale-while-revalidate=86400');
-      }
       let extra = {};
       if (extraRaw) {
         const parts = extraRaw.split(/(?:\/|&)(?=(?:genre|search|skip|calendarVideosIds)=)/);
@@ -8636,6 +8652,21 @@ export async function handleRequest(req, res) {
             extra[k] = v;
           }
         }
+      }
+
+      if (
+        catalogId === 'calendar-videos' ||
+        catalogId === 'calendar-movies' ||
+        extra.genre === 'My Subscriptions (BYOA)' ||
+        extra.genre === 'My Followed Streamers (BYOA)'
+      ) {
+        res.setHeader('Cache-Control', 'private, no-store, max-age=0');
+      } else if (extra.genre === 'Trending on NightKnight') {
+        res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=60, stale-while-revalidate=300');
+      } else if (isStaticCatalog) {
+        res.setHeader('Cache-Control', 'public, max-age=43200, s-maxage=86400, stale-while-revalidate=604800');
+      } else {
+        res.setHeader('Cache-Control', 'public, max-age=7200, s-maxage=14400, stale-while-revalidate=86400');
       }
 
       const skip = parseInt(extra.skip, 10) || 0;
@@ -8742,7 +8773,7 @@ export async function handleRequest(req, res) {
         if (extra.search) STATS.youtubeSearches++;
         persistStats();
         const query = extra.search || (extra.genre && extra.genre !== 'Channels & Creators' && extra.genre !== 'My Subscriptions (BYOA)' && extra.genre !== 'Live Now' ? `${extra.genre} videos` : 'Trending');
-        const metas = await searchYouTube(query, skip, userConfig, extra.genre || '');
+        const metas = await searchYouTube(query, skip, userConfig, extra.genre || '', Boolean(extra.search));
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
         res.end(JSON.stringify({ metas }));
         return;

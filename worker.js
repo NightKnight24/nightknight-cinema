@@ -57,16 +57,37 @@ function getCanonicalCacheUrl(requestUrl) {
     return `https://nightknight-cache.internal/meta/${type}/${id}`;
   }
 
-  // 2. Catalogs: Shared global catalog cache (region partitioned for live TV only)
+  // 2. Catalogs: Shared global catalog cache (bypass personalized/dynamic catalogs; partition region-specific ones)
   if (endpoint === 'catalog' && pathSegments.length >= 3) {
     const type = pathSegments[1];
     const catId = pathSegments[2];
     const extra = pathSegments.slice(3).join('/');
-    if (catId === 'regional_live_tv') {
-      const region = cfg.region ? String(cfg.region).toUpperCase() : 'GB';
-      return `https://nightknight-cache.internal/v2/catalog/${type}/${catId}/${region}/${extra}`;
+    let decodedExtra = extra;
+    try { decodedExtra = decodeURIComponent(extra); } catch (_) {}
+    const lowerExtra = decodedExtra.toLowerCase();
+
+    if (
+      catId === 'calendar-videos' ||
+      catId === 'calendar-movies' ||
+      lowerExtra.includes('my subscriptions') ||
+      lowerExtra.includes('my followed') ||
+      lowerExtra.includes('(byoa)') ||
+      lowerExtra.includes('trending on nightknight')
+    ) {
+      return null;
     }
-    return `https://nightknight-cache.internal/v2/catalog/${type}/${catId}/${extra}`;
+
+    const isRegionPartitioned =
+      catId === 'regional_live_tv' ||
+      catId === 'streaming_hub_movies' ||
+      catId === 'streaming_hub_series' ||
+      /genre=(?:netflix|apple tv\+|max \(hbo\)|disney\+|amazon prime|paramount\+|crunchyroll)/i.test(lowerExtra);
+
+    if (isRegionPartitioned) {
+      const region = cfg.region ? String(cfg.region).toUpperCase() : 'GB';
+      return `https://nightknight-cache.internal/v3/catalog/${type}/${catId}/${region}/${extra}`;
+    }
+    return `https://nightknight-cache.internal/v3/catalog/${type}/${catId}/${extra}`;
   }
 
   // 3. Subtitles: Partitioned by language preference and subtitle track mode
