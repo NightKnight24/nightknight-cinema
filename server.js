@@ -6792,11 +6792,14 @@ function optimizeAndRankStreams(rawStreams, userConfig = DEFAULT_USER_CONFIG, ty
     };
 
     const { description: _dropDesc, _sourceScraper: _dropScraper, ...restStream } = s;
+    const finalSpeedScore = /(?:stremthru|comet|jackettio)\.elfhosted\.com/i.test(String(s.url || ''))
+      ? (speedScore - 120)
+      : speedScore;
 
     parsed.push({
       ...restStream,
       behaviorHints,
-      _speedScore: speedScore,
+      _speedScore: finalSpeedScore,
       _seeders: seeders,
       _isDead: isDead,
       _isBufferRisk: isBufferRisk,
@@ -7262,7 +7265,7 @@ async function handleStream(type, id, userConfig = DEFAULT_USER_CONFIG, rootUrl 
   const maxQuality = userConfig.maxQuality || 'any';
   const subMode = userConfig.subMode || 'all';
   const rdKey = userConfig.realDebrid ? crypto.createHash('sha256').update(userConfig.realDebrid).digest('hex').slice(0, 12) : 'none';
-  const cacheKey = `stream:v8:${type}:${id}:${region}:${userConfig.upstream}:${userConfig.hideRisk}:${rdKey}:${prefLang}:${dubPref}:${maxQuality}:${subMode}`;
+  const cacheKey = `stream:v9:${type}:${id}:${region}:${userConfig.upstream}:${userConfig.hideRisk}:${rdKey}:${prefLang}:${dubPref}:${maxQuality}:${subMode}`;
   const baseLookupId = id.startsWith('tt') ? id.split(':')[0] : (id.startsWith('tmdb:') ? `tmdb:${id.replace('tmdb:', '').split(':')[0]}` : id);
   const cachedTitleInfo = ID_TITLE_CACHE.get(baseLookupId);
   const cached = getCache(cacheKey);
@@ -7348,7 +7351,7 @@ async function handleStream(type, id, userConfig = DEFAULT_USER_CONFIG, rootUrl 
     const wave1Targets = [];
 
     if (activeRdToken) {
-      // Real-Debrid Mode Wave 1: 3 independent non-ElfHosted scrapers + 1 ElfHosted StremThru
+      // Real-Debrid Mode Wave 1: 3 independent non-ElfHosted scrapers (avoid ElfHosted slate/IP-lock links)
       const meteorRdB64 = encodeBase64UrlJson({
         debridService: 'realdebrid',
         debridApiKey: activeRdToken
@@ -7366,13 +7369,6 @@ async function handleStream(type, id, userConfig = DEFAULT_USER_CONFIG, rootUrl 
       wave1Targets.push(fetchScraperStreams(
         'TorrentsDB RD',
         `https://torrentsdb.com/${tdbRdB64}/stream/${type}/${imdbTarget}.json`,
-        5000
-      ));
-
-      const stRdB64 = encodeBase64Json({ stores: [{ c: 'rd', t: activeRdToken }] });
-      wave1Targets.push(fetchScraperStreams(
-        'StremThru Torz RD',
-        `https://stremthru.elfhosted.com/stremio/torz/${stRdB64}/stream/${type}/${imdbTarget}.json`,
         5000
       ));
     } else {
@@ -7409,10 +7405,17 @@ async function handleStream(type, id, userConfig = DEFAULT_USER_CONFIG, rootUrl 
     if (dedupedMap.size < 8) {
       const wave2Targets = [];
       if (activeRdToken) {
+        const stRdB64 = encodeBase64Json({ stores: [{ c: 'rd', t: activeRdToken }] });
+        wave2Targets.push(fetchScraperStreams(
+          'StremThru Torz RD',
+          `https://stremthru.elfhosted.com/stremio/torz/${stRdB64}/stream/${type}/${imdbTarget}.json`,
+          5000
+        ));
+
         const cometRdB64 = encodeBase64Json({
           maxResultsPerResolution: 5,
           maxSize: 0,
-          cachedOnly: false,
+          cachedOnly: true,
           removeTrash: true,
           resultFormat: ['all'],
           debridService: 'realdebrid',
@@ -7434,7 +7437,7 @@ async function handleStream(type, id, userConfig = DEFAULT_USER_CONFIG, rootUrl 
           excludeKeywords: [],
           debridId: 'realdebrid',
           debridApiKey: activeRdToken,
-          hideUncached: false,
+          hideUncached: true,
           sortCached: [['quality', true], ['size', true]],
           sortUncached: [['seeders', true]],
           forceCacheNextEpisode: false,

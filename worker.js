@@ -101,7 +101,7 @@ function getCanonicalCacheUrl(requestUrl) {
     const hideRisk = cfg.hideRisk ? '1' : '0';
     const subMode = cfg.subMode ? String(cfg.subMode).toLowerCase() : 'all';
     const upTag = cfg.upstream ? encodeURIComponent(String(cfg.upstream).slice(0, 48)) : 'def';
-    return `https://nightknight-cache.internal/v8/stream/${type}/${id}/${rdKey}/${region}/${prefLang}/${dubPref}/${maxQuality}/${hideRisk}/${subMode}/${upTag}`;
+    return `https://nightknight-cache.internal/v9/stream/${type}/${id}/${rdKey}/${region}/${prefLang}/${dubPref}/${maxQuality}/${hideRisk}/${subMode}/${upTag}`;
   }
 
   return url.toString();
