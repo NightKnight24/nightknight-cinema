@@ -47,7 +47,7 @@ function getCanonicalCacheUrl(requestUrl) {
 
   // 0. Dynamic Signs SRT Extractor route
   if (endpoint === 'api' && pathSegments[1] === 'sub-signs' && pathSegments[2]) {
-    return `https://nightknight-cache.internal/v2/api/sub-signs/${pathSegments[2]}`;
+    return `https://nightknight-cache.internal/v3/api/sub-signs/${pathSegments.slice(2).join('/')}`;
   }
 
   // 1. Meta: 100% universal across all users worldwide
@@ -75,7 +75,7 @@ function getCanonicalCacheUrl(requestUrl) {
     const id = pathSegments.slice(2).join('/');
     const prefLang = cfg.prefLang ? String(cfg.prefLang).toLowerCase() : 'en';
     const subMode = cfg.subMode ? String(cfg.subMode).toLowerCase() : 'all';
-    return `https://nightknight-cache.internal/v2/subtitles/${type}/${id}/${prefLang}/${subMode}`;
+    return `https://nightknight-cache.internal/v4/subtitles/${type}/${id}/${prefLang}/${subMode}`;
   }
 
   // 4. Manifest: Partitioned by Real-Debrid flag and region
@@ -101,7 +101,7 @@ function getCanonicalCacheUrl(requestUrl) {
     const hideRisk = cfg.hideRisk ? '1' : '0';
     const subMode = cfg.subMode ? String(cfg.subMode).toLowerCase() : 'all';
     const upTag = cfg.upstream ? encodeURIComponent(String(cfg.upstream).slice(0, 48)) : 'def';
-    return `https://nightknight-cache.internal/v9/stream/${type}/${id}/${rdKey}/${region}/${prefLang}/${dubPref}/${maxQuality}/${hideRisk}/${subMode}/${upTag}`;
+    return `https://nightknight-cache.internal/v10/stream/${type}/${id}/${rdKey}/${region}/${prefLang}/${dubPref}/${maxQuality}/${hideRisk}/${subMode}/${upTag}`;
   }
 
   return url.toString();

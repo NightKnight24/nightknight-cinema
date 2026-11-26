@@ -7265,7 +7265,7 @@ async function handleStream(type, id, userConfig = DEFAULT_USER_CONFIG, rootUrl 
   const maxQuality = userConfig.maxQuality || 'any';
   const subMode = userConfig.subMode || 'all';
   const rdKey = userConfig.realDebrid ? crypto.createHash('sha256').update(userConfig.realDebrid).digest('hex').slice(0, 12) : 'none';
-  const cacheKey = `stream:v9:${type}:${id}:${region}:${userConfig.upstream}:${userConfig.hideRisk}:${rdKey}:${prefLang}:${dubPref}:${maxQuality}:${subMode}`;
+  const cacheKey = `stream:v10:${type}:${id}:${region}:${userConfig.upstream}:${userConfig.hideRisk}:${rdKey}:${prefLang}:${dubPref}:${maxQuality}:${subMode}`;
   const baseLookupId = id.startsWith('tt') ? id.split(':')[0] : (id.startsWith('tmdb:') ? `tmdb:${id.replace('tmdb:', '').split(':')[0]}` : id);
   const cachedTitleInfo = ID_TITLE_CACHE.get(baseLookupId);
   const cached = getCache(cacheKey);
@@ -7509,8 +7509,13 @@ async function handleStream(type, id, userConfig = DEFAULT_USER_CONFIG, rootUrl 
     }
     const optimized = rankedStreams.slice(0, 35);
     const resolvedSubs = await inlineSubPromise;
-    const inlineSubsSlice = Array.isArray(resolvedSubs) && resolvedSubs.length > 0
-      ? resolvedSubs.slice(0, 10)
+    // Only attach verified Signs & Forced tracks inline so Stremio still uses its hash/filename-matched
+    // /subtitles/:type/:id/:extra.json request for synced full-dialogue tracks.
+    const signsInlineOnly = Array.isArray(resolvedSubs)
+      ? resolvedSubs.filter(s => s && typeof s.id === 'string' && s.id.startsWith('nk_signs_'))
+      : [];
+    const inlineSubsSlice = signsInlineOnly.length > 0
+      ? signsInlineOnly.slice(0, 10)
       : null;
 
     const optimizedWithSubs = inlineSubsSlice
@@ -7556,7 +7561,7 @@ function formatMsToSrtTime(ms) {
 function extractSignsSrtFromAss(rawText) {
   if (!rawText || typeof rawText !== 'string') return '';
   if (!/\[Events\]/i.test(rawText) || !/^Dialogue:/im.test(rawText)) {
-    return rawText;
+    return '';
   }
 
   const lines = rawText.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
@@ -7619,62 +7624,195 @@ function extractSignsSrtFromAss(rawText) {
     }
   }
 
-  if (rows.length === 0) return rawText;
+  if (rows.length === 0) return '';
 
-  const REG_DIALOGUE_STYLE_RE = /^(?:default|dialogue|dialog|main|speech|italics?|overlap|flashback|narrat(?:or|ion)?|subtitle|eng|english)(?:[\s_-].*)?$/i;
-  const SIGN_HINT_RE = /sign|title|caption|note|text|screen|card|insert|board|label|letter|phone|msg|op|ed|song|lyric|forced|foreign|top|typeset|\bts\b|credits/i;
-  const hasRegularDialogue = rows.some(r => REG_DIALOGUE_STYLE_RE.test(r.style));
+  const SIGN_OR_SONG_RE = /(?:^|[\s_\-\/])(?:sign|signs|title|ep(?:isode)?[\s_-]*title|next[\s_-]*ep(?:isode)?|preview|caption|captions|note|notes|tl[\s_-]*note|screen|card|eyecatch|insert|insert[\s_-]*song|board|label|letter|paper|news|book|op|ed|opening|ending|song|songs|lyric|lyrics|karaoke|romaji|kanji|kfx|theme|chant|anthem|chorus|verse|forced|foreign|typeset|ts|credits|staff|logo|banner|hud|status|skill|menu|map)(?:$|[\s_\-\/\d])/i;
+  const SPOKEN_STYLE_RE = /(?:^|[\s_\-\/])(?:default|dialogue|dialog|main|speech|italics?|overlap|flashback|narrat(?:or|ion)?|thought|thoughts|internal|monologue|whisper|offscreen|os|top|bottom|low|secondary|alt|subtitle|sub|voiceover|vo|crowd|chatter|bg|eng|english)(?:$|[\s_\-\/\d])/i;
 
-  const buildCues = (signsOnlyFilter) => {
-    const cues = [];
-    const seen = new Set();
-    for (const r of rows) {
-      // Always skip vector drawing geometry cues ({\p1...})
-      if (/\{[^}]*\\p[1-9]\d*(?:\\|\}|\s|$)/i.test(r.rawSubText)) continue;
+  const styleCounts = new Map();
+  for (const r of rows) {
+    const k = r.style.toLowerCase();
+    styleCounts.set(k, (styleCounts.get(k) || 0) + 1);
+  }
 
-      if (signsOnlyFilter && hasRegularDialogue) {
-        const styleAndActor = `${r.style} ${r.actor}`;
-        const isExplicitSign = SIGN_HINT_RE.test(styleAndActor);
-        const isNonRegularStyle = Boolean(r.style) && !REG_DIALOGUE_STYLE_RE.test(r.style);
-        const hasPosOverride = /\{[^}]*(?:\\pos\(|\\move\(|\\an[13456789](?:\\|\}|$))/i.test(r.rawSubText);
-        if (!isExplicitSign && !isNonRegularStyle && !hasPosOverride) continue;
+  const totalRows = rows.length;
+  const dominantSpokenStyles = new Set();
+  if (totalRows >= 40) {
+    for (const [st, cnt] of styleCounts.entries()) {
+      if (cnt / totalRows >= 0.25 && !SIGN_OR_SONG_RE.test(st)) {
+        dominantSpokenStyles.add(st);
       }
-
-      const startMs = parseAssTimeToMs(r.start);
-      const endMs = parseAssTimeToMs(r.end);
-      if (startMs < 0 || endMs <= startMs) continue;
-
-      const cleanText = r.rawSubText
-        .replace(/\{[^}]*\}/g, '')
-        .replace(/\\N/g, '\n')
-        .replace(/\\n/g, '\n')
-        .replace(/\\h/g, ' ')
-        .split('\n')
-        .map(l => l.trim())
-        .filter(Boolean)
-        .join('\n')
-        .trim();
-
-      if (!cleanText) continue;
-
-      const dedupeKey = `${startMs}|${endMs}|${cleanText}`;
-      if (seen.has(dedupeKey)) continue;
-      seen.add(dedupeKey);
-      cues.push({ startMs, endMs, text: cleanText });
     }
-    return cues;
+  }
+
+  const isSpoken = (style) => {
+    const k = style.toLowerCase();
+    if (!k) return true;
+    if (SIGN_OR_SONG_RE.test(style)) return false;
+    return SPOKEN_STYLE_RE.test(style) || dominantSpokenStyles.has(k);
   };
 
-  let cues = buildCues(true);
-  if (cues.length === 0) {
-    cues = buildCues(false);
+  const hasSpoken = totalRows >= 80 || rows.some(r => isSpoken(r.style));
+  const cues = [];
+
+  for (const r of rows) {
+    // Always skip vector drawing geometry cues ({\p1...})
+    if (/\{[^}]*\\p[1-9]\d*(?:\\|\}|\s|$)/i.test(r.rawSubText)) continue;
+
+    if (hasSpoken) {
+      const explicitSign = SIGN_OR_SONG_RE.test(r.style) || SIGN_OR_SONG_RE.test(r.actor);
+      const nonSpokenStyle = Boolean(r.style) && !isSpoken(r.style);
+      const hasPosPin = /\{[^}]*(?:\\pos\(|\\move\()/i.test(r.rawSubText);
+      if (!explicitSign && !nonSpokenStyle && !hasPosPin) continue;
+    }
+
+    const startMs = parseAssTimeToMs(r.start);
+    const endMs = parseAssTimeToMs(r.end);
+    if (startMs < 0 || endMs <= startMs) continue;
+
+    const cleanText = r.rawSubText
+      .replace(/\{[^}]*\}/g, '')
+      .replace(/\\N/g, '\n')
+      .replace(/\\n/g, '\n')
+      .replace(/\\h/g, ' ')
+      .split('\n')
+      .map(l => l.trim())
+      .filter(Boolean)
+      .join('\n')
+      .trim();
+
+    if (!cleanText) continue;
+    cues.push({ startMs, endMs, text: cleanText });
   }
+
   if (cues.length === 0) return '';
 
   cues.sort((a, b) => (a.startMs - b.startMs) || (a.endMs - b.endMs));
-  return cues
+  const merged = [];
+  for (const c of cues) {
+    const prev = merged.find(m => m.text === c.text && c.startMs <= m.endMs + 300 && c.startMs >= m.startMs - 50);
+    if (prev) {
+      prev.endMs = Math.max(prev.endMs, c.endMs);
+    } else {
+      merged.push({ ...c });
+    }
+  }
+
+  return merged
     .map((c, i) => `${i + 1}\n${formatMsToSrtTime(c.startMs)} --> ${formatMsToSrtTime(c.endMs)}\n${c.text}\n`)
     .join('\n');
+}
+
+async function fetchAndExtractAssSigns(subFileId, timeoutMs = 4500) {
+  const cacheKey = `subsigns:v2:${subFileId}`;
+  const cached = getCache(cacheKey);
+  if (typeof cached === 'string') return cached;
+
+  // Fetch raw file WITHOUT subencoding-stremio-utf8 so subs5 preserves ASS styles/events
+  const sourceSubUrl = `https://subs5.strem.io/en/download/src-api/file/${subFileId}`;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const subRes = await fetch(sourceSubUrl, {
+      headers: { 'User-Agent': 'Stremio/4.4.168' },
+      signal: ctrl.signal
+    });
+    if (!subRes.ok) return null;
+    const buf = Buffer.from(await subRes.arrayBuffer());
+    let rawSubText = '';
+    if (buf.length >= 2 && buf[0] === 0x1f && buf[1] === 0x8b) {
+      rawSubText = zlib.gunzipSync(buf).toString('utf-8');
+    } else {
+      rawSubText = buf.toString('utf-8');
+    }
+    const signsSrt = extractSignsSrtFromAss(rawSubText);
+    setCache(cacheKey, signsSrt, 3600);
+    return signsSrt;
+  } catch (e) {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function parseSubtitleExtra(extraStr = '') {
+  const out = { videoHash: '', videoSize: '', filename: '', encodedExtra: '' };
+  if (!extraStr || typeof extraStr !== 'string') return out;
+  const encodedParts = [];
+  for (const part of extraStr.split('&')) {
+    if (!part) continue;
+    const eq = part.indexOf('=');
+    if (eq === -1) continue;
+    const k = part.slice(0, eq).trim();
+    const v = part.slice(eq + 1).trim();
+    if (!k) continue;
+    encodedParts.push(`${k}=${encodeURIComponent(v)}`);
+    const kl = k.toLowerCase();
+    if (kl === 'videohash') out.videoHash = v;
+    else if (kl === 'videosize') out.videoSize = v;
+    else if (kl === 'filename') out.filename = v;
+  }
+  out.encodedExtra = encodedParts.join('&');
+  return out;
+}
+
+function computeSubtitleSyncScore(subFileName = '', streamFilename = '') {
+  if (!subFileName || !streamFilename) return 0;
+  const sub = String(subFileName).toLowerCase();
+  const strm = String(streamFilename).toLowerCase();
+
+  const detectSource = (s) => {
+    if (/\b(?:bluray|blu-ray|bdrip|bdremux|remux|bd)\b/i.test(s)) return 'bluray';
+    if (/\b(?:web-?dl|webrip|web|amzn|amazon|nf|netflix|atvp|dsnp|hmax|cr|crunchyroll|hidive|funi)\b/i.test(s)) return 'web';
+    if (/\bhdtv\b/i.test(s)) return 'hdtv';
+    if (/\b(?:dvd|dvdrip)\b/i.test(s)) return 'dvd';
+    return '';
+  };
+
+  let score = 0;
+  const subSrc = detectSource(sub);
+  const strmSrc = detectSource(strm);
+  if (subSrc && strmSrc) {
+    if (subSrc === strmSrc) score += 40;
+    else if ((strmSrc === 'bluray' || strmSrc === 'web') && subSrc === 'dvd') score -= 35;
+    else if (strmSrc === 'dvd' && (subSrc === 'bluray' || subSrc === 'web')) score -= 20;
+  }
+
+  const STOPWORDS = new Set(['mkv', 'mp4', 'avi', 'srt', 'ass', 'ssa', 'sub', 'eng', 'english', 'multi', '1080p', '720p', '2160p', '480p', 'x264', 'x265', 'h264', 'h265', 'hevc', 'avc', 'aac', 'ddp', 'dd5', 'dts', 'flac', '10bit', 'the', 'and', 'for', 'with', 'dual', 'audio', 'subs', 'subtitles']);
+  const KNOWN_GROUPS = new Set(['amzn', 'nf', 'cr', 'judas', 'erai', 'subsplease', 'horriblesubs', 'golumpa', 'cleo', 'ntb', 'flux', 'ggez', 'glhf', 'topaz', 'addic7ed', 'nogrp', 'atvp', 'dsnp', 'hmax', 'hidive', 'funi']);
+  const extractTokens = (s) => s.replace(/\.[a-z0-9]{2,4}$/i, '').split(/[^a-z0-9]+/i).map(t => t.toLowerCase()).filter(t => t.length >= 3 && !STOPWORDS.has(t));
+
+  const subTokens = new Set(extractTokens(sub));
+  const strmTokens = new Set(extractTokens(strm));
+  const subGroupMatch = sub.replace(/\.(?:srt|ass|ssa|sub)$/i, '').match(/-([a-z0-9]{2,})$/i);
+  const strmGroupMatch = strm.replace(/\.(?:mkv|mp4|avi)$/i, '').match(/-([a-z0-9]{2,})$/i);
+  const subFinalGroup = subGroupMatch ? subGroupMatch[1].toLowerCase() : '';
+  const strmFinalGroup = strmGroupMatch ? strmGroupMatch[1].toLowerCase() : '';
+
+  let groupMatched = Boolean(subFinalGroup && strmFinalGroup && subFinalGroup === strmFinalGroup);
+  if (!groupMatched) {
+    for (const g of KNOWN_GROUPS) {
+      if (subTokens.has(g) && strmTokens.has(g)) {
+        groupMatched = true;
+        break;
+      }
+    }
+  }
+  if (groupMatched) score += 25;
+
+  const detectRes = (s) => {
+    if (/\b(?:2160p|4k)\b/i.test(s)) return '2160p';
+    if (/\b1080p\b/i.test(s)) return '1080p';
+    if (/\b720p\b/i.test(s)) return '720p';
+    return '';
+  };
+  const subRes = detectRes(sub);
+  const strmRes = detectRes(strm);
+  if (subRes && strmRes && subRes === strmRes) {
+    score += 10;
+  }
+
+  return score;
 }
 
 function sortSubtitlesByPrefLang(subs = [], prefLang = 'en') {
@@ -7689,19 +7827,21 @@ function sortSubtitlesByPrefLang(subs = [], prefLang = 'en') {
     const isEn = enCodes.includes(lc);
     const tier = isPref ? 3 : (isEn ? 2 : 1);
     const hashBoost = sub._hashMatch ? 1 : 0;
+    const syncScore = Number(sub._syncScore || 0);
     const downloads = Number(sub._downloads || 0);
-    return { sub, idx, tier, hashBoost, downloads };
+    return { sub, idx, tier, hashBoost, syncScore, downloads };
   });
 
   ranked.sort((a, b) => {
     if (b.tier !== a.tier) return b.tier - a.tier;
     if (b.hashBoost !== a.hashBoost) return b.hashBoost - a.hashBoost;
+    if (b.syncScore !== a.syncScore) return b.syncScore - a.syncScore;
     if (b.downloads !== a.downloads) return b.downloads - a.downloads;
     return a.idx - b.idx;
   });
 
   return ranked.map(({ sub }) => {
-    const { _hashMatch, _downloads, _fileId, _foreignOnly, _subFormat, _fileName, _isSignsNamed, _isAssConverted, ...clean } = sub;
+    const { _hashMatch, _syncScore, _downloads, _fileId, _foreignOnly, _subFormat, _fileName, _isSignsNamed, _isAssConverted, ...clean } = sub;
     return clean;
   });
 }
@@ -7726,7 +7866,7 @@ async function resolveDrmFreeImdb(drmId) {
   return null;
 }
 
-async function fetchOpenSubtitlesV3(url, isHashMatch = false) {
+async function fetchOpenSubtitlesV3(url, isHashMatch = false, filename = '') {
   try {
     const res = await fetch(url, {
       headers: { 'User-Agent': 'Stremio/4.4.168' },
@@ -7737,26 +7877,40 @@ async function fetchOpenSubtitlesV3(url, isHashMatch = false) {
     const subs = Array.isArray(data?.subtitles) ? data.subtitles : [];
     return subs
       .filter(s => s && s.url)
-      .map(s => ({
-        url: s.url,
-        lang: s.lang || 'eng',
-        _hashMatch: isHashMatch,
-        _downloads: 0
-      }));
+      .map(s => {
+        const subMetaStr = [s.subtitleFileName, s.movieReleaseName, s.releaseGroup, s.releaseFormat].filter(Boolean).join(' ');
+        const exactHash = Boolean(isHashMatch && (!s.m || s.m === 'h'));
+        return {
+          url: s.url,
+          lang: s.lang || 'eng',
+          _hashMatch: exactHash,
+          _syncScore: filename ? computeSubtitleSyncScore(subMetaStr, filename) : 0,
+          _fileName: subMetaStr,
+          _downloads: 0
+        };
+      });
   } catch (e) {
     return [];
   }
 }
 
-async function fetchOpenSubtitlesRest(type, cleanId, osLangCode = '') {
+async function fetchOpenSubtitlesRest(type, cleanId, osLangCode = '', videoHash = '', videoSize = '') {
   try {
     const parts = cleanId.split(':');
     const imdbBase = parts[0];
     const imdbDigits = imdbBase.replace(/^tt/i, '');
-    if (!/^\d+$/.test(imdbDigits)) return [];
+    const reqSeason = parts[1] ? parseInt(parts[1], 10) : 0;
+    const reqEpisode = parts[2] ? parseInt(parts[2], 10) : 0;
+    const hasHash = Boolean(videoHash && /^[a-f0-9]{16}$/i.test(videoHash));
+    if (!hasHash && !/^\d+$/.test(imdbDigits)) return [];
 
     let apiUrl = `https://rest.opensubtitles.org/search`;
-    if (type === 'series' && parts[1] && parts[2]) {
+    if (hasHash) {
+      if (videoSize && /^\d+$/.test(videoSize)) {
+        apiUrl += `/moviebytesize-${videoSize}`;
+      }
+      apiUrl += `/moviehash-${videoHash.toLowerCase()}`;
+    } else if (type === 'series' && parts[1] && parts[2]) {
       apiUrl += `/episode-${parts[2]}/imdbid-${imdbDigits}/season-${parts[1]}`;
     } else {
       apiUrl += `/imdbid-${imdbDigits}`;
@@ -7774,7 +7928,16 @@ async function fetchOpenSubtitlesRest(type, cleanId, osLangCode = '') {
     if (!Array.isArray(data)) return [];
 
     return data
-      .filter(item => item && item.IDSubtitleFile)
+      .filter(item => {
+        if (!item || !item.IDSubtitleFile) return false;
+        if (type === 'series' && reqSeason > 0 && reqEpisode > 0) {
+          const sNum = Number(item.SeriesSeason || 0);
+          const eNum = Number(item.SeriesEpisode || 0);
+          if (sNum > 0 && sNum !== reqSeason) return false;
+          if (eNum > 0 && eNum !== reqEpisode) return false;
+        }
+        return true;
+      })
       .map(item => {
         const fileId = String(item.IDSubtitleFile);
         const fileName = String(item.SubFileName || '');
@@ -7784,7 +7947,8 @@ async function fetchOpenSubtitlesRest(type, cleanId, osLangCode = '') {
         return {
           url: `https://subs5.strem.io/en/download/subencoding-stremio-utf8/src-api/file/${fileId}`,
           lang: item.SubLanguageID || item.ISO639 || 'eng',
-          _hashMatch: false,
+          _hashMatch: hasHash,
+          _syncScore: 0,
           _downloads: Number(item.SubDownloadsCnt || 0),
           _fileId: fileId,
           _fileName: fileName,
@@ -7807,7 +7971,7 @@ async function handleSubtitles(type, id, extraStr = '', userConfig = DEFAULT_USE
   const subMode = (userConfig && typeof userConfig === 'object' && SUPPORTED_SUB_MODES.includes(userConfig.subMode))
     ? userConfig.subMode
     : 'all';
-  const cacheKey = `subtitles:v3:${type}:${id}:${extraStr}:${prefLang}:${subMode}:${rootUrl ? 'r' : 'n'}`;
+  const cacheKey = `subtitles:v5:${type}:${id}:${extraStr}:${prefLang}:${subMode}:${rootUrl ? 'r' : 'n'}`;
   const cached = getCache(cacheKey);
   if (cached) return cached;
 
@@ -7874,23 +8038,26 @@ async function handleSubtitles(type, id, extraStr = '', userConfig = DEFAULT_USE
   const cleanId = imdbTarget;
   const prefCodes = LANGUAGE_PROFILES[prefLang]?.subCodes || [];
   const osLangParam = (prefLang !== 'any' && prefCodes[0]) ? prefCodes[0] : 'eng';
-  const hasPrefMatch = (list) => prefLang === 'any'
-    ? list.length > 0
-    : list.some(s => prefCodes.includes(String(s.lang || '').toLowerCase()));
+  const { videoHash, videoSize, filename, encodedExtra } = parseSubtitleExtra(extraStr);
+  const hasVideoHash = Boolean(videoHash && /^[a-f0-9]{16}$/i.test(videoHash));
 
-  // 1. Query OpenSubtitles v3 + REST API (for Forced & Signs/ASS tracks) in parallel
+  // 1. Query OpenSubtitles v3 + REST API (both metadata & moviehash when available) in parallel
   const v3Promises = [];
-  if (extraStr && subMode !== 'signs_only') {
-    v3Promises.push(fetchOpenSubtitlesV3(`https://opensubtitles-v3.strem.io/subtitles/${effectiveType}/${cleanId}/${extraStr}.json`, true));
+  if (encodedExtra && subMode !== 'signs_only') {
+    v3Promises.push(fetchOpenSubtitlesV3(`https://opensubtitles-v3.strem.io/subtitles/${effectiveType}/${cleanId}/${encodedExtra}.json`, hasVideoHash, filename));
   }
   if (subMode !== 'signs_only') {
-    v3Promises.push(fetchOpenSubtitlesV3(`https://opensubtitles-v3.strem.io/subtitles/${effectiveType}/${cleanId}.json`, false));
+    v3Promises.push(fetchOpenSubtitlesV3(`https://opensubtitles-v3.strem.io/subtitles/${effectiveType}/${cleanId}.json`, false, filename));
   }
   const restPromise = fetchOpenSubtitlesRest(effectiveType, cleanId, osLangParam);
+  const hashRestPromise = hasVideoHash
+    ? fetchOpenSubtitlesRest(effectiveType, cleanId, osLangParam, videoHash, videoSize)
+    : Promise.resolve([]);
 
-  const [v3Results, initialRestSubs] = await Promise.all([
+  const [v3Results, initialRestSubs, hashRestSubs] = await Promise.all([
     Promise.allSettled(v3Promises),
-    restPromise
+    restPromise,
+    hashRestPromise
   ]);
 
   let collectedV3 = [];
@@ -7899,7 +8066,19 @@ async function handleSubtitles(type, id, extraStr = '', userConfig = DEFAULT_USE
       collectedV3.push(...r.value);
     }
   }
-  let restSubs = Array.isArray(initialRestSubs) ? [...initialRestSubs] : [];
+
+  const restById = new Map();
+  for (const item of (Array.isArray(hashRestSubs) ? hashRestSubs : [])) {
+    if (item && item._fileId && !restById.has(item._fileId)) {
+      restById.set(item._fileId, { ...item, _hashMatch: true });
+    }
+  }
+  for (const item of (Array.isArray(initialRestSubs) ? initialRestSubs : [])) {
+    if (item && item._fileId && !restById.has(item._fileId)) {
+      restById.set(item._fileId, item);
+    }
+  }
+  let restSubs = Array.from(restById.values());
 
   // 2. Anime & Multi-Season Absolute Episode Numbering Fallback (e.g., One Piece S21E1000 -> S1E1000)
   let season1Id = '';
@@ -7909,14 +8088,19 @@ async function handleSubtitles(type, id, extraStr = '', userConfig = DEFAULT_USE
     if ((collectedV3.length < 3 && subMode !== 'signs_only') || (restSubs.length === 0)) {
       const [s1V3, s1Rest] = await Promise.all([
         subMode !== 'signs_only'
-          ? fetchOpenSubtitlesV3(`https://opensubtitles-v3.strem.io/subtitles/series/${season1Id}.json`, false)
+          ? fetchOpenSubtitlesV3(`https://opensubtitles-v3.strem.io/subtitles/series/${season1Id}.json`, false, filename)
           : Promise.resolve([]),
         restSubs.length === 0
           ? fetchOpenSubtitlesRest(effectiveType, season1Id, osLangParam)
           : Promise.resolve([])
       ]);
       collectedV3.push(...s1V3);
-      restSubs.push(...s1Rest);
+      for (const item of s1Rest) {
+        if (item && item._fileId && !restById.has(item._fileId)) {
+          restById.set(item._fileId, item);
+        }
+      }
+      restSubs = Array.from(restById.values());
     }
   }
 
@@ -7927,21 +8111,46 @@ async function handleSubtitles(type, id, extraStr = '', userConfig = DEFAULT_USE
     restSubs.push(...anyRest);
   }
 
-  // 4. Identify & prepare dedicated Signs & Forced tracks (SRT forced OR ASS Signs & Songs converted to SRT)
+  if (filename) {
+    restSubs = restSubs.map(s => ({
+      ...s,
+      _syncScore: computeSubtitleSyncScore(s._fileName, filename)
+    }));
+  }
+
+  // 4. Identify & prepare dedicated Signs & Forced tracks (SRT forced OR validated ASS Signs & Songs converted to SRT)
   const langLabel = (prefLang !== 'any' && LANGUAGE_PROFILES[prefLang]?.short)
     ? LANGUAGE_PROFILES[prefLang].short
     : 'EN';
 
   let candidateSigns = restSubs.filter(s => s._foreignOnly || s._isSignsNamed);
   if (candidateSigns.length === 0 && rootUrl) {
-    // Anime fansubs often ship full dialogue + Signs/OP/ED together in .ass; extract Signs on the fly
-    candidateSigns = restSubs.filter(s => (s._subFormat === 'ass' || s._subFormat === 'ssa') && s._fileId);
+    // Anime fansubs often ship full dialogue + Signs/OP/ED together in .ass; validate top 2 candidates
+    const assCandidates = restSubs
+      .filter(s => (s._subFormat === 'ass' || s._subFormat === 'ssa') && s._fileId && !/\.cc\./i.test(s._fileName || ''))
+      .sort((a, b) => {
+        const hDiff = (b._hashMatch ? 1 : 0) - (a._hashMatch ? 1 : 0);
+        if (hDiff !== 0) return hDiff;
+        const sDiff = (b._syncScore || 0) - (a._syncScore || 0);
+        if (sDiff !== 0) return sDiff;
+        return (b._downloads || 0) - (a._downloads || 0);
+      })
+      .slice(0, 2);
+
+    if (assCandidates.length > 0) {
+      const validated = await Promise.all(assCandidates.map(async (cand) => {
+        const extracted = await fetchAndExtractAssSigns(cand._fileId, 2500);
+        return (typeof extracted === 'string' && extracted.length > 0) ? cand : null;
+      }));
+      candidateSigns = validated.filter(Boolean);
+    }
   }
 
   candidateSigns.sort((a, b) => {
-    const aScore = (a._foreignOnly ? 4 : 0) + (a._isSignsNamed ? 3 : 0) + (a._subFormat === 'srt' ? 2 : 1);
-    const bScore = (b._foreignOnly ? 4 : 0) + (b._isSignsNamed ? 3 : 0) + (b._subFormat === 'srt' ? 2 : 1);
+    const aScore = (a._hashMatch ? 8 : 0) + (a._foreignOnly ? 4 : 0) + (a._isSignsNamed ? 3 : 0) + (a._subFormat === 'srt' ? 2 : 1);
+    const bScore = (b._hashMatch ? 8 : 0) + (b._foreignOnly ? 4 : 0) + (b._isSignsNamed ? 3 : 0) + (b._subFormat === 'srt' ? 2 : 1);
     if (bScore !== aScore) return bScore - aScore;
+    if ((b._syncScore || 0) !== (a._syncScore || 0)) return (b._syncScore || 0) - (a._syncScore || 0);
     return (b._downloads || 0) - (a._downloads || 0);
   });
 
@@ -7950,7 +8159,7 @@ async function handleSubtitles(type, id, extraStr = '', userConfig = DEFAULT_USE
     if (!s._fileId || signsMap.has(s._fileId)) continue;
     const isAss = s._subFormat === 'ass' || s._subFormat === 'ssa';
     const signsUrl = (isAss && rootUrl)
-      ? `${rootUrl}/api/sub-signs/${s._fileId}.srt`
+      ? `${rootUrl}/api/sub-signs/v2/${s._fileId}.srt`
       : s.url;
     if (isAss && !rootUrl) continue;
     signsMap.set(s._fileId, {
@@ -7984,8 +8193,13 @@ async function handleSubtitles(type, id, extraStr = '', userConfig = DEFAULT_USE
     const existing = dedupedMap.get(sub.url);
     if (!existing) {
       dedupedMap.set(sub.url, sub);
-    } else if (sub._hashMatch && !existing._hashMatch) {
-      dedupedMap.set(sub.url, { ...sub, _downloads: Math.max(sub._downloads || 0, existing._downloads || 0) });
+    } else {
+      dedupedMap.set(sub.url, {
+        ...existing,
+        ...(sub._hashMatch ? { _hashMatch: true } : {}),
+        _syncScore: Math.max(existing._syncScore || 0, sub._syncScore || 0),
+        _downloads: Math.max(existing._downloads || 0, sub._downloads || 0)
+      });
     }
   }
 
@@ -8147,29 +8361,18 @@ export async function handleRequest(req, res) {
     }
 
     // Dynamic ASS/SSA -> clean Signs & Forced SRT Extractor
-    const signsSubMatch = pathname.match(/^\/api\/sub-signs\/(\d{4,15})\.srt$/);
+    const signsSubMatch = pathname.match(/^\/api\/sub-signs\/(?:v2\/)?(\d{4,15})\.srt$/);
     if (signsSubMatch) {
       const subFileId = signsSubMatch[1];
-      const sourceSubUrl = `https://subs5.strem.io/en/download/subencoding-stremio-utf8/src-api/file/${subFileId}`;
-      try {
-        const subRes = await fetch(sourceSubUrl, {
-          headers: { 'User-Agent': 'Stremio/4.4.168' },
-          signal: AbortSignal.timeout(5000)
-        });
-        if (!subRes.ok) {
-          res.writeHead(subRes.status === 404 ? 404 : 502, { 'Content-Type': 'text/plain; charset=utf-8' });
-          res.end('');
-          return;
-        }
-        const rawSubText = await subRes.text();
-        const signsSrt = extractSignsSrtFromAss(rawSubText);
-        res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=604800');
-        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-        res.end(signsSrt);
-      } catch (e) {
+      const signsSrt = await fetchAndExtractAssSigns(subFileId, 5000);
+      if (signsSrt === null) {
         res.writeHead(502, { 'Content-Type': 'text/plain; charset=utf-8' });
         res.end('');
+        return;
       }
+      res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=604800');
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      res.end(signsSrt);
       return;
     }
 
