@@ -6809,10 +6809,123 @@ function encodeBase64UrlJson(obj) {
 function isPlaceholderStream(s) {
   if (!s || (!s.url && !s.infoHash)) return true;
   const checkStr = `${s.name || ''} ${s.title || ''} ${s.description || ''} ${s.torrentTitle || ''} ${s.url || ''}`;
-  if (/public-rate-limit-exceeded|elfhosted\.com\/assets\/|fnky\.nz\/elf-stremio|rate[- ]?limit\s+exceeded|🐢|⛔|não autenticado|donation needed|donate to|invalid api|invalid.*key|not authenticated/i.test(checkStr)) {
+  if (/public-rate-limit-exceeded|elfhosted\.com\/assets\/|slate\.elfhosted\.com|\/status\/video\/|downloading\.mp4|removed_by_debrid|fnky\.nz\/elf-stremio|rate[- ]?limit\s+exceeded|🐢|⛔|não autenticado|donation needed|donate to|invalid api|invalid.*key|not authenticated/i.test(checkStr)) {
     return true;
   }
   return false;
+}
+
+function isJunkOrBonusFile(s) {
+  const fn = String(s.behaviorHints?.filename || '').trim();
+  const firstLine = String(s.title || s.description || '').split(/\r?\n/)[0] || '';
+  const target = (fn || firstLine).trim();
+  if (!target) return false;
+  if (/\.(?:txt|nfo|jpg|jpeg|png|webp|srt|ass|ssa|sub|idx|zip|rar|7z|exe|url|lnk)$/i.test(target)) {
+    return true;
+  }
+  if (/(?:^|[\s._\-\[\(])(?:sample|ncop\d*|nced\d*|creditless[\s._-]*(?:op|ed)|dvd[\s._-]*menu|bluray[\s._-]*menu)(?:[\s._\-\]\).]|$)/i.test(target)) {
+    return true;
+  }
+  return false;
+}
+
+function doesStreamMatchSeriesEpisode(s, reqSeason, reqEpisode) {
+  if (!reqSeason || !reqEpisode) return true;
+  const fn = String(s.behaviorHints?.filename || '').trim();
+  const titleLines = String(s.title || s.description || '').split(/\r?\n/);
+  const fileLine = fn || titleLines.find(l => l.includes('📄') || l.includes('📁')) || titleLines[0] || '';
+  if (!fileLine) return true;
+
+  // Allow torrent packs that explicitly carry Stremio fileMustInclude for the requested episode
+  if (s.behaviorHints?.fileMustInclude) return true;
+
+  const clean = fileLine
+    .replace(/^[📄📁]\s*/, '')
+    .replace(/\[[a-f0-9]{6,8}\]/gi, ' ')
+    .replace(/\b(?:2160p|1080p|720p|480p|576p|x264|x265|h264|h265|10bit|10-bit|8bit|aac\d*(?:\.\d)?|ddp?\d(?:\.\d)?|ac3|eac3|dts|opus|flac|av1|hevc|avc)\b/gi, ' ');
+
+  // 1. Multi-episode range check (e.g. S01E01-E04 or 01-12)
+  const rangeM = clean.match(/\bE(\d{1,3})\s*[-~]\s*E?(\d{1,3})\b/i);
+  if (rangeM) {
+    const rStart = parseInt(rangeM[1], 10);
+    const rEnd = parseInt(rangeM[2], 10);
+    if (reqEpisode >= rStart && reqEpisode <= rEnd) return true;
+  }
+
+  // 2. Explicit SxxExx or SxExx matches
+  const sxeMatches = [...clean.matchAll(/\bS(\d{1,2})\s*[._-]?\s*E(\d{1,4})\b/gi), ...clean.matchAll(/\b(\d{1,2})x(\d{1,4})\b/gi)];
+  if (sxeMatches.length > 0) {
+    const exactHit = sxeMatches.some(m => parseInt(m[1], 10) === reqSeason && parseInt(m[2], 10) === reqEpisode);
+    return exactHit;
+  }
+
+  // 3. Explicit Season tag without Exx (e.g. "S02 - 02" or "Season 2")
+  const seasonOnlyMatches = [...clean.matchAll(/\b(?:S|Season\s*)(\d{1,2})\b(?![\s._-]*E\d)/gi)];
+  if (seasonOnlyMatches.length > 0) {
+    const hasSeason = seasonOnlyMatches.some(m => parseInt(m[1], 10) === reqSeason);
+    if (!hasSeason) return false;
+  }
+
+  // 4. Explicit Ep / Episode tag (e.g. "Ep-02", "Episode 05", "E02")
+  const epMatches = [...clean.matchAll(/\b(?:Ep(?:isode)?\.?\s*[-:]?\s*|E)(\d{1,4})\b/gi)];
+  if (epMatches.length > 0) {
+    return epMatches.some(m => parseInt(m[1], 10) === reqEpisode);
+  }
+
+  // 5. Anime dash-number convention (e.g. "[Erai-raws] Show - 02 [1080p].mkv")
+  if (reqSeason === 1) {
+    const dashNums = [...clean.matchAll(/(?:\s-\s|\s)(\d{2,3})(?:\s*[\[\(v.]|\s*$)/g)];
+    if (dashNums.length > 0) {
+      const nums = dashNums.map(m => parseInt(m[1], 10)).filter(n => n > 0 && n < 1900);
+      if (nums.length > 0 && !nums.includes(reqEpisode)) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
+async function verifyTopRdStreams(streams, maxProbe = 12) {
+  if (!Array.isArray(streams) || streams.length === 0) return [];
+
+  let probedCount = 0;
+  const probeOne = async (st) => {
+    if (!st || !st.url || !/^https?:\/\//i.test(st.url)) return { st, alive: true };
+    if (probedCount >= maxProbe) return { st, alive: true };
+    probedCount++;
+
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 3000);
+    try {
+      const res = await fetch(st.url, {
+        method: 'HEAD',
+        redirect: 'follow',
+        headers: { 'User-Agent': 'Stremio/4.4.168' },
+        signal: ctrl.signal
+      });
+      const finalUrl = String(res.url || st.url);
+      if (/slate\.elfhosted\.com|\/status\/video\/|downloading\.mp4|removed_by_debrid|public-rate-limit-exceeded/i.test(finalUrl)) {
+        return { st, alive: false };
+      }
+      if (res.status === 403 || res.status === 404 || res.status === 410 || res.status === 451 || res.status >= 500) {
+        return { st, alive: false };
+      }
+      const cl = Number(res.headers.get('content-length') || 0);
+      const ct = String(res.headers.get('content-type') || '').toLowerCase();
+      if (res.ok && cl > 0 && cl < 10_000_000 && ct.includes('video/')) {
+        return { st, alive: false };
+      }
+      return { st, alive: true };
+    } catch (_) {
+      return { st, alive: true };
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+
+  const results = await Promise.all(streams.map(probeOne));
+  return results.filter(r => r.alive).map(r => r.st);
 }
 
 function extractStreamDedupeKey(s) {
@@ -7125,7 +7238,7 @@ async function handleStream(type, id, userConfig = DEFAULT_USER_CONFIG, rootUrl 
   const maxQuality = userConfig.maxQuality || 'any';
   const subMode = userConfig.subMode || 'all';
   const rdKey = userConfig.realDebrid ? crypto.createHash('sha256').update(userConfig.realDebrid).digest('hex').slice(0, 12) : 'none';
-  const cacheKey = `stream:v5:${type}:${id}:${region}:${userConfig.upstream}:${userConfig.hideRisk}:${rdKey}:${prefLang}:${dubPref}:${maxQuality}:${subMode}`;
+  const cacheKey = `stream:v7:${type}:${id}:${region}:${userConfig.upstream}:${userConfig.hideRisk}:${rdKey}:${prefLang}:${dubPref}:${maxQuality}:${subMode}`;
   const baseLookupId = id.startsWith('tt') ? id.split(':')[0] : (id.startsWith('tmdb:') ? `tmdb:${id.replace('tmdb:', '').split(':')[0]}` : id);
   const cachedTitleInfo = ID_TITLE_CACHE.get(baseLookupId);
   const cached = getCache(cacheKey);
@@ -7329,7 +7442,19 @@ async function handleStream(type, id, userConfig = DEFAULT_USER_CONFIG, rootUrl 
       }
     }
 
-    const rawStreams = Array.from(dedupedMap.values());
+    let rawStreams = Array.from(dedupedMap.values()).filter(st => !isJunkOrBonusFile(st));
+
+    // Filter out wrong season/episode files on series requests (e.g. [7x23] showing up in 1x1)
+    const epMatch = String(imdbTarget || id || '').match(/:(\d+):(\d+)$/);
+    if (type === 'series' && epMatch) {
+      const reqSeason = parseInt(epMatch[1], 10);
+      const reqEpisode = parseInt(epMatch[2], 10);
+      const epFiltered = rawStreams.filter(st => doesStreamMatchSeriesEpisode(st, reqSeason, reqEpisode));
+      if (epFiltered.length > 0) {
+        rawStreams = epFiltered;
+      }
+    }
+
     UPSTREAM_HEALTH.at = new Date().toISOString();
     if (rawStreams.length > 0) {
       UPSTREAM_HEALTH.lastStatus = 200;
@@ -7341,7 +7466,12 @@ async function handleStream(type, id, userConfig = DEFAULT_USER_CONFIG, rootUrl 
       UPSTREAM_HEALTH.lastError = firstErrorMsg;
     }
 
-    const optimized = optimizeAndRankStreams(rawStreams, userConfig, type, id).slice(0, 35);
+    let rankedStreams = optimizeAndRankStreams(rawStreams, userConfig, type, id);
+    if (activeRdToken && rankedStreams.length > 0) {
+      // Live-probe top 12 RD links to strip dead/copyright-removed slate.elfhosted.com & downloading.mp4 videos
+      rankedStreams = await verifyTopRdStreams(rankedStreams, 12);
+    }
+    const optimized = rankedStreams.slice(0, 35);
     const resolvedSubs = await inlineSubPromise;
     const inlineSubsSlice = Array.isArray(resolvedSubs) && resolvedSubs.length > 0
       ? resolvedSubs.slice(0, 10)
