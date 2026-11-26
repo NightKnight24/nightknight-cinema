@@ -64,9 +64,9 @@ function getCanonicalCacheUrl(requestUrl) {
     const extra = pathSegments.slice(3).join('/');
     if (catId === 'regional_live_tv') {
       const region = cfg.region ? String(cfg.region).toUpperCase() : 'GB';
-      return `https://nightknight-cache.internal/catalog/${type}/${catId}/${region}/${extra}`;
+      return `https://nightknight-cache.internal/v2/catalog/${type}/${catId}/${region}/${extra}`;
     }
-    return `https://nightknight-cache.internal/catalog/${type}/${catId}/${extra}`;
+    return `https://nightknight-cache.internal/v2/catalog/${type}/${catId}/${extra}`;
   }
 
   // 3. Subtitles: Partitioned by language preference and subtitle track mode

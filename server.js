@@ -4509,6 +4509,18 @@ const SEARCH_GENRE_MAP = {
     movieKw: '278238|364081|385589|18360|379300',
     tvKw: '34137|278238|364081|385589|18360'
   },
+  'dungeon rpg': {
+    movieKw: '278238|364081|385589|18360|379300|211227',
+    tvKw: '34137|278238|364081|385589|18360|211227',
+    movieBlendTitle: 'Dungeons & Dragons',
+    tvBlendTitle: 'Dungeon'
+  },
+  'dungeon & rpg': {
+    movieKw: '278238|364081|385589|18360|379300|211227',
+    tvKw: '34137|278238|364081|385589|18360|211227',
+    movieBlendTitle: 'Dungeons & Dragons',
+    tvBlendTitle: 'Dungeon'
+  },
   game: {
     movieKw: '282|41645|368262|344283|295702|377367|18360',
     tvKw: '282|41645|368262|295702|377367|18360',
@@ -4592,6 +4604,7 @@ const SEARCH_GENRE_MAP = {
   shojo: { movie: 16, tv: 16, lang: 'ja', keyword: '206437' },
   josei: { movie: 16, tv: 16, lang: 'ja', keyword: '229074' },
   isekai: { movie: 16, tv: 16, lang: 'ja', keyword: '237451|291482|5484' },
+  'isekai & reincarnation': { movie: 16, tv: 16, lang: 'ja', keyword: '237451|291482|5484' },
   reincarnation: { movie: 16, tv: 16, lang: 'ja', keyword: '5484|237451|383852' },
   mecha: { movie: 16, tv: 16, lang: 'ja', keyword: '10046|10891|207473|291181' },
   'slice of life': { movie: 16, tv: 16, lang: 'ja', keyword: '9914|291483' },
@@ -4819,7 +4832,13 @@ async function fetchSortedDiscover(isMovie, params) {
 // Detect whether user appended a media/genre trigger suffix ("movies", "films", "shows", "series", "tv series", "anime") onto a query
 function hasGenreTriggerSuffix(rawQuery) {
   const trimmed = (rawQuery || '').trim();
-  return /(?:\S+\s+(?:movies?|films?|tv\s*series|series|tv\s*shows?|shows?|cinema|animes?|donghuas?)|\b(?:gameshows?|animes|donghuas?))\s*$/i.test(trimmed);
+  if (/(?:\S+\s+(?:movies?|films?|tv\s*series|series|tv\s*shows?|shows?|cinema|animes?|donghuas?)|\b(?:gameshows?|animes|donghuas?))\s*$/i.test(trimmed)) {
+    return true;
+  }
+  if (/\b(?:animes?|donghuas?)\s+\S+/i.test(trimmed)) {
+    return true;
+  }
+  return /^(?:isekai|isekais|shonen|seinen|shojo|josei|iyashikei|mecha|donghua|aeni|dungeon|dungeon\s*(?:&|and)?\s*rpg|isekai\s*(?:&|and)?\s*reincarnation)$/i.test(trimmed);
 }
 
 // Helper: discover Anime filtered by any genre, subgenre, compound genre, or thematic keyword (with sort & decade support)
