@@ -6911,6 +6911,11 @@ async function verifyTopRdStreams(streams, maxProbe = 12) {
   let probedCount = 0;
   const probeOne = async (st) => {
     if (!st || !st.url || !/^https?:\/\//i.test(st.url)) return { st, alive: true };
+    // Never probe ElfHosted/Meteor RD unrestrict proxies from Cloudflare Worker IP:
+    // hitting /playback/ from Worker IP triggers "Opened on a different connection" IP locks and RD rate limits.
+    if (/(?:stremthru|comet|jackettio)\.elfhosted\.com|meteorfortheweebs\.midnightignite\.me/i.test(st.url)) {
+      return { st, alive: true };
+    }
     if (probedCount >= maxProbe) return { st, alive: true };
     probedCount++;
 
@@ -7257,7 +7262,7 @@ async function handleStream(type, id, userConfig = DEFAULT_USER_CONFIG, rootUrl 
   const maxQuality = userConfig.maxQuality || 'any';
   const subMode = userConfig.subMode || 'all';
   const rdKey = userConfig.realDebrid ? crypto.createHash('sha256').update(userConfig.realDebrid).digest('hex').slice(0, 12) : 'none';
-  const cacheKey = `stream:v7:${type}:${id}:${region}:${userConfig.upstream}:${userConfig.hideRisk}:${rdKey}:${prefLang}:${dubPref}:${maxQuality}:${subMode}`;
+  const cacheKey = `stream:v8:${type}:${id}:${region}:${userConfig.upstream}:${userConfig.hideRisk}:${rdKey}:${prefLang}:${dubPref}:${maxQuality}:${subMode}`;
   const baseLookupId = id.startsWith('tt') ? id.split(':')[0] : (id.startsWith('tmdb:') ? `tmdb:${id.replace('tmdb:', '').split(':')[0]}` : id);
   const cachedTitleInfo = ID_TITLE_CACHE.get(baseLookupId);
   const cached = getCache(cacheKey);
@@ -7462,6 +7467,15 @@ async function handleStream(type, id, userConfig = DEFAULT_USER_CONFIG, rootUrl 
     }
 
     let rawStreams = Array.from(dedupedMap.values()).filter(st => !isJunkOrBonusFile(st));
+
+    // When cached RD+ instant streams are available, drop uncached RD cloud-download torrents
+    // (uncached links almost always resolve to downloading.mp4, rate_limited.mp4, or dead slates).
+    if (activeRdToken) {
+      const cachedOnly = rawStreams.filter(st => isCachedRdEntry(st));
+      if (cachedOnly.length >= 3) {
+        rawStreams = cachedOnly;
+      }
+    }
 
     // Filter out wrong season/episode files on series requests (e.g. [7x23] showing up in 1x1)
     const epMatch = String(imdbTarget || id || '').match(/:(\d+):(\d+)$/);
